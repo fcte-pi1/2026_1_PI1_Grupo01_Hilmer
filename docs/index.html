@@ -3,8 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Meu Projeto</title>
-  <meta name="description" content="Página inicial do projeto hospedada no GitHub Pages." />
+  <title>Rato no Labirinto | Projeto Integrador de Engenharia</title>
+  <meta
+    name="description"
+    content="Projeto Integrador de Engenharia: desenvolvimento de um sistema funcional de rato no labirinto."
+  />
   <style>
     :root {
       --bg: #0f172a;
@@ -16,11 +19,14 @@
       --border: rgba(255,255,255,0.08);
     }
 
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+      scroll-behavior: smooth;
+    }
 
     body {
       margin: 0;
-      font-family: Inter, Arial, sans-serif;
+      font-family: Arial, sans-serif;
       background: linear-gradient(180deg, #020617 0%, #0f172a 100%);
       color: var(--text);
       line-height: 1.6;
@@ -46,8 +52,14 @@
 
     .brand {
       font-weight: 700;
-      font-size: 1.1rem;
+      font-size: 1.15rem;
       letter-spacing: 0.3px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
     }
 
     .nav-links a,
@@ -56,12 +68,6 @@
     footer a {
       color: var(--accent);
       text-decoration: none;
-    }
-
-    .nav-links {
-      display: flex;
-      gap: 18px;
-      flex-wrap: wrap;
     }
 
     .hero {
@@ -109,6 +115,10 @@
       transition: 0.2s ease;
     }
 
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+
     .btn-primary {
       background: var(--accent);
       color: #082f49 !important;
@@ -135,7 +145,7 @@
     }
 
     .section-title {
-      font-size: 1.7rem;
+      font-size: 1.8rem;
       margin-bottom: 20px;
     }
 
@@ -152,7 +162,8 @@
 
     .card p,
     .hero-card p,
-    footer p {
+    footer p,
+    ul {
       color: var(--muted);
     }
 
@@ -174,9 +185,15 @@
       box-shadow: 0 0 12px rgba(34, 197, 94, 0.8);
     }
 
+    .highlight {
+      color: var(--accent);
+      font-weight: bold;
+    }
+
     footer {
       padding: 24px 0 48px;
       border-top: 1px solid var(--border);
+      text-align: center;
     }
 
     @media (max-width: 860px) {
@@ -196,36 +213,37 @@
   <header>
     <div class="container">
       <nav>
-        <div class="brand">Meu Projeto</div>
+        <div class="brand">Projeto Integrador de Engenharia</div>
         <div class="nav-links">
           <a href="#sobre">Sobre</a>
-          <a href="#recursos">Recursos</a>
-          <a href="#contato">Contato</a>
+          <a href="#objetivos">Objetivos</a>
+          <a href="#funcionamento">Funcionamento</a>
+          <a href="#equipe">Equipe</a>
         </div>
       </nav>
 
       <section class="hero">
         <div>
-          <span class="tag">GitHub Pages · versão inicial</span>
-          <h1>Uma landing page simples para começar seu projeto.</h1>
+          <span class="tag">GitHub Pages · Projeto Funcional</span>
+          <h1>Rato no Labirinto</h1>
           <p class="subtitle">
-            Esta página foi criada para servir como ponto de partida. Você pode usar este espaço
-            para apresentar seu projeto, documentação, links importantes e formas de contato.
+            Este projeto foi desenvolvido como parte do <span class="highlight">Projeto Integrador de Engenharia</span>.
+            A proposta é construir um sistema funcional em que um rato percorre um labirinto,
+            tomando decisões até encontrar a saída de forma eficiente.
           </p>
           <div class="actions">
             <a class="btn btn-primary" href="https://github.com/fcte-pi1/2026_1_PI1_Grupo01_Hilmer" target="_blank" rel="noreferrer">Ver repositório</a>
-            <a class="btn btn-secondary" href="#recursos">Explorar seção</a>
+            <a class="btn btn-secondary" href="#sobre">Saiba mais</a>
           </div>
         </div>
 
         <aside class="hero-card">
-          <div class="status"><span class="dot"></span> Site online pelo GitHub Pages</div>
+          <div class="status"><span class="dot"></span> Projeto publicado no GitHub Pages</div>
           <p>
-            Edite este arquivo <code>index.html</code>, faça commit e publique pelo branch configurado nas
-            opções de <strong>Settings → Pages</strong> do repositório.
+            Aqui apresentamos a proposta, os objetivos, o funcionamento do sistema e a evolução do projeto.
           </p>
           <p>
-            Sugestão: depois, se quiser, você pode separar CSS e JavaScript em arquivos próprios.
+            O foco é demonstrar uma solução prática, organizada e funcional para o problema do rato no labirinto.
           </p>
         </aside>
       </section>
@@ -238,45 +256,109 @@
         <h2 class="section-title">Sobre o projeto</h2>
         <div class="grid">
           <article class="card">
-            <h3>Objetivo</h3>
-            <p>Explique em 2 ou 3 frases o que seu projeto resolve e para quem ele foi criado.</p>
+            <h3>Contexto</h3>
+            <p>
+              O projeto foi criado para aplicar conceitos de engenharia, lógica, programação e resolução de problemas
+              em uma aplicação prática.
+            </p>
           </article>
+
           <article class="card">
-            <h3>Tecnologias</h3>
-            <p>Liste a stack principal, como HTML, CSS, JavaScript, React, API, ou qualquer outra base.</p>
+            <h3>Problema</h3>
+            <p>
+              O desafio consiste em fazer um rato encontrar a saída de um labirinto,
+              utilizando regras, sensores, algoritmos ou estratégias definidas pela equipe.
+            </p>
           </article>
+
           <article class="card">
-            <h3>Próximos passos</h3>
-            <p>Mostre o roadmap inicial: melhorias visuais, integração com dados, docs ou demo pública.</p>
+            <h3>Solução</h3>
+            <p>
+              ainda em desenvolvimento
+            </p>
           </article>
         </div>
       </section>
 
-      <section id="recursos" style="margin-top: 48px;">
-        <h2 class="section-title">Recursos</h2>
+      <section id="objetivos" style="margin-top: 48px;">
+        <h2 class="section-title">Objetivos</h2>
         <div class="grid">
           <article class="card">
-            <h3>Documentação</h3>
-            <p>Adicione links para guias, instruções de uso ou especificações do projeto.</p>
+            <h3>Objetivo geral</h3>
+            <p>
+              Construir um projeto funcional que simule ou controle o deslocamento de um rato em um labirinto.
+            </p>
           </article>
+
           <article class="card">
-            <h3>Demonstração</h3>
-            <p>Inclua uma área com screenshots, GIFs, vídeos ou exemplos práticos.</p>
+            <h3>Objetivos específicos</h3>
+            <p>
+              Implementar a lógica de movimentação, testar diferentes caminhos e validar o funcionamento do sistema.
+            </p>
           </article>
+
           <article class="card">
-            <h3>Comunidade</h3>
-            <p>Referencie Issues, Discussions, formulário de contato ou links sociais.</p>
+            <h3>Resultados esperados</h3>
+            <p>
+              Demonstrar que o rato consegue navegar pelo labirinto e alcançar a saída com consistência.
+            </p>
           </article>
+        </div>
+      </section>
+
+      <section id="funcionamento" style="margin-top: 48px;">
+        <h2 class="section-title">Como funciona</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>Entrada</h3>
+            <p>
+              O sistema recebe a estrutura do labirinto e define a posição inicial do rato.
+            </p>
+          </article>
+
+          <article class="card">
+            <h3>Processamento</h3>
+            <p>
+              A lógica do projeto analisa os caminhos possíveis e decide os movimentos a serem executados.
+            </p>
+          </article>
+
+          <article class="card">
+            <h3>Saída</h3>
+            <p>
+              O resultado é a trajetória realizada pelo rato até encontrar a saída do labirinto.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section id="equipe" style="margin-top: 48px;">
+        <h2 class="section-title">Equipe e repositório</h2>
+        <div class="hero-card">
+          <p>
+            Repositório do projeto:
+            <a href="https://github.com/fcte-pi1/2026_1_PI1_Grupo01_Hilmer" target="_blank" rel="noreferrer">
+              2026_1_PI1_Grupo01_Hilmer
+            </a>
+          </p>
+          <p>
+            Nesta página vocês podem adicionar depois:
+          </p>
+          <ul>
+            <li>nomes dos integrantes;</li>
+            <li>professor orientador;</li>
+            <li>imagens do protótipo;</li>
+            <li>vídeo de demonstração;</li>
+            <li>documentação técnica.</li>
+          </ul>
         </div>
       </section>
     </div>
   </main>
 
-  <footer id="contato">
+  <footer>
     <div class="container">
-      <p>
-        2026_1_PI1_Grupo01_Hilmer
-      </p>
+      <p>Projeto Integrador de Engenharia · Rato no Labirinto · 2026</p>
     </div>
   </footer>
 </body>
