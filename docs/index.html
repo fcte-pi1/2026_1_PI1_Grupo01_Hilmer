@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meu Projeto</title>
+  <meta name="description" content="Página inicial do projeto hospedada no GitHub Pages." />
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-2: #22c55e;
+      --border: rgba(255,255,255,0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, Arial, sans-serif;
+      background: linear-gradient(180deg, #020617 0%, #0f172a 100%);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .container {
+      width: min(1100px, 92%);
+      margin: 0 auto;
+    }
+
+    header {
+      padding: 72px 0 40px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 56px;
+    }
+
+    .brand {
+      font-weight: 700;
+      font-size: 1.1rem;
+      letter-spacing: 0.3px;
+    }
+
+    .nav-links a,
+    .hero a,
+    .card a,
+    footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 32px;
+      align-items: center;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      font-size: clamp(2.2rem, 5vw, 4rem);
+      line-height: 1.1;
+      margin: 0 0 16px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      max-width: 60ch;
+      margin-bottom: 24px;
+      font-size: 1.05rem;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 12px 18px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      font-weight: 600;
+      transition: 0.2s ease;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #082f49 !important;
+    }
+
+    .btn-secondary {
+      border-color: var(--border);
+      color: var(--text) !important;
+      background: rgba(255,255,255,0.03);
+    }
+
+    .hero-card,
+    .card {
+      background: rgba(17, 24, 39, 0.7);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+
+    main {
+      padding: 48px 0 80px;
+    }
+
+    .section-title {
+      font-size: 1.7rem;
+      margin-bottom: 20px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+    }
+
+    .card h3 {
+      margin-top: 0;
+      margin-bottom: 10px;
+    }
+
+    .card p,
+    .hero-card p,
+    footer p {
+      color: var(--muted);
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--accent-2);
+      display: inline-block;
+      box-shadow: 0 0 12px rgba(34, 197, 94, 0.8);
+    }
+
+    footer {
+      padding: 24px 0 48px;
+      border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 860px) {
+      .hero,
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      nav {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <nav>
+        <div class="brand">Meu Projeto</div>
+        <div class="nav-links">
+          <a href="#sobre">Sobre</a>
+          <a href="#recursos">Recursos</a>
+          <a href="#contato">Contato</a>
+        </div>
+      </nav>
+
+      <section class="hero">
+        <div>
+          <span class="tag">GitHub Pages · versão inicial</span>
+          <h1>Uma landing page simples para começar seu projeto.</h1>
+          <p class="subtitle">
+            Esta página foi criada para servir como ponto de partida. Você pode usar este espaço
+            para apresentar seu projeto, documentação, links importantes e formas de contato.
+          </p>
+          <div class="actions">
+            <a class="btn btn-primary" href="https://github.com/fcte-pi1/2026_1_PI1_Grupo01_Hilmer" target="_blank" rel="noreferrer">Ver repositório</a>
+            <a class="btn btn-secondary" href="#recursos">Explorar seção</a>
+          </div>
+        </div>
+
+        <aside class="hero-card">
+          <div class="status"><span class="dot"></span> Site online pelo GitHub Pages</div>
+          <p>
+            Edite este arquivo <code>index.html</code>, faça commit e publique pelo branch configurado nas
+            opções de <strong>Settings → Pages</strong> do repositório.
+          </p>
+          <p>
+            Sugestão: depois, se quiser, você pode separar CSS e JavaScript em arquivos próprios.
+          </p>
+        </aside>
+      </section>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <section id="sobre">
+        <h2 class="section-title">Sobre o projeto</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>Objetivo</h3>
+            <p>Explique em 2 ou 3 frases o que seu projeto resolve e para quem ele foi criado.</p>
+          </article>
+          <article class="card">
+            <h3>Tecnologias</h3>
+            <p>Liste a stack principal, como HTML, CSS, JavaScript, React, API, ou qualquer outra base.</p>
+          </article>
+          <article class="card">
+            <h3>Próximos passos</h3>
+            <p>Mostre o roadmap inicial: melhorias visuais, integração com dados, docs ou demo pública.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="recursos" style="margin-top: 48px;">
+        <h2 class="section-title">Recursos</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>Documentação</h3>
+            <p>Adicione links para guias, instruções de uso ou especificações do projeto.</p>
+          </article>
+          <article class="card">
+            <h3>Demonstração</h3>
+            <p>Inclua uma área com screenshots, GIFs, vídeos ou exemplos práticos.</p>
+          </article>
+          <article class="card">
+            <h3>Comunidade</h3>
+            <p>Referencie Issues, Discussions, formulário de contato ou links sociais.</p>
+          </article>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer id="contato">
+    <div class="container">
+      <p>
+        2026_1_PI1_Grupo01_Hilmer
+      </p>
+    </div>
+  </footer>
+</body>
+</html>
