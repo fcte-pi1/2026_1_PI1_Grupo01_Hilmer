@@ -7,6 +7,37 @@ assignees: ''
 
 ---
 
+## Titulação da issue
+
+Use o seguinte padrão para o título da issue:
+
+> `tipo: descrição curta da issue`
+
+Exemplos:
+
+> `bug: erro ao salvar novo usuário`  
+> `feat: adicionar filtro por status na listagem`  
+> `docs: atualizar documentação de instalação`
+
+### Tipos disponíveis
+
+- `feat` — Nova funcionalidade
+- `fix` — Correção de bug
+- `bug` — Problema identificado
+- `hotfix` — Correção urgente
+- `docs` — Documentação
+- `chore` — Tarefa de manutenção
+- `refactor` — Refatoração sem mudança de comportamento
+- `test` — Criação ou ajuste de testes
+- `style` — Formatação, lint ou ajustes visuais sem alteração de lógica
+- `perf` — Melhoria de performance
+- `build` — Mudanças em build, dependências ou empacotamento
+- `ci` — Mudanças em CI/CD
+- `security` — Correção ou melhoria de segurança
+- `question` — Dúvida ou investigação
+- `discussion` — Discussão técnica ou de produto
+
+---
 ## Descrição do bug
 
 Descreva de forma clara e objetiva o problema encontrado.
