@@ -278,6 +278,66 @@
       color: var(--muted);
     }
 
+    .requirements-tables {
+      display: grid;
+      gap: 24px;
+    }
+
+    .table-card {
+      padding: 24px;
+    }
+
+    .table-card h2,
+    .table-card h3,
+    .table-card p {
+      margin-top: 0;
+    }
+
+    .table-card p {
+      color: var(--muted);
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: rgba(2, 6, 23, 0.8);
+    }
+
+    table {
+      width: 100%;
+      min-width: 760px;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 14px 16px;
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+
+    th {
+      background: rgba(56, 189, 248, 0.14);
+      color: var(--text);
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    tbody tr:nth-child(even) {
+      background: rgba(255,255,255,0.02);
+    }
+
+    tbody tr:hover {
+      background: rgba(56, 189, 248, 0.05);
+    }
+
+    td {
+      color: var(--muted);
+    }
+
     footer {
       padding: 24px 0 48px;
       border-top: 1px solid var(--border);
@@ -303,6 +363,7 @@
 
       .hero-card,
       .requirement-group,
+      .table-card,
       .summary-card,
       .requirement-card {
         padding: 20px;
@@ -768,6 +829,90 @@
             </article>
           </div>
         </div>
+      </section>
+
+      <section class="requirements-tables" aria-labelledby="tabelas-consolidadas">
+        <div class="hero-card">
+          <h2 class="section-title" id="tabelas-consolidadas">Tabelas consolidadas</h2>
+          <p class="section-intro">
+            As tabelas abaixo reúnem todos os requisitos funcionais e não funcionais em um formato compacto para consulta rápida.
+          </p>
+        </div>
+
+        <article class="card table-card" aria-labelledby="tabela-rf">
+          <h3 id="tabela-rf">Requisitos Funcionais</h3>
+          <p>Consolidação dos requisitos funcionais do sistema Micromouse.</p>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nome</th>
+                  <th>Descrição</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>RF01</td><td>Inicializar sistema</td><td>Permitir iniciar a operação por botão físico e por comando via interface web.</td></tr>
+                <tr><td>RF02</td><td>Encerrar sistema</td><td>Permitir encerrar a operação por botão físico e por comando via interface web.</td></tr>
+                <tr><td>RF03</td><td>Executar movimento</td><td>Executar movimentos (frente, parada, curvas ≥ 90°) a partir de comandos de navegação.</td></tr>
+                <tr><td>RF04</td><td>Controlar motores</td><td>Converter comandos de navegação em sinais elétricos (PWM/direção) para controle dos motores.</td></tr>
+                <tr><td>RF05</td><td>Controlar rodas independentemente</td><td>Permitir controle independente das rodas para ajuste fino de trajetória.</td></tr>
+                <tr><td>RF06</td><td>Parar no objetivo</td><td>Interromper o movimento ao atingir o centro do labirinto, módulo 2x2.</td></tr>
+                <tr><td>RF07</td><td>Detectar paredes</td><td>Detectar paredes ao redor do micromouse utilizando sensores.</td></tr>
+                <tr><td>RF08</td><td>Processar dados dos sensores</td><td>Processar dados de sensores em tempo real, com latência abaixo de X, para tomada de decisão.</td></tr>
+                <tr><td>RF09</td><td>Registrar ambiente</td><td>Registrar paredes e estados do labirinto durante a execução.</td></tr>
+                <tr><td>RF10</td><td>Mapear labirinto</td><td>Construir e armazenar um mapa navegável do labirinto.</td></tr>
+                <tr><td>RF11</td><td>Identificar percurso ótimo</td><td>Identificar o melhor caminho até o objetivo com base no mapa construído.</td></tr>
+                <tr><td>RF12</td><td>Energizar sistema</td><td>Energizar todos os componentes do sistema por meio da bateria.</td></tr>
+                <tr><td>RF13</td><td>Dimensionar energia</td><td>A bateria deve ter X capacidade com base no consumo total, além de dimensão total X x X.</td></tr>
+                <tr><td>RF14</td><td>Controlar dissipação</td><td>Limitar corrente e dissipação térmica para evitar danos.</td></tr>
+                <tr><td>RF15</td><td>Coletar e transmitir telemetr</td><td>Coletar e transmitir continuamente dados operacionais durante a execução.</td></tr>
+                <tr><td>RF16</td><td>Fornecer variáveis de telemetria</td><td>Incluir tensão da bateria (V), corrente (mA), carga restante (C ou %), velocidade, estado do robô, posição no labirinto e detecção de paredes.</td></tr>
+                <tr><td>RF17</td><td>Comunicar sem fio</td><td>Transmitir dados via módulo nRF24L01+.</td></tr>
+                <tr><td>RF18</td><td>Armazenar dados</td><td>O sistema deve armazenar os dados de cada execução do micromouse.</td></tr>
+                <tr><td>RF19</td><td>Exibir dados</td><td>Exibir dados em tempo real e histórico, incluindo trajeto, tempo, consumo energético e sucesso da execução.</td></tr>
+                <tr><td>RF20</td><td>Suportar componentes</td><td>Suportar bateria, sensores, motores e circuitos.</td></tr>
+                <tr><td>RF21</td><td>Permitir operação dos sensores</td><td>Permitir funcionamento dos sensores sem obstrução.</td></tr>
+                <tr><td>RF22</td><td>Construir ambiente de teste</td><td>Construir um labirinto 4x4 para validação.</td></tr>
+                <tr><td>RF23</td><td>Processar dados em tempo real</td><td>Processar sensores e atualizar decisões continuamente.</td></tr>
+                <tr><td>RF24</td><td>Controlar navegação</td><td>Gerar comandos de movimento com base no algoritmo de navegação.</td></tr>
+                <tr><td>RF25</td><td>Gerenciar armazenamento</td><td>Armazenar dados em banco de dados estruturado.</td></tr>
+                <tr><td>RF26</td><td>Controlar interface</td><td>Permitir ao operador iniciar e parar execuções via interface.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="card table-card" aria-labelledby="tabela-rnf">
+          <h3 id="tabela-rnf">Requisitos Não Funcionais</h3>
+          <p>Consolidação dos requisitos não funcionais do sistema Micromouse.</p>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nome</th>
+                  <th>Descrição</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>RNF01</td><td>Garantir tempo de resposta do controle</td><td>Responder aos comandos com latência máxima X.</td></tr>
+                <tr><td>RNF02</td><td>Garantir execução autônoma</td><td>Operar sem intervenção humana após iniciado.</td></tr>
+                <tr><td>RNF03</td><td>Garantir autonomia operacional</td><td>Suportar X execuções sem recarga.</td></tr>
+                <tr><td>RNF04</td><td>Sustentar desempenho energético</td><td>Manter operação nas condições de velocidade X.</td></tr>
+                <tr><td>RNF05</td><td>Garantir atualização contínua</td><td>Transmitir telemetria sem travamentos ou perdas maiores que X%.</td></tr>
+                <tr><td>RNF06</td><td>Organizar dados</td><td>O sistema deve exibir os dados de forma organizada e interpretável, incluindo a visualização do trajeto e os dados da execução.</td></tr>
+                <tr><td>RNF07</td><td>Respeitar restrição dimensional</td><td>Manter dimensões máximas de 15x15 cm.</td></tr>
+                <tr><td>RNF08</td><td>Respeitar restrição de peso</td><td>Manter peso em até X kg, sem comprometer a estabilidade.</td></tr>
+                <tr><td>RNF09</td><td>Garantir resistência mecânica</td><td>Resistir a impactos e vibração.</td></tr>
+                <tr><td>RNF10</td><td>Fixar componentes</td><td>Impedir deslocamento interno dos componentes durante a operação.</td></tr>
+                <tr><td>RNF11</td><td>Permitir manutenção</td><td>Permitir fácil acesso e manutenção dos componentes.</td></tr>
+                <tr><td>RNF12</td><td>Garantir confiabilidade</td><td>Operar sem falhas durante a execução.</td></tr>
+                <tr><td>RNF13</td><td>Otimizar percurso</td><td>Melhorar o trajeto com base em execuções anteriores.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
       </section>
     </div>
   </main>
