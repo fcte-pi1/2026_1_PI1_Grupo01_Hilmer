@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EAP e Dicionários da EAP | Rato no Labirinto</title>
+  <meta
+    name="description"
+    content="Estrutura Analítica do Projeto e dicionários da EAP do projeto Micromouse Autônomo."
+  />
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-2: #22c55e;
+      --border: rgba(255,255,255,0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(180deg, #020617 0%, #0f172a 100%);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .container {
+      width: min(1100px, 92%);
+      margin: 0 auto;
+    }
+
+    header {
+      padding: 48px 0 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    main {
+      padding: 40px 0 80px;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03);
+      color: var(--text);
+      font-weight: 600;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .back-link:hover {
+      transform: translateY(-2px);
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    .page-header {
+      display: grid;
+      gap: 18px;
+      margin-top: 28px;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      width: fit-content;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(56, 189, 248, 0.08);
+      color: var(--accent);
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2.2rem, 5vw, 3.6rem);
+      line-height: 1.1;
+    }
+
+    .lead {
+      max-width: 72ch;
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.05rem;
+    }
+
+    .section-title {
+      margin: 0 0 12px;
+      font-size: 1.75rem;
+    }
+
+    .stack {
+      display: grid;
+      gap: 24px;
+    }
+
+    .card {
+      background: rgba(17, 24, 39, 0.78);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+
+    .card p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .image-card {
+      display: grid;
+      gap: 18px;
+    }
+
+    .image-frame {
+      padding: 18px;
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      background: rgba(2, 6, 23, 0.72);
+    }
+
+    .image-frame img {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.05);
+      box-shadow: 0 10px 24px rgba(0,0,0,0.25);
+    }
+
+    .image-note {
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    .dictionary-card {
+      display: grid;
+      gap: 16px;
+    }
+
+    .dictionary-card h3 {
+      margin: 0;
+      font-size: 1.3rem;
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: rgba(2, 6, 23, 0.8);
+    }
+
+    table {
+      width: 100%;
+      min-width: 760px;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 14px 16px;
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+
+    th {
+      background: rgba(56, 189, 248, 0.14);
+      color: var(--text);
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    tbody tr:nth-child(even) {
+      background: rgba(255,255,255,0.02);
+    }
+
+    tbody tr:hover {
+      background: rgba(56, 189, 248, 0.05);
+    }
+
+    td {
+      color: var(--muted);
+    }
+
+    .section-intro {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    footer {
+      padding: 24px 0 48px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      color: var(--muted);
+    }
+
+    @media (max-width: 860px) {
+      header {
+        padding-top: 32px;
+      }
+
+      main {
+        padding-top: 32px;
+      }
+
+      .card {
+        padding: 20px;
+      }
+
+      table {
+        min-width: 680px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <a class="back-link" href="../index.html">&larr; Voltar para a página inicial</a>
+
+      <div class="page-header">
+        <span class="eyebrow">Planejamento do projeto</span>
+        <h1>EAP e Dicionários da EAP</h1>
+        <p class="lead">
+          Esta página reúne a Estrutura Analítica do Projeto do Micromouse Autônomo e os dicionários da EAP
+          elaborados pelas áreas do projeto, consolidando os pacotes de trabalho, descrições, responsáveis e
+          critérios de aceitação em um único lugar.
+        </p>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="container stack">
+      <section class="card image-card" aria-labelledby="eap-geral">
+        <div>
+          <h2 class="section-title" id="eap-geral">Estrutura Analítica do Projeto</h2>
+          <p>
+            A imagem abaixo destaca a visão geral da EAP do projeto, facilitando a leitura dos principais blocos e sua
+            organização antes da consulta detalhada dos dicionários por área.
+          </p>
+        </div>
+
+        <div class="image-frame">
+          <img
+            src="../assets/img/eap-projeto.png"
+            alt="Estrutura Analítica do Projeto do Micromouse Autônomo"
+            onerror="this.onerror=null;this.src='data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%221600%22 height=%22900%22 viewBox=%220 0 1600 900%22%3E%3Crect width=%221600%22 height=%22900%22 fill=%22%23020617%22/%3E%3Crect x=%2250%22 y=%2250%22 width=%221500%22 height=%22800%22 rx=%2232%22 fill=%22%230f172a%22 stroke=%22%2338bdf8%22 stroke-opacity=%220.35%22/%3E%3Ctext x=%22800%22 y=%22340%22 text-anchor=%22middle%22 fill=%22%23e5e7eb%22 font-family=%22Arial, sans-serif%22 font-size=%2254%22 font-weight=%22700%22%3EEAP geral do projeto%3C/text%3E%3Ctext x=%22800%22 y=%22425%22 text-anchor=%22middle%22 fill=%22%2394a3b8%22 font-family=%22Arial, sans-serif%22 font-size=%2232%22%3EAdicione o arquivo real em docs/assets/img/eap-projeto.png%3C/text%3E%3Ctext x=%22800%22 y=%22495%22 text-anchor=%22middle%22 fill=%22%2394a3b8%22 font-family=%22Arial, sans-serif%22 font-size=%2228%22%3EAssim que a imagem exportada for inclu%25C3%25ADda no reposit%25C3%25B3rio, ela aparecer%25C3%25A1 automaticamente aqui.%3C/text%3E%3C/svg%3E';"
+          />
+        </div>
+
+        <p class="image-note">
+          Caminho esperado para a imagem exportada da EAP: <code>docs/assets/img/eap-projeto.png</code>.
+        </p>
+      </section>
+
+      <section aria-labelledby="dicionarios-eap" class="stack">
+        <div>
+          <h2 class="section-title" id="dicionarios-eap">Dicionários da EAP</h2>
+          <p class="section-intro">
+            Os dicionários abaixo detalham os pacotes de trabalho definidos pelas áreas de Sistema Energético,
+            Eletrônica/Firmware e Software.
+          </p>
+        </div>
+
+        <article class="card dictionary-card">
+          <div>
+            <h3>1. Sistema Energético</h3>
+            <p>
+              Estrutura responsável pelo fornecimento, gerenciamento e distribuição de energia para os componentes do micromouse.
+            </p>
+          </div>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Pacote de trabalho</th>
+                  <th>Descrição</th>
+                  <th>Responsável</th>
+                  <th>Critérios de aceitação</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>1.1</td>
+                  <td>Sistema Energético</td>
+                  <td>Responsável por fornecer, gerenciar e distribuir energia para todos os componentes do micromouse.</td>
+                  <td>Lucas Navarro e João Victor</td>
+                  <td>Fornecimento contínuo de energia e estabilidade de tensão e corrente.</td>
+                </tr>
+                <tr>
+                  <td>1.1.1</td>
+                  <td>Circuito Elétrico</td>
+                  <td>Projeto e implementação do circuito responsável pela distribuição de energia elétrica.</td>
+                  <td>Lucas Navarro</td>
+                  <td>Distribuição correta de energia e ausência de falhas elétricas.</td>
+                </tr>
+                <tr>
+                  <td>1.1.1.1</td>
+                  <td>Planejamento do Circuito</td>
+                  <td>Definição da arquitetura elétrica do sistema.</td>
+                  <td>Lucas Navarro</td>
+                  <td>Componentes dimensionados corretamente e compatibilidade entre módulos.</td>
+                </tr>
+                <tr>
+                  <td>1.1.1.2</td>
+                  <td>Bateria</td>
+                  <td>Fonte principal de energia do micromouse.</td>
+                  <td>Lucas Navarro</td>
+                  <td>Capacidade suficiente, fornecimento estável de tensão e corrente e operação segura.</td>
+                </tr>
+                <tr>
+                  <td>1.1.1.2.1</td>
+                  <td>Telemetria da bateria</td>
+                  <td>Monitoramento de tensão, corrente e consumo energético da bateria.</td>
+                  <td>João Victor</td>
+                  <td>Leitura correta de dados, atualização em tempo real e integração com o sistema.</td>
+                </tr>
+                <tr>
+                  <td>1.1.2</td>
+                  <td>Motor Elétrico</td>
+                  <td>Sistema responsável pela locomoção do micromouse.</td>
+                  <td>João Victor</td>
+                  <td>Movimento controlado e estável e resposta adequada aos comandos.</td>
+                </tr>
+                <tr>
+                  <td>1.1.2.1</td>
+                  <td>Cálculo da Eficiência Energética</td>
+                  <td>Análise do consumo energético dos motores e eficiência do sistema.</td>
+                  <td>João Victor</td>
+                  <td>Eficiência dentro dos limites aceitáveis e consumo compatível com a bateria.</td>
+                </tr>
+                <tr>
+                  <td>1.1.2.2</td>
+                  <td>Montagem</td>
+                  <td>Instalação física dos motores no chassi.</td>
+                  <td>João Victor</td>
+                  <td>Fixação firme, alinhamento correto e ausência de vibração excessiva.</td>
+                </tr>
+                <tr>
+                  <td>1.1.3</td>
+                  <td>Circuito Térmico</td>
+                  <td>Gerenciamento térmico dos componentes eletrônicos e motores.</td>
+                  <td>Lucas Navarro</td>
+                  <td>Temperatura dentro dos limites seguros e ausência de superaquecimento.</td>
+                </tr>
+                <tr>
+                  <td>1.1.3.1</td>
+                  <td>Cálculo da Transferência de Calor</td>
+                  <td>Análise térmica dos componentes para prever aquecimento.</td>
+                  <td>Lucas Navarro</td>
+                  <td>Componentes operando abaixo da temperatura máxima e dissipação adequada.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="card dictionary-card">
+          <div>
+            <h3>2. Eletrônica / Firmware</h3>
+            <p>
+              Dicionário voltado aos blocos de sensoriamento, atuação, placa e telemetria do sistema embarcado.
+            </p>
+          </div>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID EAP</th>
+                  <th>Nome</th>
+                  <th>Descrição</th>
+                  <th>Responsável</th>
+                  <th>Critérios de aceite</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>3.1.1</td>
+                  <td>Sensoriamento</td>
+                  <td>Conjunto de sensores responsáveis por detectar a presença de paredes e fornecer dados para navegação do micromouse.</td>
+                  <td>Iago Murakami; Artur Navarro</td>
+                  <td>Os sensores devem detectar paredes de forma consistente no ambiente do labirinto; as leituras devem apresentar baixa variação; os dados devem ser compatíveis com o processamento pelo microcontrolador.</td>
+                </tr>
+                <tr>
+                  <td>3.1.2.1</td>
+                  <td>Drivers de motor</td>
+                  <td>Circuito responsável pelo acionamento elétrico dos motores.</td>
+                  <td>Artur Navarro; Manuella Perlin</td>
+                  <td>Os motores devem responder corretamente aos sinais de controle; deve ser possível controlar velocidade via PWM; o circuito deve operar sem aquecimento excessivo ou falhas.</td>
+                </tr>
+                <tr>
+                  <td>3.1.2.2</td>
+                  <td>Controle e acionamento dos motores</td>
+                  <td>Bloco responsável pela lógica de controle do deslocamento do micromouse, incluindo controle de velocidade, direção e execução de trajetórias.</td>
+                  <td>Iago Murakami; Artur Navarro</td>
+                  <td>O micromouse executa avanço, parada e giro; deve responder corretamente aos comandos do sistema.</td>
+                </tr>
+                <tr>
+                  <td>3.1.2.3</td>
+                  <td>Encoders</td>
+                  <td>Sistema responsável pela medição da rotação das rodas, permitindo o cálculo de deslocamento e velocidade do micromouse.</td>
+                  <td>Iago Murakami; Artur Navarro</td>
+                  <td>Os encoders devem fornecer contagens consistentes; deve ser possível calcular distância percorrida e velocidade; as leituras devem funcionar corretamente em diferentes velocidades.</td>
+                </tr>
+                <tr>
+                  <td>3.1.3.1</td>
+                  <td>Layout da PCB</td>
+                  <td>Organização física e elétrica da placa, incluindo posicionamento de componentes e roteamento de trilhas.</td>
+                  <td>Manuella Perlin; Iago Murakami</td>
+                  <td>A PCB deve respeitar as restrições de tamanho do projeto; as conexões elétricas devem estar corretas; o layout deve minimizar interferência e ruído elétrico.</td>
+                </tr>
+                <tr>
+                  <td>3.1.3.2</td>
+                  <td>Circuitos integrados da placa</td>
+                  <td>Seleção e integração dos CIs necessários ao funcionamento do sistema eletrônico.</td>
+                  <td>Artur Navarro; Manuella Perlin</td>
+                  <td>Todos os componentes devem operar de forma compatível; não deve haver conflitos elétricos entre módulos; o sistema deve funcionar de forma integrada.</td>
+                </tr>
+                <tr>
+                  <td>3.2.1</td>
+                  <td>Telemetria</td>
+                  <td>Módulo responsável por coletar e transmitir os dados da execução do micromouse para a interface web em tempo real.</td>
+                  <td>Artur Navarro; Manuella Perlin</td>
+                  <td>Os dados devem ser enviados durante a execução; a transmissão deve ocorrer sem travamentos significativos; as informações devem ser enviadas corretamente à interface.</td>
+                </tr>
+                <tr>
+                  <td>3.2.2</td>
+                  <td>Microcontrolador</td>
+                  <td>Unidade central responsável por ler sensores, processar comandos e gerar sinais de controle para os módulos de atuação e comunicação.</td>
+                  <td>Manuella Perlin; Iago Murakami</td>
+                  <td>O microcontrolador deve executar leitura de sensores, controle de motores e comunicação; não deve apresentar falhas durante execução contínua; deve operar de forma estável com todos os módulos conectados.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="card dictionary-card">
+          <div>
+            <h3>3. Software</h3>
+            <p>
+              Estrutura dos módulos de interface, monitoramento, armazenamento e algoritmos responsáveis pela operação lógica do sistema.
+            </p>
+          </div>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Pacote</th>
+                  <th>Descrição</th>
+                  <th>Subprocessos/Objetivos finais</th>
+                  <th>Critérios de aceitação</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>5.1.1</td>
+                  <td>Monitoramento</td>
+                  <td>O software deverá receber, processar e exibir em tempo real as informações do minimouse durante o percurso.</td>
+                  <td>Monitorar trajeto; identificar paredes; monitorar consumo de bateria; monitorar velocidade média; contar tempo até conclusão/parada; registrar conclusão do desafio.</td>
+                  <td>Ao percorrer o labirinto, o sistema deve registrar e exibir o trajeto percorrido; exibir o nível de consumo da bateria em tempo real; calcular e exibir a velocidade média em tempo real; contar o tempo gasto até a interrupção do trajeto; identificar e exibir se o minimouse chegou ao objetivo.</td>
+                </tr>
+                <tr>
+                  <td>5.1.2</td>
+                  <td>Armazenamento</td>
+                  <td>Módulo responsável por armazenar os dados gerados durante o percurso do minimouse para consultas e análises posteriores.</td>
+                  <td>Armazenamento de logs de sessão; exportação de dados.</td>
+                  <td>Ao percorrer o labirinto, o sistema deve registrar e exibir as paredes identificadas; o software deve permitir exportar os dados para planilhas externas.</td>
+                </tr>
+                <tr>
+                  <td>5.2.1</td>
+                  <td>Mapeamento</td>
+                  <td>Algoritmos responsáveis por mapear a estrutura do labirinto com base nos dados dos sensores do minimouse.</td>
+                  <td>Algoritmo de identificação de paredes; algoritmo de mapeamento ponto a ponto; registro de posição atual.</td>
+                  <td>Identificar paredes com topo vermelho com alta velocidade de resposta; mapear a melhor rota de ponto a ponto.</td>
+                </tr>
+                <tr>
+                  <td>5.2.2</td>
+                  <td>Otimização</td>
+                  <td>Algoritmos responsáveis por calcular e otimizar o trajeto do minimouse para minimizar tempo e consumo de energia.</td>
+                  <td>Algoritmo de caminho mais curto; algoritmo de redução de consumo energético; estratégia de retorno ao início.</td>
+                  <td>Definir algoritmo de ponto a ponto que gaste a menor quantidade de bateria possível.</td>
+                </tr>
+                <tr>
+                  <td>5.1</td>
+                  <td>Interface de usuário</td>
+                  <td>Módulo responsável pela exibição e interação com o usuário durante a operação do minimouse.</td>
+                  <td>Visualização em tempo real; compatibilidade com web e conexão com o micromouse.</td>
+                  <td>Critérios a definir.</td>
+                </tr>
+                <tr>
+                  <td>5.2</td>
+                  <td>Algoritmo</td>
+                  <td>Módulo responsável pelo processamento lógico e tomada de decisão do minimouse no labirinto.</td>
+                  <td>Lógica de decisão autônoma; desempenho em tempo real.</td>
+                  <td>Critérios a definir.</td>
+                </tr>
+                <tr>
+                  <td>5</td>
+                  <td>Software</td>
+                  <td>Conjunto de sistemas de software responsável pelo controle, monitoramento e armazenamento das operações do minimouse no labirinto.</td>
+                  <td>&mdash;</td>
+                  <td>&mdash;</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      Projeto Integrador de Engenharia · Micromouse Autônomo · Recursos da EAP
+    </div>
+  </footer>
+</body>
+</html>

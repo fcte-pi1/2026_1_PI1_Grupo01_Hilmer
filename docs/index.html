@@ -167,6 +167,41 @@
       color: var(--muted);
     }
 
+    .resource-card {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-height: 100%;
+    }
+
+    .resource-card h3,
+    .resource-card p {
+      margin: 0;
+    }
+
+    .resource-card .btn {
+      margin-top: auto;
+      width: fit-content;
+    }
+
+    .resource-meta {
+      display: inline-block;
+      width: fit-content;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(56, 189, 248, 0.08);
+      color: var(--accent);
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .resource-card [aria-disabled="true"] {
+      opacity: 0.7;
+      pointer-events: none;
+      cursor: default;
+    }
+
     .status {
       display: inline-flex;
       align-items: center;
@@ -218,6 +253,7 @@
           <a href="#sobre">Sobre</a>
           <a href="#objetivos">Objetivos</a>
           <a href="#funcionamento">Funcionamento</a>
+          <a href="#recursos">Recursos</a>
           <a href="#equipe">Equipe</a>
         </div>
       </nav>
@@ -328,6 +364,79 @@
             <p>
               O resultado é a trajetória realizada pelo rato até encontrar a saída do labirinto.
             </p>
+          </article>
+        </div>
+      </section>
+
+      <section id="recursos" style="margin-top: 48px;">
+        <h2 class="section-title">Recursos</h2>
+        <p class="subtitle">
+          Materiais de planejamento e organização do projeto, incluindo a EAP geral e os dicionários elaborados pelas áreas.
+        </p>
+
+        <div class="grid">
+          <article class="card resource-card">
+            <span class="resource-meta">Planejamento do projeto</span>
+            <h3>EAP e Dicionários da EAP</h3>
+            <p>
+              Consulte a Estrutura Analítica do Projeto e os dicionários da EAP organizados por área, com pacotes de
+              trabalho, descrições, responsáveis e critérios de aceitação.
+            </p>
+            <a class="btn btn-primary" href="recursos/eap.html">Acessar EAP</a>
+          </article>
+
+          <article class="card resource-card">
+            <span class="resource-meta">Em breve</span>
+            <h3>Backlog do Produto</h3>
+            <p>
+              Espaço reservado para apresentar as funcionalidades, histórias e prioridades que orientarão a evolução do produto.
+            </p>
+            <a class="btn btn-secondary" href="#" aria-disabled="true">Em breve</a>
+          </article>
+
+          <article class="card resource-card">
+            <span class="resource-meta">Em breve</span>
+            <h3>Cronograma</h3>
+            <p>
+              Área preparada para publicar o planejamento temporal do projeto, com marcos, entregas e acompanhamento.
+            </p>
+            <a class="btn btn-secondary" href="#" aria-disabled="true">Em breve</a>
+          </article>
+
+          <article class="card resource-card">
+            <span class="resource-meta">Em breve</span>
+            <h3>Requisitos</h3>
+            <p>
+              Espaço destinado à documentação dos requisitos funcionais, não funcionais e critérios de validação do sistema.
+            </p>
+            <a class="btn btn-secondary" href="#" aria-disabled="true">Em breve</a>
+          </article>
+
+          <article class="card resource-card">
+            <span class="resource-meta">Em breve</span>
+            <h3>Escopo</h3>
+            <p>
+              Estrutura preparada para consolidar os limites, entregas e premissas que definem o escopo do micromouse.
+            </p>
+            <a class="btn btn-secondary" href="#" aria-disabled="true">Em breve</a>
+          </article>
+
+          <article class="card resource-card">
+            <span class="resource-meta">Em breve</span>
+            <h3>Orçamento</h3>
+            <p>
+              Área reservada para o detalhamento de custos, estimativas financeiras e acompanhamento do investimento do projeto.
+            </p>
+            <a class="btn btn-secondary" href="#" aria-disabled="true">Em breve</a>
+          </article>
+
+          <article class="card resource-card">
+            <span class="resource-meta">Em breve</span>
+            <h3>Documentação do projeto</h3>
+            <p>
+              Espaço preparado para centralizar relatórios, atas, registros técnicos e outros materiais complementares.
+            </p>
+            <a class="btn btn-secondary" href="#" aria-disabled="true">Em breve</a>
           </article>
         </div>
       </section>
