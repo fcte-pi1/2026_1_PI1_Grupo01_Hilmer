@@ -149,16 +149,6 @@
       box-shadow: 0 10px 24px rgba(0,0,0,0.25);
     }
 
-    .pdf-viewer {
-      display: block;
-      width: 100%;
-      min-height: 720px;
-      border: 0;
-      border-radius: 14px;
-      overflow: hidden;
-      background: rgba(2, 6, 23, 0.9);
-    }
-
     .image-note {
       font-size: 0.95rem;
       color: var(--muted);
@@ -240,10 +230,6 @@
         padding: 20px;
       }
 
-      .pdf-viewer {
-        min-height: 560px;
-      }
-
       table {
         min-width: 680px;
       }
@@ -279,23 +265,15 @@
         </div>
 
         <div class="image-frame">
-          <object
-            class="pdf-viewer"
-            data="../assets/img/eap-projeto.pdf"
-            type="application/pdf"
-            aria-label="Estrutura Analítica do Projeto do Micromouse Autônomo em PDF"
-          >
-            <img
-              src="../assets/img/eap-projeto.png"
-              alt="Estrutura Analítica do Projeto do Micromouse Autônomo"
-              onerror="this.onerror=null;this.src='data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%221600%22 height=%22900%22 viewBox=%220 0 1600 900%22%3E%3Crect width=%221600%22 height=%22900%22 fill=%22%23020617%22/%3E%3Crect x=%2250%22 y=%2250%22 width=%221500%22 height=%22800%22 rx=%2232%22 fill=%22%230f172a%22 stroke=%22%2338bdf8%22 stroke-opacity=%220.35%22/%3E%3Ctext x=%22800%22 y=%22340%22 text-anchor=%22middle%22 fill=%22%23e5e7eb%22 font-family=%22Arial, sans-serif%22 font-size=%2254%22 font-weight=%22700%22%3EEAP geral do projeto%3C/text%3E%3Ctext x=%22800%22 y=%22425%22 text-anchor=%22middle%22 fill=%22%2394a3b8%22 font-family=%22Arial, sans-serif%22 font-size=%2232%22%3EAdicione o arquivo real em docs/assets/img/eap-projeto.pdf%3C/text%3E%3Ctext x=%22800%22 y=%22495%22 text-anchor=%22middle%22 fill=%22%2394a3b8%22 font-family=%22Arial, sans-serif%22 font-size=%2228%22%3EO bloco tamb%25C3%25A9m aceita fallback por imagem em docs/assets/img/eap-projeto.png.%3C/text%3E%3C/svg%3E';"
-            />
-          </object>
+          <img
+            src="../assets/img/eap-projeto.png"
+            alt="Estrutura Analítica do Projeto do Micromouse Autônomo"
+            onerror="this.onerror=null;this.src='data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%221600%22 height=%22900%22 viewBox=%220 0 1600 900%22%3E%3Crect width=%221600%22 height=%22900%22 fill=%22%23020617%22/%3E%3Crect x=%2250%22 y=%2250%22 width=%221500%22 height=%22800%22 rx=%2232%22 fill=%22%230f172a%22 stroke=%22%2338bdf8%22 stroke-opacity=%220.35%22/%3E%3Ctext x=%22800%22 y=%22340%22 text-anchor=%22middle%22 fill=%22%23e5e7eb%22 font-family=%22Arial, sans-serif%22 font-size=%2254%22 font-weight=%22700%22%3EEAP geral do projeto%3C/text%3E%3Ctext x=%22800%22 y=%22425%22 text-anchor=%22middle%22 fill=%22%2394a3b8%22 font-family=%22Arial, sans-serif%22 font-size=%2232%22%3EExporte a primeira p%25C3%25A1gina do PDF como imagem em docs/assets/img/eap-projeto.png%3C/text%3E%3Ctext x=%22800%22 y=%22495%22 text-anchor=%22middle%22 fill=%22%2394a3b8%22 font-family=%22Arial, sans-serif%22 font-size=%2228%22%3EO PDF pode continuar no reposit%25C3%25B3rio, mas a exibi%25C3%25A7%25C3%25A3o da p%25C3%25A1gina usa imagem para maior compatibilidade.%3C/text%3E%3C/svg%3E';"
+          />
         </div>
 
         <p class="image-note">
-          Caminho esperado para exibição direta do PDF: <code>docs/assets/img/eap-projeto.pdf</code>. Se preferir,
-          o bloco também aceita fallback por imagem em <code>docs/assets/img/eap-projeto.png</code>.
+          A página exibe a EAP como imagem em <code>docs/assets/img/eap-projeto.png</code>, que é a forma mais estável para leitura direta no GitHub Pages.
         </p>
       </section>
 
