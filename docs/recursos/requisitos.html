@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Requisitos do Sistema Micromouse | Rato no Labirinto</title>
+  <meta
+    name="description"
+    content="Requisitos funcionais e não funcionais do sistema Micromouse Autônomo, organizados por área do projeto."
+  />
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-2: #22c55e;
+      --accent-soft: rgba(56, 189, 248, 0.12);
+      --warning-soft: rgba(34, 197, 94, 0.12);
+      --border: rgba(255,255,255,0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(180deg, #020617 0%, #0f172a 100%);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .container {
+      width: min(1160px, 92%);
+      margin: 0 auto;
+    }
+
+    header {
+      padding: 48px 0 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    main {
+      padding: 40px 0 80px;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03);
+      color: var(--text);
+      font-weight: 600;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .back-link:hover {
+      transform: translateY(-2px);
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    .page-header {
+      display: grid;
+      gap: 18px;
+      margin-top: 28px;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      width: fit-content;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(56, 189, 248, 0.08);
+      color: var(--accent);
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2.2rem, 5vw, 3.6rem);
+      line-height: 1.1;
+    }
+
+    .lead {
+      max-width: 78ch;
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.05rem;
+    }
+
+    .requirements-page {
+      display: grid;
+      gap: 28px;
+    }
+
+    .card,
+    .hero-card,
+    .requirement-group,
+    .requirement-card {
+      background: rgba(17, 24, 39, 0.78);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+
+    .hero-card,
+    .requirement-group {
+      padding: 24px;
+    }
+
+    .section-title {
+      margin: 0 0 10px;
+      font-size: 1.75rem;
+    }
+
+    .section-intro {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .requirements-summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .summary-card {
+      padding: 22px;
+    }
+
+    .summary-label {
+      display: inline-block;
+      margin-bottom: 12px;
+      color: var(--muted);
+      font-size: 0.92rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .summary-value {
+      margin: 0;
+      font-size: clamp(2rem, 5vw, 2.8rem);
+      line-height: 1;
+    }
+
+    .summary-description {
+      margin: 10px 0 0;
+      color: var(--muted);
+    }
+
+    .requirement-group {
+      display: grid;
+      gap: 22px;
+    }
+
+    .group-header {
+      display: grid;
+      gap: 8px;
+    }
+
+    .group-index {
+      display: inline-flex;
+      width: fit-content;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03);
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .group-title {
+      margin: 0;
+      font-size: 1.55rem;
+    }
+
+    .requirement-section {
+      display: grid;
+      gap: 14px;
+    }
+
+    .requirement-type {
+      display: inline-flex;
+      width: fit-content;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      font-size: 0.88rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .requirement-type.functional {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .requirement-type.non-functional {
+      background: var(--warning-soft);
+      color: #86efac;
+    }
+
+    .requirements-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .requirement-card {
+      display: grid;
+      gap: 12px;
+      padding: 20px;
+      min-height: 100%;
+    }
+
+    .requirement-card.functional {
+      border-color: rgba(56, 189, 248, 0.24);
+      background: linear-gradient(180deg, rgba(56, 189, 248, 0.06) 0%, rgba(17, 24, 39, 0.82) 100%);
+    }
+
+    .requirement-card.non-functional {
+      border-color: rgba(34, 197, 94, 0.22);
+      background: linear-gradient(180deg, rgba(34, 197, 94, 0.06) 0%, rgba(17, 24, 39, 0.82) 100%);
+    }
+
+    .requirement-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .requirement-code {
+      display: inline-flex;
+      width: fit-content;
+      padding: 6px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(2, 6, 23, 0.75);
+      color: var(--text);
+      font-size: 0.92rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+    }
+
+    .requirement-card h4 {
+      margin: 0;
+      font-size: 1.1rem;
+    }
+
+    .requirement-description {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    footer {
+      padding: 24px 0 48px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      color: var(--muted);
+    }
+
+    @media (max-width: 980px) {
+      .requirements-grid,
+      .requirements-summary {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 860px) {
+      header {
+        padding-top: 32px;
+      }
+
+      main {
+        padding-top: 32px;
+      }
+
+      .hero-card,
+      .requirement-group,
+      .summary-card,
+      .requirement-card {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <a class="back-link" href="../index.html">&larr; Voltar para a página inicial</a>
+
+      <div class="page-header">
+        <span class="eyebrow">Engenharia de requisitos</span>
+        <h1>Requisitos do Sistema Micromouse</h1>
+        <p class="lead">
+          Esta página reúne os requisitos funcionais e não funcionais do projeto Micromouse Autônomo, organizados por
+          área do sistema para facilitar a consulta técnica, o planejamento e a validação das entregas.
+        </p>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="container requirements-page">
+      <section class="hero-card" aria-labelledby="resumo-requisitos">
+        <h2 class="section-title" id="resumo-requisitos">Resumo dos requisitos</h2>
+        <p class="section-intro">
+          O conjunto abaixo consolida os requisitos levantados para os subsistemas de controle, percepção, energia,
+          telemetria, estrutura e software do micromouse.
+        </p>
+      </section>
+
+      <section class="requirements-summary" aria-label="Indicadores dos requisitos">
+        <article class="card summary-card">
+          <span class="summary-label">Requisitos funcionais</span>
+          <p class="summary-value">26</p>
+          <p class="summary-description">Requisitos voltados ao comportamento esperado do sistema.</p>
+        </article>
+
+        <article class="card summary-card">
+          <span class="summary-label">Requisitos não funcionais</span>
+          <p class="summary-value">13</p>
+          <p class="summary-description">Restrições de desempenho, operação, confiabilidade e manutenção.</p>
+        </article>
+
+        <article class="card summary-card">
+          <span class="summary-label">Áreas do projeto</span>
+          <p class="summary-value">6</p>
+          <p class="summary-description">Sistemas organizados por responsabilidade técnica no projeto.</p>
+        </article>
+      </section>
+
+      <section class="requirement-group" aria-labelledby="sistema-controle">
+        <div class="group-header">
+          <span class="group-index">Sistema 1</span>
+          <h2 class="group-title" id="sistema-controle">Sistema de Controle e Atuação</h2>
+        </div>
+
+        <div class="requirement-section" aria-labelledby="rf-controle">
+          <span class="requirement-type functional" id="rf-controle">Requisitos Funcionais</span>
+          <div class="requirements-grid">
+            <article class="requirement-card functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RF01</span>
+              </div>
+              <h4>Inicializar sistema</h4>
+              <p class="requirement-description">Permitir iniciar a operação por botão físico e por comando via interface web.</p>
+            </article>
+
+            <article class="requirement-card functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RF02</span>
+              </div>
+              <h4>Encerrar sistema</h4>
+              <p class="requirement-description">Permitir encerrar a operação por botão físico e por comando via interface web.</p>
+            </article>
+
+            <article class="requirement-card functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RF03</span>
+              </div>
+              <h4>Executar movimento</h4>
+              <p class="requirement-description">Executar movimentos (frente, parada, curvas ≥ 90°) a partir de comandos de navegação.</p>
+            </article>
+
+            <article class="requirement-card functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RF04</span>
+              </div>
+              <h4>Controlar motores</h4>
+              <p class="requirement-description">Converter comandos de navegação em sinais elétricos (PWM/direção) para controle dos motores.</p>
+            </article>
+
+            <article class="requirement-card functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RF05</span>
+              </div>
+              <h4>Controlar rodas independentemente</h4>
+              <p class="requirement-description">Permitir controle independente das rodas para ajuste fino de trajetória.</p>
+            </article>
+
+            <article class="requirement-card functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RF06</span>
+              </div>
+              <h4>Parar no objetivo</h4>
+              <p class="requirement-description">Interromper o movimento ao atingir o centro do labirinto, módulo 2x2.</p>
+            </article>
+          </div>
+        </div>
+
+        <div class="requirement-section" aria-labelledby="rnf-controle">
+          <span class="requirement-type non-functional" id="rnf-controle">Requisitos Não Funcionais</span>
+          <div class="requirements-grid">
+            <article class="requirement-card non-functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RNF01</span>
+              </div>
+              <h4>Garantir tempo de resposta do controle</h4>
+              <p class="requirement-description">Responder aos comandos com latência máxima X.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="requirement-group" aria-labelledby="sistema-percepcao">
+        <div class="group-header">
+          <span class="group-index">Sistema 2</span>
+          <h2 class="group-title" id="sistema-percepcao">Sistema de Percepção e Mapeamento</h2>
+        </div>
+
+        <div class="requirement-section" aria-labelledby="rf-percepcao">
+          <span class="requirement-type functional" id="rf-percepcao">Requisitos Funcionais</span>
+          <div class="requirements-grid">
+            <article class="requirement-card functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RF07</span>
+              </div>
+              <h4>Detectar paredes</h4>
+              <p class="requirement-description">Detectar paredes ao redor do micromouse utilizando sensores.</p>
+            </article>
+
+            <article class="requirement-card functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RF08</span>
+              </div>
+              <h4>Processar dados dos sensores</h4>
+              <p class="requirement-description">Processar dados de sensores em tempo real, com latência abaixo de X, para tomada de decisão.</p>
+            </article>
+
+            <article class="requirement-card functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RF09</span>
+              </div>
+              <h4>Registrar ambiente</h4>
+              <p class="requirement-description">Registrar paredes e estados do labirinto durante a execução.</p>
+            </article>
+
+            <article class="requirement-card functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RF10</span>
+              </div>
+              <h4>Mapear labirinto</h4>
+              <p class="requirement-description">Construir e armazenar um mapa navegável do labirinto.</p>
+            </article>
+
+            <article class="requirement-card functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RF11</span>
+              </div>
+              <h4>Identificar percurso ótimo</h4>
+              <p class="requirement-description">Identificar o melhor caminho até o objetivo com base no mapa construído.</p>
+            </article>
+          </div>
+        </div>
+
+        <div class="requirement-section" aria-labelledby="rnf-percepcao">
+          <span class="requirement-type non-functional" id="rnf-percepcao">Requisitos Não Funcionais</span>
+          <div class="requirements-grid">
+            <article class="requirement-card non-functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RNF02</span>
+              </div>
+              <h4>Garantir execução autônoma</h4>
+              <p class="requirement-description">Operar sem intervenção humana após iniciado.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="requirement-group" aria-labelledby="sistema-energia">
+        <div class="group-header">
+          <span class="group-index">Sistema 3</span>
+          <h2 class="group-title" id="sistema-energia">Sistema de Energia</h2>
+        </div>
+
+        <div class="requirement-section" aria-labelledby="rf-energia">
+          <span class="requirement-type functional" id="rf-energia">Requisitos Funcionais</span>
+          <div class="requirements-grid">
+            <article class="requirement-card functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RF12</span>
+              </div>
+              <h4>Energizar sistema</h4>
+              <p class="requirement-description">Energizar todos os componentes do sistema por meio da bateria.</p>
+            </article>
+
+            <article class="requirement-card functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RF13</span>
+              </div>
+              <h4>Dimensionar energia</h4>
+              <p class="requirement-description">A bateria deve ter X capacidade com base no consumo total, além de dimensão total X x X.</p>
+            </article>
+
+            <article class="requirement-card functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RF14</span>
+              </div>
+              <h4>Controlar dissipação</h4>
+              <p class="requirement-description">Limitar corrente e dissipação térmica para evitar danos.</p>
+            </article>
+          </div>
+        </div>
+
+        <div class="requirement-section" aria-labelledby="rnf-energia">
+          <span class="requirement-type non-functional" id="rnf-energia">Requisitos Não Funcionais</span>
+          <div class="requirements-grid">
+            <article class="requirement-card non-functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RNF03</span>
+              </div>
+              <h4>Garantir autonomia operacional</h4>
+              <p class="requirement-description">Suportar X execuções sem recarga.</p>
+            </article>
+
+            <article class="requirement-card non-functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RNF04</span>
+              </div>
+              <h4>Sustentar desempenho energético</h4>
+              <p class="requirement-description">Manter operação nas condições de velocidade X.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="requirement-group" aria-labelledby="sistema-telemetria">
+        <div class="group-header">
+          <span class="group-index">Sistema 4</span>
+          <h2 class="group-title" id="sistema-telemetria">Sistema de Telemetria</h2>
+        </div>
+
+        <div class="requirement-section" aria-labelledby="rf-telemetria">
+          <span class="requirement-type functional" id="rf-telemetria">Requisitos Funcionais</span>
+          <div class="requirements-grid">
+            <article class="requirement-card functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RF15</span>
+              </div>
+              <h4>Coletar e transmitir telemetr</h4>
+              <p class="requirement-description">Coletar e transmitir continuamente dados operacionais durante a execução.</p>
+            </article>
+
+            <article class="requirement-card functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RF16</span>
+              </div>
+              <h4>Fornecer variáveis de telemetria</h4>
+              <p class="requirement-description">Incluir tensão da bateria (V), corrente (mA), carga restante (C ou %), velocidade, estado do robô, posição no labirinto e detecção de paredes.</p>
+            </article>
+
+            <article class="requirement-card functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RF17</span>
+              </div>
+              <h4>Comunicar sem fio</h4>
+              <p class="requirement-description">Transmitir dados via módulo nRF24L01+.</p>
+            </article>
+
+            <article class="requirement-card functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RF18</span>
+              </div>
+              <h4>Armazenar dados</h4>
+              <p class="requirement-description">O sistema deve armazenar os dados de cada execução do micromouse.</p>
+            </article>
+
+            <article class="requirement-card functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RF19</span>
+              </div>
+              <h4>Exibir dados</h4>
+              <p class="requirement-description">Exibir dados em tempo real e histórico, incluindo trajeto, tempo, consumo energético e sucesso da execução.</p>
+            </article>
+          </div>
+        </div>
+
+        <div class="requirement-section" aria-labelledby="rnf-telemetria">
+          <span class="requirement-type non-functional" id="rnf-telemetria">Requisitos Não Funcionais</span>
+          <div class="requirements-grid">
+            <article class="requirement-card non-functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RNF05</span>
+              </div>
+              <h4>Garantir atualização contínua</h4>
+              <p class="requirement-description">Transmitir telemetria sem travamentos ou perdas maiores que X%.</p>
+            </article>
+
+            <article class="requirement-card non-functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RNF06</span>
+              </div>
+              <h4>Organizar dados</h4>
+              <p class="requirement-description">O sistema deve exibir os dados de forma organizada e interpretável, incluindo a visualização do trajeto e os dados da execução.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="requirement-group" aria-labelledby="sistema-estrutural">
+        <div class="group-header">
+          <span class="group-index">Sistema 5</span>
+          <h2 class="group-title" id="sistema-estrutural">Sistema Estrutural</h2>
+        </div>
+
+        <div class="requirement-section" aria-labelledby="rf-estrutural">
+          <span class="requirement-type functional" id="rf-estrutural">Requisitos Funcionais</span>
+          <div class="requirements-grid">
+            <article class="requirement-card functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RF20</span>
+              </div>
+              <h4>Suportar componentes</h4>
+              <p class="requirement-description">Suportar bateria, sensores, motores e circuitos.</p>
+            </article>
+
+            <article class="requirement-card functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RF21</span>
+              </div>
+              <h4>Permitir operação dos sensores</h4>
+              <p class="requirement-description">Permitir funcionamento dos sensores sem obstrução.</p>
+            </article>
+
+            <article class="requirement-card functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RF22</span>
+              </div>
+              <h4>Construir ambiente de teste</h4>
+              <p class="requirement-description">Construir um labirinto 4x4 para validação.</p>
+            </article>
+          </div>
+        </div>
+
+        <div class="requirement-section" aria-labelledby="rnf-estrutural">
+          <span class="requirement-type non-functional" id="rnf-estrutural">Requisitos Não Funcionais</span>
+          <div class="requirements-grid">
+            <article class="requirement-card non-functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RNF07</span>
+              </div>
+              <h4>Respeitar restrição dimensional</h4>
+              <p class="requirement-description">Manter dimensões máximas de 15x15 cm.</p>
+            </article>
+
+            <article class="requirement-card non-functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RNF08</span>
+              </div>
+              <h4>Respeitar restrição de peso</h4>
+              <p class="requirement-description">Manter peso em até X kg, sem comprometer a estabilidade.</p>
+            </article>
+
+            <article class="requirement-card non-functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RNF09</span>
+              </div>
+              <h4>Garantir resistência mecânica</h4>
+              <p class="requirement-description">Resistir a impactos e vibração.</p>
+            </article>
+
+            <article class="requirement-card non-functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RNF10</span>
+              </div>
+              <h4>Fixar componentes</h4>
+              <p class="requirement-description">Impedir deslocamento interno dos componentes durante a operação.</p>
+            </article>
+
+            <article class="requirement-card non-functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RNF11</span>
+              </div>
+              <h4>Permitir manutenção</h4>
+              <p class="requirement-description">Permitir fácil acesso e manutenção dos componentes.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="requirement-group" aria-labelledby="sistema-software">
+        <div class="group-header">
+          <span class="group-index">Sistema 6</span>
+          <h2 class="group-title" id="sistema-software">Sistema de Software</h2>
+        </div>
+
+        <div class="requirement-section" aria-labelledby="rf-software">
+          <span class="requirement-type functional" id="rf-software">Requisitos Funcionais</span>
+          <div class="requirements-grid">
+            <article class="requirement-card functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RF23</span>
+              </div>
+              <h4>Processar dados em tempo real</h4>
+              <p class="requirement-description">Processar sensores e atualizar decisões continuamente.</p>
+            </article>
+
+            <article class="requirement-card functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RF24</span>
+              </div>
+              <h4>Controlar navegação</h4>
+              <p class="requirement-description">Gerar comandos de movimento com base no algoritmo de navegação.</p>
+            </article>
+
+            <article class="requirement-card functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RF25</span>
+              </div>
+              <h4>Gerenciar armazenamento</h4>
+              <p class="requirement-description">Armazenar dados em banco de dados estruturado.</p>
+            </article>
+
+            <article class="requirement-card functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RF26</span>
+              </div>
+              <h4>Controlar interface</h4>
+              <p class="requirement-description">Permitir ao operador iniciar e parar execuções via interface.</p>
+            </article>
+          </div>
+        </div>
+
+        <div class="requirement-section" aria-labelledby="rnf-software">
+          <span class="requirement-type non-functional" id="rnf-software">Requisitos Não Funcionais</span>
+          <div class="requirements-grid">
+            <article class="requirement-card non-functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RNF12</span>
+              </div>
+              <h4>Garantir confiabilidade</h4>
+              <p class="requirement-description">Operar sem falhas durante a execução.</p>
+            </article>
+
+            <article class="requirement-card non-functional">
+              <div class="requirement-top">
+                <span class="requirement-code">RNF13</span>
+              </div>
+              <h4>Otimizar percurso</h4>
+              <p class="requirement-description">Melhorar o trajeto com base em execuções anteriores.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>Rato no Labirinto • Projeto Integrador de Engenharia • Requisitos do sistema Micromouse</p>
+    </div>
+  </footer>
+</body>
+</html>
