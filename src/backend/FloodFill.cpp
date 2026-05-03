@@ -1,33 +1,75 @@
 #include <Arduino.h>
-#include <queue>
 
 const int MAZE_SIZE = 16; //Trocar valor para o tamanho do labirinto
+const int BLANK = 255; //Valor para representar células não visitadas no labirinto
 
-//Bitwise utiliza bits para representar as paredes do labirinto
-const uint8_t WALL_NORTH = 1; //0001
-const uint8_t WALL_EAST = 2;  //0010
-const uint8_t WALL_SOUTH = 4; //0100
-const uint8_t WALL_WEST = 8;  //1000
-
-int distances[MAZE_SIZE][MAZE_SIZE]; //Matriz para armazenar as distâncias do labirinto
-uint8_t wall[MAZE_SIZE][MAZE_SIZE]; //Matriz para armazenar as paredes do labirinto
-
-struct Cell {
-    int x;
-    int y;
+struct Coordinates {
+    int r; // Row
+    int c; // Column
 };
 
-void inicializarLabirinto() {
-    // Inicializa as paredes do labirinto
-    for (int i = 0; i < MAZE_SIZE; i++) {
-        for (int j = 0; j < MAZE_SIZE; j++) {
-            wall[i][j] = 0; // Sem paredes
-            
-            // Adiciona as paredes das bordas do labirinto
-            if (i == 0) wall[i][j] |= WALL_WEST;
-            if (i == MAZE_SIZE - 1) wall[i][j] |= WALL_EAST;
-            if (j == 0) wall[i][j] |= WALL_NORTH; 
-            if (j == MAZE_SIZE - 1) wall[i][j] |= WALL_SOUTH;
+int manhattan_dist[MAZE_SIZE][MAZE_SIZE]; // Matriz para armazenar as distâncias de Manhattan
+bool horiz_walls[MAZE_SIZE + 1][MAZE_SIZE]; // Matriz para armazenar as paredes horizontais
+bool vert_walls[MAZE_SIZE][MAZE_SIZE + 1]; // Matriz para armazenar as paredes verticais
+
+Coordinates fila[512];
+int head = 0;
+int tail = 0;
+
+void push(Coordinates cell) {
+    fila[tail] = cell;
+    tail = (tail + 1) % 512; // Volta para 0 se passar de 511 (circular)
+}
+
+Coordinates pop() {
+    Coordinates cell = fila[head];
+    head = (head + 1) % 512;
+    return cell;
+}
+
+bool isEmpty() {
+    return head == tail;
+}
+
+void inicializeMaze() {
+    for (int r = 0; r < MAZE_SIZE; r++) {
+        for (int c = 0; c < MAZE_SIZE; c++) {
+            manhattan_dist[r][c] = BLANK;
+            horiz_walls[r][c] = false; // Inicialmente, sem paredes
+            vert_walls[r][c] = false;
         }
     }
+
+
+    // Config do perimetro externo do labirinto (Rato nao pode sair do labirinto)
+    for (int i = 0; i < MAZE_SIZE; i++) {
+        horiz_walls[0][i] = true; // fechando Sul (linha inferior)
+        horiz_walls[MAZE_SIZE][i] = true; // fechando Norte (linha superior)
+        vert_walls[i][0] = true; // fechando Oeste (coluna esquerda)
+        vert_walls[i][MAZE_SIZE] = true; // fechando Leste (coluna direita)
+    }
+}
+
+void floodfill () {
+
+}
+
+
+void setup() {
+    Serial.begin(115200);
+    inicializeMaze();
+    floodfill();
+    Serial.println("Labirinto inicializado e floodfill calculado.");
+    // Configurações adicionais, como sensores, motores, etc.
+}
+
+void loop() {
+    // Loop do rato será algo como
+        // 1. Andar para a prox celula
+        // 2. Parar no centro da celula
+        // 3. Ler o Sensor
+        // 4. Se descobriu parede nova -> recalculateFloodFill
+        // 5. Repetir ate chegar no centro do labirinto
+
+    delay(1000); // Apenas para evitar um loop muito rápido, pode ser removido
 }
