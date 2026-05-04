@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Orçamento do Projeto Micromouse | Rato no Labirinto</title>
+  <meta
+    name="description"
+    content="Consolidação do orçamento do projeto Micromouse, com componentes organizados por categoria, opções avaliadas, justificativas e referências de preço."
+  />
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.12);
+      --warning-soft: rgba(34, 197, 94, 0.12);
+      --border: rgba(255,255,255,0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(180deg, #020617 0%, #0f172a 100%);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .container {
+      width: min(1180px, 92%);
+      margin: 0 auto;
+    }
+
+    header {
+      padding: 48px 0 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    main {
+      padding: 40px 0 80px;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03);
+      color: var(--text);
+      font-weight: 600;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .back-link:hover {
+      transform: translateY(-2px);
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    .page-header {
+      display: grid;
+      gap: 18px;
+      margin-top: 28px;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      width: fit-content;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(56, 189, 248, 0.08);
+      color: var(--accent);
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2.2rem, 5vw, 3.6rem);
+      line-height: 1.1;
+    }
+
+    .lead {
+      max-width: 78ch;
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.05rem;
+    }
+
+    .budget-page {
+      display: grid;
+      gap: 28px;
+    }
+
+    .card,
+    .hero-card,
+    .table-card,
+    .note-card {
+      background: rgba(17, 24, 39, 0.78);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+
+    .hero-card,
+    .table-card,
+    .note-card {
+      padding: 24px;
+    }
+
+    .section-title {
+      margin: 0 0 10px;
+      font-size: 1.75rem;
+    }
+
+    .section-intro,
+    .table-card p,
+    .note-card p,
+    td,
+    ul {
+      color: var(--muted);
+    }
+
+    .section-intro,
+    .table-card p,
+    .note-card p {
+      margin: 0;
+    }
+
+    .budget-summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .summary-card {
+      padding: 22px;
+    }
+
+    .summary-label {
+      display: inline-block;
+      margin-bottom: 12px;
+      color: var(--muted);
+      font-size: 0.92rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .summary-value {
+      margin: 0;
+      font-size: clamp(2rem, 5vw, 2.8rem);
+      line-height: 1;
+    }
+
+    .summary-description {
+      margin: 10px 0 0;
+      color: var(--muted);
+    }
+
+    .table-card {
+      display: grid;
+      gap: 18px;
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: rgba(2, 6, 23, 0.8);
+    }
+
+    table {
+      width: 100%;
+      min-width: 1080px;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 14px 16px;
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+
+    th {
+      background: rgba(56, 189, 248, 0.14);
+      color: var(--text);
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    tbody tr:nth-child(even) {
+      background: rgba(255,255,255,0.02);
+    }
+
+    tbody tr:hover {
+      background: rgba(56, 189, 248, 0.05);
+    }
+
+    .category-tag,
+    .option-tag {
+      display: inline-flex;
+      width: fit-content;
+      padding: 6px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(2, 6, 23, 0.75);
+      font-size: 0.88rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .category-tag {
+      color: var(--text);
+    }
+
+    .option-tag {
+      color: var(--accent);
+      background: var(--accent-soft);
+      border-color: rgba(56, 189, 248, 0.18);
+    }
+
+    .price-note {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .small-note {
+      font-size: 0.92rem;
+    }
+
+    footer {
+      padding: 24px 0 48px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      color: var(--muted);
+    }
+
+    @media (max-width: 980px) {
+      .budget-summary {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 860px) {
+      header {
+        padding-top: 32px;
+      }
+
+      main {
+        padding-top: 32px;
+      }
+
+      .hero-card,
+      .table-card,
+      .note-card,
+      .summary-card {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <a class="back-link" href="../index.html">&larr; Voltar para a página inicial</a>
+
+      <div class="page-header">
+        <span class="eyebrow">Custos e compras</span>
+        <h1>Orçamento do Projeto Micromouse</h1>
+        <p class="lead">
+          Consolidação das opções de componentes avaliadas para o Micromouse, organizadas por categoria, com foco em custo, peso, integração e viabilidade técnica para o projeto.
+        </p>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="container budget-page">
+      <section class="hero-card" aria-labelledby="resumo-orcamento">
+        <h2 class="section-title" id="resumo-orcamento">Resumo do orçamento</h2>
+        <p class="section-intro">
+          Os componentes foram organizados por função no projeto para facilitar a comparação entre alternativas. Sempre que aplicável, as opções foram classificadas como melhor custo-benefício, melhor possível e mínimo viável, permitindo uma leitura rápida para tomada de decisão.
+        </p>
+      </section>
+
+      <section class="budget-summary" aria-label="Indicadores do orçamento">
+        <article class="card summary-card">
+          <span class="summary-label">Categorias</span>
+          <p class="summary-value">2</p>
+          <p class="summary-description">Energia e componentes eletrônicos concentrando os principais itens de compra do protótipo.</p>
+        </article>
+
+        <article class="card summary-card">
+          <span class="summary-label">Estrutura da análise</span>
+          <p class="summary-value">3 níveis</p>
+          <p class="summary-description">Melhor custo-benefício, melhor possível e mínimo viável quando a comparação foi disponibilizada.</p>
+        </article>
+
+        <article class="card summary-card">
+          <span class="summary-label">Uso</span>
+          <p class="summary-value">Apresentação</p>
+          <p class="summary-description">Tabela limpa e consolidada para discussão de compras, revisão técnica e decisão de integração.</p>
+        </article>
+      </section>
+
+      <section class="table-card" aria-labelledby="tabela-principal">
+        <div>
+          <h2 class="section-title" id="tabela-principal">Tabela principal</h2>
+          <p>
+            Comparativo consolidado das opções levantadas para cada componente principal do sistema.
+          </p>
+        </div>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Categoria</th>
+                <th>Componente</th>
+                <th>Opção</th>
+                <th>Modelo</th>
+                <th>Características principais</th>
+                <th>Justificativa</th>
+                <th>Preço/Link</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="category-tag">Energia</span></td>
+                <td>Bateria</td>
+                <td><span class="option-tag">Melhor custo-benefício</span></td>
+                <td>LiPo 7,4V 2S 1100mAh</td>
+                <td>Peso de 58 g; 105 x 20 x 5,5 mm por célula; tensão nominal de 7,4 V; capacidade de 1100 mAh.</td>
+                <td>Alternativa leve e compacta, com bom equilíbrio entre autonomia e integração física.</td>
+                <td><span class="price-note">R$ 148,49</span><br><span class="small-note">Link comercial na planilha-fonte.</span></td>
+              </tr>
+              <tr>
+                <td><span class="category-tag">Energia</span></td>
+                <td>Bateria</td>
+                <td><span class="option-tag">Melhor possível</span></td>
+                <td>LiPo 7,4V 600mAh</td>
+                <td>Peso de 40 g; 12 x 18 x 76 mm; tensão nominal de 7,4 V; capacidade de 600 mAh.</td>
+                <td>Mais leve e compacta, mantendo tempo de uso adequado para o protótipo.</td>
+                <td><span class="price-note">R$ 162,89</span><br><span class="small-note">Link comercial na planilha-fonte.</span></td>
+              </tr>
+              <tr>
+                <td><span class="category-tag">Energia</span></td>
+                <td>Bateria</td>
+                <td><span class="option-tag">Mínimo viável</span></td>
+                <td>LiPo 7,4V 300mAh 45C 2S</td>
+                <td>Peso de 17 g; 57 x 13 x 12 mm; tensão nominal de 7,4 V; capacidade de 300 mAh.</td>
+                <td>Opção bastante leve e compacta, mas com autonomia reduzida para uso prolongado.</td>
+                <td><span class="price-note">R$ 129,90</span><br><span class="small-note">Link comercial na planilha-fonte.</span></td>
+              </tr>
+              <tr>
+                <td><span class="category-tag">Energia</span></td>
+                <td>Sensor da bateria</td>
+                <td><span class="option-tag">Melhor custo-benefício</span></td>
+                <td>INA219</td>
+                <td>Mede tensão de 0 a 26 V, corrente e potência; resolução de 12 bits; corrente típica de aproximadamente 3,2 A; interface I2C.</td>
+                <td>Fácil integração, menor custo e ampla disponibilidade de bibliotecas.</td>
+                <td><span class="price-note">R$ 27,90</span><br><span class="small-note">Link comercial na planilha-fonte.</span></td>
+              </tr>
+              <tr>
+                <td><span class="category-tag">Energia</span></td>
+                <td>Sensor da bateria</td>
+                <td><span class="option-tag">Melhor possível</span></td>
+                <td>INA226</td>
+                <td>Mede tensão até aproximadamente 36 V, corrente e potência; resolução de 16 bits; alta precisão; amostragem configurável.</td>
+                <td>Oferece maior precisão, estabilidade de leitura e flexibilidade de configuração.</td>
+                <td><span class="price-note">R$ 38,33</span><br><span class="small-note">Link comercial na planilha-fonte.</span></td>
+              </tr>
+              <tr>
+                <td><span class="category-tag">Componentes eletrônicos</span></td>
+                <td>Sensor de proximidade</td>
+                <td><span class="option-tag">Melhor custo-benefício</span></td>
+                <td>TCRT5000</td>
+                <td>Sensor IR reflexivo com LED infravermelho e fototransistor; alcance ajustável de 1 a 10/25 mm; resposta rápida; leitura por contraste.</td>
+                <td>Baixo custo, fácil aquisição e boa aderência ao contexto de micromouse.</td>
+                <td><span class="price-note">R$ 7,50</span><br><span class="small-note">Link comercial na planilha-fonte.</span></td>
+              </tr>
+              <tr>
+                <td><span class="category-tag">Componentes eletrônicos</span></td>
+                <td>Sensor de proximidade</td>
+                <td><span class="option-tag">Melhor possível</span></td>
+                <td>VL53L1X ToF</td>
+                <td>Sensor a laser com alcance de até 4 m e alta precisão de leitura.</td>
+                <td>Leitura mais estável em diferentes superfícies e condições de iluminação.</td>
+                <td><span class="price-note">Aprox. R$ 30 a R$ 40</span><br><span class="small-note">Link comercial na planilha-fonte.</span></td>
+              </tr>
+              <tr>
+                <td><span class="category-tag">Componentes eletrônicos</span></td>
+                <td>Encoders</td>
+                <td><span class="option-tag">Melhor custo-benefício</span></td>
+                <td>Encoder KY-040 Rotacional</td>
+                <td>Resolução de 20 a 24 pulsos por volta; saídas A e B em quadratura.</td>
+                <td>Baixo custo, integração simples e resposta adequada para controle básico de velocidade e distância.</td>
+                <td><span class="price-note">Aprox. R$ 15,00</span><br><span class="small-note">Link comercial na planilha-fonte.</span></td>
+              </tr>
+              <tr>
+                <td><span class="category-tag">Componentes eletrônicos</span></td>
+                <td>Encoders</td>
+                <td><span class="option-tag">Melhor possível</span></td>
+                <td>Encoder Óptico Avago HEDS-5500</td>
+                <td>Alta resolução, até 5000 CPR com interpolação; elevada precisão e durabilidade.</td>
+                <td>Maior confiabilidade e precisão para medição fina de rotação e deslocamento.</td>
+                <td><span class="price-note">Aprox. R$ 300,00</span></td>
+              </tr>
+              <tr>
+                <td><span class="category-tag">Componentes eletrônicos</span></td>
+                <td>Encoders</td>
+                <td><span class="option-tag">Mínimo viável</span></td>
+                <td>Encoder óptico simples acoplado ao motor</td>
+                <td>Baixa resolução; leitura básica de rotação; saída digital simples.</td>
+                <td>Alternativa de menor custo para medir deslocamento e viabilizar controle básico.</td>
+                <td><span class="price-note">Aprox. R$ 12,00</span><br><span class="small-note">Link comercial na planilha-fonte.</span></td>
+              </tr>
+              <tr>
+                <td><span class="category-tag">Componentes eletrônicos</span></td>
+                <td>Resistores</td>
+                <td><span class="option-tag">Melhor custo-benefício</span></td>
+                <td>Resistor de filme de carbono 1R - 1/4W</td>
+                <td>Resistor discreto para aplicações eletrônicas básicas.</td>
+                <td>Peça de baixo custo, alta disponibilidade e fácil reposição.</td>
+                <td><span class="price-note">Aprox. R$ 0,04/unidade</span><br><span class="small-note">Link comercial na planilha-fonte.</span></td>
+              </tr>
+              <tr>
+                <td><span class="category-tag">Componentes eletrônicos</span></td>
+                <td>Microcontrolador</td>
+                <td><span class="option-tag">Melhor custo-benefício</span></td>
+                <td>Arduino Uno SMD, Atmega328</td>
+                <td>Versão econômica do Arduino Uno R3, com mesma pinagem e funcionamento baseado no Atmega328.</td>
+                <td>Solução simples e funcional para um micromouse básico com sensores, encoders e controle de motores.</td>
+                <td><span class="small-note">Preço e link informados na planilha-fonte.</span></td>
+              </tr>
+              <tr>
+                <td><span class="category-tag">Componentes eletrônicos</span></td>
+                <td>Microcontrolador</td>
+                <td><span class="option-tag">Melhor possível</span></td>
+                <td>STM32F103C8T6 ARM Cortex M3</td>
+                <td>Microcontrolador com maior desempenho e mais recursos para controle em tempo real.</td>
+                <td>Oferece mais timers, melhor capacidade de controle e maior margem para algoritmos e telemetria.</td>
+                <td><span class="small-note">Preço e link informados na planilha-fonte.</span></td>
+              </tr>
+              <tr>
+                <td><span class="category-tag">Componentes eletrônicos</span></td>
+                <td>Terminais</td>
+                <td><span class="option-tag">Melhor custo-benefício</span></td>
+                <td>Borne KF301, 3,5 mm</td>
+                <td>Conexão por parafuso; 2 a 12 vias; corrente até 10 A.</td>
+                <td>Boa qualidade mecânica, montagem simples e ótimo equilíbrio entre custo e robustez.</td>
+                <td><span class="small-note">Preço e link informados na planilha-fonte.</span></td>
+              </tr>
+              <tr>
+                <td><span class="category-tag">Componentes eletrônicos</span></td>
+                <td>Terminais</td>
+                <td><span class="option-tag">Melhor possível</span></td>
+                <td>Borne Degson 2EDG, 3,81 mm</td>
+                <td>Contatos em latão; corrente até 15 A; maior robustez e durabilidade.</td>
+                <td>Alternativa mais robusta mecanicamente e eletricamente, com melhor acabamento.</td>
+                <td><span class="small-note">Preço e link informados na planilha-fonte.</span></td>
+              </tr>
+              <tr>
+                <td><span class="category-tag">Componentes eletrônicos</span></td>
+                <td>Terminais</td>
+                <td><span class="option-tag">Mínimo viável</span></td>
+                <td>Borne XH 2,54 mm</td>
+                <td>Passo de 2,54 mm; corrente até 3 A; conexão simples.</td>
+                <td>Solução básica para conexões de baixa corrente e menor exigência mecânica.</td>
+                <td><span class="small-note">Preço e link informados na planilha-fonte.</span></td>
+              </tr>
+              <tr>
+                <td><span class="category-tag">Componentes eletrônicos</span></td>
+                <td>Capacitores</td>
+                <td><span class="option-tag">Sugestão</span></td>
+                <td>Capacitor cerâmico 100pF/50V</td>
+                <td>Capacitor cerâmico discreto para uso geral em circuitos eletrônicos.</td>
+                <td>Item de baixo custo e aplicação ampla em desacoplamento e ajustes básicos.</td>
+                <td><span class="small-note">Valor unitário muito baixo e link informados na planilha-fonte.</span></td>
+              </tr>
+              <tr>
+                <td><span class="category-tag">Componentes eletrônicos</span></td>
+                <td>Drivers</td>
+                <td><span class="option-tag">Sugestão</span></td>
+                <td>Mini Ponte H Dupla L298N</td>
+                <td>Driver de motor com dupla ponte H para acionamento bidirecional.</td>
+                <td>Solução conhecida e disponível para prototipagem inicial do sistema de tração.</td>
+                <td><span class="small-note">Preço e link informados na planilha-fonte.</span></td>
+              </tr>
+              <tr>
+                <td><span class="category-tag">Componentes eletrônicos</span></td>
+                <td>Drivers</td>
+                <td><span class="option-tag">Sugestão alternativa</span></td>
+                <td>Driver Ponte H Dupla DRV8833 2A</td>
+                <td>Driver compacto com corrente de até 2 A para acionamento de motores DC.</td>
+                <td>Alternativa mais compacta para integração em sistemas embarcados com restrição de espaço.</td>
+                <td><span class="small-note">Preço e link informados na planilha-fonte.</span></td>
+              </tr>
+              <tr>
+                <td><span class="category-tag">Componentes eletrônicos</span></td>
+                <td>PCB</td>
+                <td><span class="option-tag">Sugestão</span></td>
+                <td>Placa de circuito projetada pelo grupo</td>
+                <td>PCB dedicada ao projeto, desenhada conforme a arquitetura elétrica definida pela equipe.</td>
+                <td>Permite adequação dimensional e elétrica específica para o micromouse.</td>
+                <td><span class="price-note">Custo médio: R$ 100,00</span></td>
+              </tr>
+              <tr>
+                <td><span class="category-tag">Componentes eletrônicos</span></td>
+                <td>PCB</td>
+                <td><span class="option-tag">Sugestão alternativa</span></td>
+                <td>Placa de circuito impresso ilhada 5x7 cm, dupla face</td>
+                <td>Placa padrão para prototipagem e montagem manual de circuitos.</td>
+                <td>Alternativa de menor complexidade para testes e integração inicial.</td>
+                <td><span class="small-note">Preço e link informados na planilha-fonte.</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="table-card" aria-labelledby="melhores-opcoes">
+        <div>
+          <h2 class="section-title" id="melhores-opcoes">Melhores opções encontradas</h2>
+          <p>
+            Registro das sugestões complementares citadas nas planilhas, mantendo a referência separada das opções principais.
+          </p>
+        </div>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Componente</th>
+                <th>Quem sugeriu</th>
+                <th>Modelo</th>
+                <th>Preço/Link</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Sensor de proximidade</td>
+                <td>Sugestões externas</td>
+                <td>TCS3200/TCS230</td>
+                <td><span class="price-note">Aprox. R$ 41,00</span><br><span class="small-note">Link na planilha-fonte.</span></td>
+              </tr>
+              <tr>
+                <td>Sensor de proximidade</td>
+                <td>Sugestões externas</td>
+                <td>TMD27713</td>
+                <td><span class="price-note">R$ 25,82</span><br><span class="small-note">Link na planilha-fonte.</span></td>
+              </tr>
+              <tr>
+                <td>Encoder</td>
+                <td>Fonte não identificada na planilha</td>
+                <td>Encoder Incremental 600 PPR</td>
+                <td><span class="price-note">Aprox. R$ 128,00</span><br><span class="small-note">Link na planilha-fonte.</span></td>
+              </tr>
+              <tr>
+                <td>Resistores</td>
+                <td>Fonte não identificada na planilha</td>
+                <td>Kit de resistores com diversos valores</td>
+                <td><span class="price-note">Aprox. R$ 78,90</span><br><span class="small-note">Link na planilha-fonte.</span></td>
+              </tr>
+              <tr>
+                <td>Microcontrolador</td>
+                <td>Fonte não identificada na planilha</td>
+                <td>STM32 Nucleo-32 com STM32L432KC</td>
+                <td><span class="small-note">Preço e link informados na planilha-fonte.</span></td>
+              </tr>
+              <tr>
+                <td>Terminais</td>
+                <td>Fonte não identificada na planilha</td>
+                <td>Kit de terminais tubulares isolados com 1250 peças</td>
+                <td><span class="small-note">Preço e link informados na planilha-fonte.</span></td>
+              </tr>
+              <tr>
+                <td>Capacitores</td>
+                <td>Fonte não identificada na planilha</td>
+                <td>Kit de capacitores cerâmicos 50V com 300 unidades</td>
+                <td><span class="small-note">Preço e link informados na planilha-fonte.</span></td>
+              </tr>
+              <tr>
+                <td>Drivers</td>
+                <td>Fonte não identificada na planilha</td>
+                <td>Driver Ponte H Dupla DRV8833 2A</td>
+                <td><span class="small-note">Preço e link informados na planilha-fonte.</span></td>
+              </tr>
+              <tr>
+                <td>PCB</td>
+                <td>Fonte não identificada na planilha</td>
+                <td>Placa de circuito impresso ilhada 5x7 cm, dupla face</td>
+                <td><span class="small-note">Preço e link informados na planilha-fonte.</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="note-card" aria-labelledby="observacao-final">
+        <h2 class="section-title" id="observacao-final">Observação final</h2>
+        <p>
+          A seleção final dos componentes deve considerar simultaneamente custo, disponibilidade, peso, precisão, compatibilidade com a arquitetura do projeto e facilidade de integração mecânica, elétrica e de software.
+        </p>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>Rato no Labirinto • Projeto Integrador de Engenharia • Orçamento do Micromouse</p>
+    </div>
+  </footer>
+</body>
+</html>
