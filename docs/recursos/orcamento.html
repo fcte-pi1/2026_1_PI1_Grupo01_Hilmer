@@ -301,15 +301,15 @@
       <section class="hero-card" aria-labelledby="resumo-orcamento">
         <h2 class="section-title" id="resumo-orcamento">Resumo do orçamento</h2>
         <p class="section-intro">
-          Os componentes foram organizados por função no projeto para facilitar a comparação entre alternativas. Sempre que aplicável, as opções foram classificadas como melhor custo-benefício, melhor possível e mínimo viável, permitindo uma leitura rápida para tomada de decisão. A planilha consolidada usada como referência pode ser consultada em <a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">orcamento.xlsx</a>.
+          Os componentes foram organizados por função no projeto para facilitar a comparação entre alternativas. Sempre que aplicável, as opções foram classificadas como melhor custo-benefício, melhor possível e mínimo viável, permitindo uma leitura rápida para tomada de decisão.
         </p>
       </section>
 
       <section class="budget-summary" aria-label="Indicadores do orçamento">
         <article class="card summary-card">
           <span class="summary-label">Categorias</span>
-          <p class="summary-value">2</p>
-          <p class="summary-description">Energia e componentes eletrônicos concentrando os principais itens de compra do protótipo.</p>
+          <p class="summary-value">3</p>
+          <p class="summary-description">Energia, componentes eletrônicos e sistema de motorização reunindo os principais itens de compra do protótipo.</p>
         </article>
 
         <article class="card summary-card">
@@ -329,7 +329,7 @@
         <div>
           <h2 class="section-title" id="tabela-principal">Tabela principal</h2>
           <p>
-            Comparativo consolidado das opções levantadas para cada componente principal do sistema.
+            Comparativo consolidado das opções levantadas para os principais componentes do sistema, com foco em integração, custo e viabilidade do protótipo.
           </p>
         </div>
 
@@ -352,99 +352,99 @@
                 <td>Bateria</td>
                 <td><span class="option-tag">Melhor custo-benefício</span></td>
                 <td>LiPo 7,4V 2S 1100mAh</td>
-                <td>Peso de 58 g; 105 x 20 x 5,5 mm por célula; tensão nominal de 7,4 V; capacidade de 1100 mAh.</td>
-                <td>Alternativa leve e compacta, com bom equilíbrio entre autonomia e integração física.</td>
-                <td><span class="price-note">R$ 148,49</span><br><span class="small-note"><a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">Ver referência na planilha</a></span></td>
+                <td>Peso 58g; tensão nominal 7,4V; capacidade 1100mAh.</td>
+                <td>Leve e compacta.</td>
+                <td><span class="price-note">R$148,49</span></td>
               </tr>
               <tr>
                 <td><span class="category-tag">Energia</span></td>
                 <td>Bateria</td>
                 <td><span class="option-tag">Melhor possível</span></td>
                 <td>LiPo 7,4V 600mAh</td>
-                <td>Peso de 40 g; 12 x 18 x 76 mm; tensão nominal de 7,4 V; capacidade de 600 mAh.</td>
-                <td>Mais leve e compacta, mantendo tempo de uso adequado para o protótipo.</td>
-                <td><span class="price-note">R$ 162,89</span><br><span class="small-note"><a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">Ver referência na planilha</a></span></td>
+                <td>Peso 40g; tensão nominal 7,4V; capacidade 600mAh.</td>
+                <td>Mais leve e compacta, com bom tempo de uso.</td>
+                <td><span class="price-note">R$162,89</span></td>
               </tr>
               <tr>
                 <td><span class="category-tag">Energia</span></td>
                 <td>Bateria</td>
                 <td><span class="option-tag">Mínimo viável</span></td>
                 <td>LiPo 7,4V 300mAh 45C 2S</td>
-                <td>Peso de 17 g; 57 x 13 x 12 mm; tensão nominal de 7,4 V; capacidade de 300 mAh.</td>
-                <td>Opção bastante leve e compacta, mas com autonomia reduzida para uso prolongado.</td>
-                <td><span class="price-note">R$ 129,90</span><br><span class="small-note"><a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">Ver referência na planilha</a></span></td>
+                <td>Peso 17g; tensão nominal 7,4V; capacidade 300mAh.</td>
+                <td>Leve e compacta, porém com tempo de uso muito baixo.</td>
+                <td><span class="price-note">R$129,90</span></td>
               </tr>
               <tr>
                 <td><span class="category-tag">Energia</span></td>
                 <td>Sensor da bateria</td>
                 <td><span class="option-tag">Melhor custo-benefício</span></td>
                 <td>INA219</td>
-                <td>Mede tensão de 0 a 26 V, corrente e potência; resolução de 12 bits; corrente típica de aproximadamente 3,2 A; interface I2C.</td>
-                <td>Fácil integração, menor custo e ampla disponibilidade de bibliotecas.</td>
-                <td><span class="price-note">R$ 27,90</span><br><span class="small-note"><a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">Ver referência na planilha</a></span></td>
+                <td>Mede tensão de 0 a 26V, corrente e potência; resolução de 12 bits; corrente máxima típica de aproximadamente 3,2A; interface I2C.</td>
+                <td>Fácil de usar, mais barato e com biblioteca pronta.</td>
+                <td><span class="price-note">R$27,90</span></td>
               </tr>
               <tr>
                 <td><span class="category-tag">Energia</span></td>
                 <td>Sensor da bateria</td>
                 <td><span class="option-tag">Melhor possível</span></td>
                 <td>INA226</td>
-                <td>Mede tensão até aproximadamente 36 V, corrente e potência; resolução de 16 bits; alta precisão; amostragem configurável.</td>
-                <td>Oferece maior precisão, estabilidade de leitura e flexibilidade de configuração.</td>
-                <td><span class="price-note">R$ 38,33</span><br><span class="small-note"><a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">Ver referência na planilha</a></span></td>
+                <td>Mede tensão até aproximadamente 36V, corrente e potência; resolução de 16 bits; alta precisão; amostragem configurável.</td>
+                <td>Oferece mais precisão, estabilidade e configuração.</td>
+                <td><span class="price-note">R$38,33</span></td>
               </tr>
               <tr>
                 <td><span class="category-tag">Componentes eletrônicos</span></td>
                 <td>Sensor de proximidade</td>
                 <td><span class="option-tag">Melhor custo-benefício</span></td>
                 <td>TCRT5000</td>
-                <td>Sensor IR reflexivo com LED infravermelho e fototransistor; alcance ajustável de 1 a 10/25 mm; resposta rápida; leitura por contraste.</td>
-                <td>Baixo custo, fácil aquisição e boa aderência ao contexto de micromouse.</td>
-                <td><span class="price-note">R$ 7,50</span><br><span class="small-note"><a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">Ver referência na planilha</a></span></td>
+                <td>Sensor IR reflexivo com LED infravermelho e fototransistor; alcance ajustável de 1 a 10/25 mm; resposta rápida; detecta contrastes.</td>
+                <td>Baixo custo, fácil de encontrar e recomendado para micromouse.</td>
+                <td><a class="price-note" href="https://www.huinfinito.com.br/sensores/781-modulo-sensor-de-refleccao-ir-seguidor-linha.html" target="_blank" rel="noreferrer">R$7,50</a></td>
               </tr>
               <tr>
                 <td><span class="category-tag">Componentes eletrônicos</span></td>
                 <td>Sensor de proximidade</td>
                 <td><span class="option-tag">Melhor possível</span></td>
                 <td>VL53L1X ToF</td>
-                <td>Sensor a laser com alcance de até 4 m e alta precisão de leitura.</td>
-                <td>Leitura mais estável em diferentes superfícies e condições de iluminação.</td>
-                <td><span class="price-note">Aprox. R$ 30 a R$ 40</span><br><span class="small-note"><a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">Ver referência na planilha</a></span></td>
+                <td>Sensor a laser, alcance de até 4 m, alta precisão.</td>
+                <td>Leitura estável em diferentes superfícies e condições de iluminação.</td>
+                <td><a class="price-note" href="https://www.usinainfo.com.br/sensor-de-proximidade/sensor-de-distancia-a-laser-vl53l0x-de-alta-precisao-4-a-200cm-4933.html" target="_blank" rel="noreferrer">Aproximadamente R$30 - R$40</a></td>
               </tr>
               <tr>
                 <td><span class="category-tag">Componentes eletrônicos</span></td>
-                <td>Encoders</td>
+                <td>Encoder</td>
                 <td><span class="option-tag">Melhor custo-benefício</span></td>
                 <td>Encoder KY-040 Rotacional</td>
                 <td>Resolução de 20 a 24 pulsos por volta; saídas A e B em quadratura.</td>
-                <td>Baixo custo, integração simples e resposta adequada para controle básico de velocidade e distância.</td>
-                <td><span class="price-note">Aprox. R$ 15,00</span><br><span class="small-note"><a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">Ver referência na planilha</a></span></td>
+                <td>Baixo custo, fácil integração e resposta confiável para controle de velocidade e distância.</td>
+                <td><a class="price-note" href="https://www.breletronica.com.br/encoder-decoder-rotativo-ky-040" target="_blank" rel="noreferrer">Aproximadamente R$15,00</a></td>
               </tr>
               <tr>
                 <td><span class="category-tag">Componentes eletrônicos</span></td>
-                <td>Encoders</td>
+                <td>Encoder</td>
                 <td><span class="option-tag">Melhor possível</span></td>
                 <td>Encoder Óptico Avago HEDS-5500</td>
-                <td>Alta resolução, até 5000 CPR com interpolação; elevada precisão e durabilidade.</td>
-                <td>Maior confiabilidade e precisão para medição fina de rotação e deslocamento.</td>
-                <td><span class="price-note">Aprox. R$ 300,00</span></td>
+                <td>Alta resolução, até 5000 CPR com interpolação; alta precisão e durabilidade.</td>
+                <td>Maior precisão de leitura e confiabilidade.</td>
+                <td><span class="price-note">Aproximadamente R$300,00</span></td>
               </tr>
               <tr>
                 <td><span class="category-tag">Componentes eletrônicos</span></td>
-                <td>Encoders</td>
+                <td>Encoder</td>
                 <td><span class="option-tag">Mínimo viável</span></td>
                 <td>Encoder óptico simples acoplado ao motor</td>
-                <td>Baixa resolução; leitura básica de rotação; saída digital simples.</td>
-                <td>Alternativa de menor custo para medir deslocamento e viabilizar controle básico.</td>
-                <td><span class="price-note">Aprox. R$ 12,00</span><br><span class="small-note"><a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">Ver referência na planilha</a></span></td>
+                <td>Baixa resolução, leitura básica de rotação e saída digital simples.</td>
+                <td>Opção mais barata que ainda permite medir deslocamento e implementar controle básico.</td>
+                <td><a class="price-note" href="https://www.breletronica.com.br/modulo-encoder-optico?utm_source=Site&utm_medium=GoogleShopping&utm_campaign=IntegracaoGoogle&srsltid=AfmBOorgC4PCIiAiWfMxEleaYb6IjGKYWzxD2PfDDlvWIiHRCespf8-17I4" target="_blank" rel="noreferrer">Aproximadamente R$12,00</a></td>
               </tr>
               <tr>
                 <td><span class="category-tag">Componentes eletrônicos</span></td>
-                <td>Resistores</td>
+                <td>Resistor</td>
                 <td><span class="option-tag">Melhor custo-benefício</span></td>
-                <td>Resistor de filme de carbono 1R - 1/4W</td>
-                <td>Resistor discreto para aplicações eletrônicas básicas.</td>
-                <td>Peça de baixo custo, alta disponibilidade e fácil reposição.</td>
-                <td><span class="price-note">Aprox. R$ 0,04/unidade</span><br><span class="small-note"><a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">Ver referência na planilha</a></span></td>
+                <td>Resistor de Filme de Carbono 1R - 1/4W</td>
+                <td>Resistor simples para aplicações eletrônicas básicas.</td>
+                <td>Item de baixo custo e fácil reposição.</td>
+                <td><a class="price-note" href="https://www.huinfinito.com.br/resistores-de-filme-de-carbono/283-resistor-de-filme-de-carbono-1r-1-4w.html" target="_blank" rel="noreferrer">R$0,04 por unidade</a></td>
               </tr>
               <tr>
                 <td><span class="category-tag">Componentes eletrônicos</span></td>
@@ -452,100 +452,122 @@
                 <td><span class="option-tag">Melhor custo-benefício</span></td>
                 <td>Arduino Uno SMD, Atmega328</td>
                 <td>Versão econômica do Arduino Uno R3, com mesma pinagem e funcionamento baseado no Atmega328.</td>
-                <td>Solução simples e funcional para um micromouse básico com sensores, encoders e controle de motores.</td>
-                <td><span class="small-note"><a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">Ver preço e referência na planilha</a></span></td>
+                <td>Opção simples e funcional para rodar um micromouse básico com sensores, encoders e controle de motor.</td>
+                <td><a class="price-note" href="https://www.eletrogate.com/uno-r3-smd-ch340?utm_source=Site&utm_medium=GoogleMerchant&utm_campaign=GoogleMerchant&gad_source=1&gad_campaignid=22486202127&gclid=CjwKCAjw5NvPBhAoEiwA_2egfvUFP1iYZDYOBqIG4jbQskZ_lKLKiwxHnBSbMGFxNpy83t34rXIPFhoCRn4QAvD_BwE" target="_blank" rel="noreferrer">Link do produto</a></td>
               </tr>
               <tr>
                 <td><span class="category-tag">Componentes eletrônicos</span></td>
                 <td>Microcontrolador</td>
                 <td><span class="option-tag">Melhor possível</span></td>
                 <td>STM32F103C8T6 ARM Cortex M3</td>
-                <td>Microcontrolador com maior desempenho e mais recursos para controle em tempo real.</td>
-                <td>Oferece mais timers, melhor capacidade de controle e maior margem para algoritmos e telemetria.</td>
-                <td><span class="small-note"><a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">Ver preço e referência na planilha</a></span></td>
+                <td>Microcontrolador com mais desempenho e mais recursos de controle em tempo real.</td>
+                <td>Oferece mais timers, melhor controle e maior margem para algoritmos e telemetria.</td>
+                <td><a class="price-note" href="https://www.robocore.net/placa-32-bit/placa-stm32f103c8t6-arm-cortex-m3?utm_source=google&utm_medium=cpc&utm_campaign=pmax_desempenho&utm_content=grupo1&utm_term=&ad_id=&gad_source=1&gad_campaignid=16517456855&gclid=CjwKCAjw5NvPBhAoEiwA_2egfjzUKxU8fgwcprpkMZad9M6SSbGSlgNGOOmVNGFo9l9TpuLyu3zOBBoCzCkQAvD_BwE" target="_blank" rel="noreferrer">Link do produto</a></td>
               </tr>
               <tr>
                 <td><span class="category-tag">Componentes eletrônicos</span></td>
-                <td>Terminais</td>
+                <td>Terminal</td>
                 <td><span class="option-tag">Melhor custo-benefício</span></td>
                 <td>Borne KF301, 3,5 mm</td>
-                <td>Conexão por parafuso; 2 a 12 vias; corrente até 10 A.</td>
-                <td>Boa qualidade mecânica, montagem simples e ótimo equilíbrio entre custo e robustez.</td>
-                <td><span class="small-note"><a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">Ver preço e referência na planilha</a></span></td>
+                <td>Conexão por parafuso, 2 a 12 vias, corrente até 10A.</td>
+                <td>Boa qualidade, fácil montagem e ótimo custo.</td>
+                <td><span class="price-note">Média de R$85,00 para opção de custo-benefício.</span></td>
               </tr>
               <tr>
                 <td><span class="category-tag">Componentes eletrônicos</span></td>
-                <td>Terminais</td>
+                <td>Terminal</td>
                 <td><span class="option-tag">Melhor possível</span></td>
                 <td>Borne Degson 2EDG, 3,81 mm</td>
-                <td>Contatos em latão; corrente até 15 A; maior robustez e durabilidade.</td>
-                <td>Alternativa mais robusta mecanicamente e eletricamente, com melhor acabamento.</td>
-                <td><span class="small-note"><a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">Ver preço e referência na planilha</a></span></td>
+                <td>Alta qualidade, contatos de latão, corrente até 15A, alta durabilidade.</td>
+                <td>Maior robustez mecânica e elétrica, além de melhor acabamento.</td>
+                <td>Sem preço/link definido na planilha.</td>
               </tr>
               <tr>
                 <td><span class="category-tag">Componentes eletrônicos</span></td>
-                <td>Terminais</td>
+                <td>Terminal</td>
                 <td><span class="option-tag">Mínimo viável</span></td>
                 <td>Borne XH 2,54 mm</td>
-                <td>Passo de 2,54 mm; corrente até 3 A; conexão simples.</td>
-                <td>Solução básica para conexões de baixa corrente e menor exigência mecânica.</td>
-                <td><span class="small-note"><a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">Ver preço e referência na planilha</a></span></td>
-              </tr>
-              <tr>
-                <td><span class="category-tag">Componentes eletrônicos</span></td>
-                <td>Capacitores</td>
-                <td><span class="option-tag">Sugestão</span></td>
-                <td>Capacitor cerâmico 100pF/50V</td>
-                <td>Capacitor cerâmico discreto para uso geral em circuitos eletrônicos.</td>
-                <td>Item de baixo custo e aplicação ampla em desacoplamento e ajustes básicos.</td>
-                <td><span class="small-note"><a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">Ver valor e referência na planilha</a></span></td>
-              </tr>
-              <tr>
-                <td><span class="category-tag">Componentes eletrônicos</span></td>
-                <td>Drivers</td>
-                <td><span class="option-tag">Sugestão</span></td>
-                <td>Mini Ponte H Dupla L298N</td>
-                <td>Driver de motor com dupla ponte H para acionamento bidirecional.</td>
-                <td>Solução conhecida e disponível para prototipagem inicial do sistema de tração.</td>
-                <td><span class="small-note"><a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">Ver preço e referência na planilha</a></span></td>
-              </tr>
-              <tr>
-                <td><span class="category-tag">Componentes eletrônicos</span></td>
-                <td>Drivers</td>
-                <td><span class="option-tag">Sugestão alternativa</span></td>
-                <td>Driver Ponte H Dupla DRV8833 2A</td>
-                <td>Driver compacto com corrente de até 2 A para acionamento de motores DC.</td>
-                <td>Alternativa mais compacta para integração em sistemas embarcados com restrição de espaço.</td>
-                <td><span class="small-note"><a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">Ver preço e referência na planilha</a></span></td>
-              </tr>
-              <tr>
-                <td><span class="category-tag">Componentes eletrônicos</span></td>
-                <td>PCB</td>
-                <td><span class="option-tag">Sugestão</span></td>
-                <td>Placa de circuito projetada pelo grupo</td>
-                <td>PCB dedicada ao projeto, desenhada conforme a arquitetura elétrica definida pela equipe.</td>
-                <td>Permite adequação dimensional e elétrica específica para o micromouse.</td>
-                <td><span class="price-note">Custo médio: R$ 100,00</span></td>
-              </tr>
-              <tr>
-                <td><span class="category-tag">Componentes eletrônicos</span></td>
-                <td>PCB</td>
-                <td><span class="option-tag">Sugestão alternativa</span></td>
-                <td>Placa de circuito impresso ilhada 5x7 cm, dupla face</td>
-                <td>Placa padrão para prototipagem e montagem manual de circuitos.</td>
-                <td>Alternativa de menor complexidade para testes e integração inicial.</td>
-                <td><span class="small-note"><a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">Ver preço e referência na planilha</a></span></td>
+                <td>Passo de 2,54 mm, corrente até 3A, conexão simples.</td>
+                <td>Solução básica para conexões de baixa corrente.</td>
+                <td>Sem preço/link definido na planilha.</td>
               </tr>
             </tbody>
           </table>
         </div>
       </section>
 
+      <section class="table-card" aria-labelledby="sistema-motorizacao">
+        <div>
+          <h2 class="section-title" id="sistema-motorizacao">Sistema de Motorização</h2>
+          <p>
+            Comparativo das opções de motor e rodas consideradas para o conjunto de tração do Micromouse.
+          </p>
+        </div>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Categoria</th>
+                <th>Componente</th>
+                <th>Opção</th>
+                <th>Modelo</th>
+                <th>Características principais</th>
+                <th>Justificativa</th>
+                <th>Preço/Link</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="category-tag">Sistema de Motorização</span></td>
+                <td>Motor</td>
+                <td><span class="option-tag">Custo-benefício</span></td>
+                <td>Micro Motor N20 com Caixa de Redução 6V 500RPM</td>
+                <td>Motor de corrente contínua com comutação por escovas. Peso entre 8g e 15g, eixo de 1,5mm a 2mm, dimensão padrão de 10mm x 20mm e tensão de operação entre 3V e 6V.</td>
+                <td>Eficiência entre 60% e 80%, massa adequada para um micromouse, modelo CAD compatível com CATIA, baixo custo, alta disponibilidade no Brasil e caixa de redução integrada.</td>
+                <td><a class="price-note" href="https://www.robocore.net/motor-caixas-de-reducao/micro-motor-com-caixa-de-reducao-6v-500rpm" target="_blank" rel="noreferrer">Link do produto</a></td>
+              </tr>
+              <tr>
+                <td><span class="category-tag">Sistema de Motorização</span></td>
+                <td>Rodas</td>
+                <td><span class="option-tag">Custo-benefício</span></td>
+                <td>Roda N20 44mm</td>
+                <td>Roda com diâmetro de 44mm e largura de 19mm para micro motor DC N20 com eixo de encaixe de 3mm. Fabricada em plástico leve com pneu de borracha antiderrapante.</td>
+                <td>A roda maior reduz ligeiramente a aceleração, mas oferece maior estabilidade por ser mais larga. O tamanho permanece adequado para não comprometer de forma significativa o desempenho do micromouse.</td>
+                <td><a class="price-note" href="https://www.google.com/url?sa=i&source=web&cd=&ved=0CHQQj_IEahcKEwiwo4bLrqCUAxUAAAAAHQAAAAAQBQ&url=https%3A%2F%2Fwww.fermarc.com%2Fproduto%2Froda-com-pneu-de-borracha-43mm-para-motor-n20.html%3Fsrsltid%3DAfmBOoqq_zfxUgehyN9VTw8sB05mOE8pK8va-suN4WIAkdtc3kjW8lciUXQ&psig=AOvVaw3ndpPwq-_7g6TvccpWwWkL&ust=1778007919649235&opi=89978449" target="_blank" rel="noreferrer">Link do produto</a></td>
+              </tr>
+              <tr>
+                <td><span class="category-tag">Sistema de Motorização</span></td>
+                <td>Rodas</td>
+                <td><span class="option-tag">Melhor possível</span></td>
+                <td>Impressão 3D com design próprio</td>
+                <td>Roda produzida por impressão 3D com formato desenvolvido pela equipe. Diâmetro de 34mm, largura de 19mm e eixo de encaixe de 3mm.</td>
+                <td>Permite desenvolver uma roda personalizada com estabilidade, encaixe e desempenho adequados ao projeto, mas exige maior esforço de modelagem, testes e fabricação.</td>
+                <td>Custo dependeria da compra de filamento e do uso da impressora 3D.</td>
+              </tr>
+              <tr>
+                <td><span class="category-tag">Sistema de Motorização</span></td>
+                <td>Rodas</td>
+                <td><span class="option-tag">Viável</span></td>
+                <td>Roda N20 34mm</td>
+                <td>Roda com diâmetro de 34mm e largura de 7mm para micro motor DC N20 com eixo de encaixe de 3mm. Fabricada em plástico leve com pneu de borracha antiderrapante.</td>
+                <td>A roda menor favorece a aceleração, porém a largura reduzida compromete a estabilidade do micromouse.</td>
+                <td><a class="price-note" href="https://www.google.com/url?sa=i&source=web&cd=&ved=0CHQQj_IEahcKEwig66CXqaCUAxUAAAAAHQAAAAAQBg&url=https%3A%2F%2Fwww.smartkits.com.br%2Froda-34mm-para-motor-n20%3Fparceiro%3D9390%26srsltid%3DAfmBOop9zwYCOrpEo6sfeXvqxX9nuqFemoFY8qsZOcYF1cX0h17yfIAdA_A&psig=AOvVaw3MzgcX4vuD5agOJz0UPB9K&ust=1778005008633294&opi=89978449" target="_blank" rel="noreferrer">Link do produto</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="small-note">
+          A análise de mercado indicou que não há diferenças relevantes entre os motores disponíveis dentro do limite orçamentário do grupo. Alternativas superiores ao padrão N20 passam a exigir investimento na faixa de R$300 por motor, ou cerca de R$600 para o conjunto com dois motores, além de importação, o que tornou essa opção inviável para o projeto.
+        </p>
+      </section>
+
       <section class="table-card" aria-labelledby="melhores-opcoes">
         <div>
           <h2 class="section-title" id="melhores-opcoes">Melhores opções encontradas</h2>
           <p>
-            Registro das sugestões complementares citadas nas planilhas, mantendo a referência separada das opções principais. Todas as referências desta seção apontam para a planilha local do projeto.
+            Registro das sugestões complementares citadas durante o levantamento de orçamento, mantendo a referência separada das opções principais.
           </p>
         </div>
 
@@ -562,57 +584,105 @@
             <tbody>
               <tr>
                 <td>Sensor de proximidade</td>
-                <td>Sugestões externas</td>
-                <td>TCS3200/TCS230</td>
-                <td><span class="price-note">Aprox. R$ 41,00</span><br><span class="small-note"><a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">Ver referência na planilha</a></span></td>
+                <td>Iago</td>
+                <td>Módulo Sensor de Cor RGB TCS3200 TCS230</td>
+                <td><a class="price-note" href="https://www.a2robotics.com.br/modulo-sensor-de-cor-rgb-tcs3200-tcs230?utm_source=Site&utm_medium=GoogleShopping&utm_campaign=IntegracaoGoogle&gad_source=1&gad_campaignid=20133858439&gbraid=0AAAAApotoTKEwtqKm54xAz1MomFXhpota&gclid=CjwKCAjwntHPBhAaEiwA_Xp6RkA9YqdJOcoAPvu5149d-kNUtMC1WWxVL0NtT5Q_4BUM2nPFaX0PZRoCP40QAvD_BwE" target="_blank" rel="noreferrer">R$41</a></td>
               </tr>
               <tr>
                 <td>Sensor de proximidade</td>
-                <td>Sugestões externas</td>
-                <td>TMD27713</td>
-                <td><span class="price-note">R$ 25,82</span><br><span class="small-note"><a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">Ver referência na planilha</a></span></td>
+                <td>Iago</td>
+                <td>CHIPSCE 010-0307, Módulo Arduino Sensor de Proximidade TMD27713-Led IR+ALS</td>
+                <td><a class="price-note" href="https://www.amazon.com.br/Chipsce-010-0307-Arduino-Proximidade-Tmd27713-Led/dp/B092R38KC8?source=ps-sl-shoppingads-lpcontext&ref_=fplfs&psc=1&smid=A1ZZFT5FULY4LN" target="_blank" rel="noreferrer">R$25,82</a></td>
+              </tr>
+              <tr>
+                <td>Sensor de proximidade</td>
+                <td>Manuella</td>
+                <td>TCRT5000</td>
+                <td><a class="price-note" href="https://www.huinfinito.com.br/sensores/781-modulo-sensor-de-refleccao-ir-seguidor-linha.html" target="_blank" rel="noreferrer">R$7,50</a></td>
               </tr>
               <tr>
                 <td>Encoder</td>
-                <td>Fonte não identificada na planilha</td>
-                <td>Encoder Incremental 600 PPR</td>
-                <td><span class="price-note">Aprox. R$ 128,00</span><br><span class="small-note"><a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">Ver referência na planilha</a></span></td>
+                <td>Artur Navarro</td>
+                <td>Encoder Incremental 600 PPR Canais A-B com Cabo</td>
+                <td><a class="price-note" href="https://www.mercadolivre.com.br/encoder-incremental-600-ppr-canais-ab-com-cabo/up/MLBU2805151332" target="_blank" rel="noreferrer">R$128</a></td>
+              </tr>
+              <tr>
+                <td>Encoder</td>
+                <td>Manuella</td>
+                <td>Encoder KY-040 Rotacional</td>
+                <td><a class="price-note" href="https://www.breletronica.com.br/encoder-decoder-rotativo-ky-040" target="_blank" rel="noreferrer">Aproximadamente R$15,00</a></td>
               </tr>
               <tr>
                 <td>Resistores</td>
-                <td>Fonte não identificada na planilha</td>
-                <td>Kit de resistores com diversos valores</td>
-                <td><span class="price-note">Aprox. R$ 78,90</span><br><span class="small-note"><a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">Ver referência na planilha</a></span></td>
+                <td>Iago</td>
+                <td>Kit Resistores</td>
+                <td><a class="price-note" href="https://www.amazon.com.br/Resistores-Valores-Projetos-Eletr%C3%B4nica-Robotica/dp/B0C39BRVR2/ref=sr_1_5?_mk_pt_BR=%C3%85M%C3%85%C5%BD%C3%95%C3%91&crid=1WTBV26I6H0PH&dib=eyJ2IjoiMSJ9.3ZXoqNQVcUj4Lo1hFOnmwPG9A8BHQTNlE30SggJT0hUGN4D8ECHWUroWGR35Rb63rl90FwlReDIaJ5DXmZNWIk02LrrYVeb7dDwN0eIY_f-rbq00ZXSBoTHnNwOsiz-MKWVaS_9ZMlToLrtK1JuRmpCv2_FC8OM9eIOoioo2ZsozZC3prf8OfC8g_b7VF4152pdh5AVmYVqnG_eQinqgaWD_j0ABgIQObYgXgjLeiZRVNzy4YpAo_ZGDnQLQSNKX8U_mvgAvOsWBENrd09Y0RcNFi0NO6EiSCfUa_APagag.izU9ns23Zk6CrC4LH1nY8_TJbu0b6Lut-HiN-2iTbQ&dib_tag=se&keywords=resistores&qid=1777656049&sprefix=resistore%2Caps%2C480&sr=8-5&ufe=app_do%3Aamzn1.fos.6d798eae-cadf-45de-946a-f477d47705b9" target="_blank" rel="noreferrer">R$78,90</a></td>
+              </tr>
+              <tr>
+                <td>Resistores</td>
+                <td>Manuella</td>
+                <td>Resistor de Filme de Carbono 1R - 1/4W</td>
+                <td><a class="price-note" href="https://www.huinfinito.com.br/resistores-de-filme-de-carbono/283-resistor-de-filme-de-carbono-1r-1-4w.html" target="_blank" rel="noreferrer">R$0,04</a></td>
               </tr>
               <tr>
                 <td>Microcontrolador</td>
-                <td>Fonte não identificada na planilha</td>
-                <td>STM32 Nucleo-32 com STM32L432KC</td>
-                <td><span class="small-note"><a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">Ver preço e referência na planilha</a></span></td>
+                <td>Iago</td>
+                <td>STM32 Nucleo-32 com STM32L432KC MCU</td>
+                <td><a class="price-note" href="https://www.amazon.com.br/desenvolvimento-Nucleo-32-STM32L432KC-suporta-conectividade/dp/B077GFHLFS/ref=sr_1_7?__mk_pt_BR=%C3%85M%C3%85%C5%BD%C3%95%C3%91&crid=3LYYFSNC4NJXX&dib=eyJ2IjoiMSJ9.2tb43Hu0YdD8EdfIH4aYwJDVZwmDlECOIMn0-Xaw3Ybef2ifuidvsDj33DYhA1F7FzICa13KPzXrtQYQ3O1J1onv4xmlYm9Uym94USVEjldXNBq3mFwVmGDfGJAvtpEdJwznAtI0YttgCamnUKpfbpS4hrGkH1IFKYAwO-BF7luRCtM4R78SbNZTvNdMuwSOl6QnkZKo83adQ08Ku2LyncsYWXuDdaGANc3eubrb-wx8LG6fCCnNhdLLRDCZfBlMyubYDIqRi12kQKzQzruLJ8-dYWtzEjF-MhaqhfcGB-Y.Jl9ZjqCjk4EiOeRGr3U3eWvc3vh5RClKbD71zjgjfmc&dib_tag=se&keywords=stm32&qid=1777656171&sprefix=stm3%2Caps%2C1523&sr=8-7&ufe=app_do%3Aamzn1.fos.fcd6d665-32ba-4479-9f21-b774e276a678" target="_blank" rel="noreferrer">Link do produto</a></td>
+              </tr>
+              <tr>
+                <td>Microcontrolador</td>
+                <td>Manuella</td>
+                <td>Arduino Uno SMD, Atmega328</td>
+                <td><a class="price-note" href="https://www.eletrogate.com/uno-r3-smd-ch340?utm_source=Site&utm_medium=GoogleMerchant&utm_campaign=GoogleMerchant&gad_source=1&gad_campaignid=22486202127&gclid=CjwKCAjw5NvPBhAoEiwA_2egfvUFP1iYZDYOBqIG4jbQskZ_lKLKiwxHnBSbMGFxNpy83t34rXIPFhoCRn4QAvD_BwE" target="_blank" rel="noreferrer">Link do produto</a></td>
               </tr>
               <tr>
                 <td>Terminais</td>
-                <td>Fonte não identificada na planilha</td>
-                <td>Kit de terminais tubulares isolados com 1250 peças</td>
-                <td><span class="small-note"><a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">Ver preço e referência na planilha</a></span></td>
+                <td>Iago</td>
+                <td>Kit de 1250 Terminais Elétricos Tubulares Ilhós Isolados, 0,5 mm a 10 mm, com Caixa Organizadora</td>
+                <td><a class="price-note" href="https://www.amazon.com.br/dp/B0DZPJV3DB?ref=cm_sw_r_cso_wa_apan_dp_3HQ4WVFAJ3XDR3EJ54AX&ref_=cm_sw_r_cso_wa_apan_dp_3HQ4WVFAJ3XDR3EJ54AX&social_share=cm_sw_r_cso_wa_apan_dp_3HQ4WVFAJ3XDR3EJ54AX" target="_blank" rel="noreferrer">Link do produto</a></td>
+              </tr>
+              <tr>
+                <td>Terminais</td>
+                <td>Manuella</td>
+                <td>Borne Degson 2EDG, 3,81 mm</td>
+                <td>Hu Infinito Componentes Eletrônicos</td>
               </tr>
               <tr>
                 <td>Capacitores</td>
-                <td>Fonte não identificada na planilha</td>
-                <td>Kit de capacitores cerâmicos 50V com 300 unidades</td>
-                <td><span class="small-note"><a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">Ver preço e referência na planilha</a></span></td>
+                <td>Iago</td>
+                <td>Capacitor Cerâmico 100pF/50V</td>
+                <td><a class="price-note" href="https://www.huinfinito.com.br/capacitor-ceramico/41-capacitor-ceramico-100pf-50v.html" target="_blank" rel="noreferrer">R$0,04 por unidade</a></td>
               </tr>
               <tr>
-                <td>Drivers</td>
-                <td>Fonte não identificada na planilha</td>
-                <td>Driver Ponte H Dupla DRV8833 2A</td>
-                <td><span class="small-note"><a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">Ver preço e referência na planilha</a></span></td>
+                <td>Capacitores</td>
+                <td>Artur Navarro</td>
+                <td>Kit Capacitores Cerâmicos 50V - 300 unidades</td>
+                <td><a class="price-note" href="https://www.eletrogate.com/kit-capacitores-ceramicos-50v-300-unidades" target="_blank" rel="noreferrer">Link do produto</a></td>
+              </tr>
+              <tr>
+                <td>Driver</td>
+                <td>Iago</td>
+                <td>Mini Ponte H Dupla L298N</td>
+                <td><a class="price-note" href="https://www.eletrogate.com/mini-ponte-h-dupla-l298n" target="_blank" rel="noreferrer">Link do produto</a></td>
+              </tr>
+              <tr>
+                <td>Driver</td>
+                <td>Artur Navarro</td>
+                <td>Driver Ponte H Dupla - DRV8833 2A</td>
+                <td><a class="price-note" href="https://www.eletrogate.com/driver-ponte-h-dupla-drv8833-2a?srsltid=AfmBOooijAjJ4OJC_lmYMWnjzVIqx0Mxb0BFj2vyP7s9lgN-VLLqgjoD" target="_blank" rel="noreferrer">Link do produto</a></td>
               </tr>
               <tr>
                 <td>PCB</td>
-                <td>Fonte não identificada na planilha</td>
-                <td>Placa de circuito impresso ilhada 5x7 cm, dupla face</td>
-                <td><span class="small-note"><a href="../assets/img/orcamento.xlsx" target="_blank" rel="noreferrer">Ver preço e referência na planilha</a></span></td>
+                <td>Iago</td>
+                <td>Placa de Circuito projetada pelo grupo</td>
+                <td>Média de custo: R$100</td>
+              </tr>
+              <tr>
+                <td>PCB</td>
+                <td>Artur Navarro</td>
+                <td>Placa Circuito Impresso Ilhada 5x7 cm, dupla face</td>
+                <td><a class="price-note" href="https://www.eletrogate.com/placa-circuito-impresso-ilhada-5x7cm-dupla-face" target="_blank" rel="noreferrer">Link do produto</a></td>
               </tr>
             </tbody>
           </table>
