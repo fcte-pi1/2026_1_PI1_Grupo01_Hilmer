@@ -1,0 +1,32 @@
+src/
+├── assets/             # Imagens, ícones, fontes e outros arquivos estáticos
+├── components/         # Componentes reutilizáveis (botões, cards, inputs e etc.)
+│   ├── Button/ 
+│   │   └── Button.jsx
+│   │   └── Button.module.css
+│   ├── Card/ 
+│   │   └── Card.jsx
+│   │   └── Card.module.css
+│   └── ...
+├── contexts/           # Contextos React para gerenciamento de estado global (autenticação, tema e etc.)
+│   └── AuthContext.jsx
+├── hooks/              # Hooks personalizados para uma lógica reutilizável
+│   └── useTelemetryData.js
+├── layouts/            # Layouts de página (header, sidebar e footer)
+│   └── DefaultLayout.jsx
+├── pages/              # Páginas da aplicação (cada página entra como um componente)
+│   ├── Dashboard.jsx
+│   ├── History.jsx
+│   ├── Login.jsx
+│   └── NotFound.jsx
+├── services/           # Funções para interação com API (telemetria, dados históricos)
+│   └── telemetryService.js
+│   └── dataService.js
+├── styles/             # Estilos globais, variáveis CSS, temas
+│   ├── global.css
+│   └── variables.css
+├── utils/              # Funções utilitárias (formatação de datas, validações)
+│   └── helpers.js
+├── App.jsx             # Componente principal da aplicação
+├── main.jsx            # Ponto de entrada da aplicação (renderização de App)
+└── vite-env.d.ts       # Arquivo de declaração de tipos para Vite
