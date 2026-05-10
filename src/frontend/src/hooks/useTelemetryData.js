@@ -2,17 +2,17 @@
 // TODO: substituir por integração com WebSocket ou polling HTTP do backend.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getMockTelemetrySnapshot, MOCK_MOUSE_PATH } from '../services/telemetryService';
+import { getMockTelemetrySnapshot, getMazeMockData } from '../services/telemetryService';
 
 const TICK_MS = 800; // intervalo entre movimentos do mouse (mock)
 
-export function useTelemetryData() {
+export function useTelemetryData(mazeSize = 10) {
   const [step, setStep] = useState(0);
   const [running, setRunning] = useState(false);
   const intervalRef = useRef(null);
 
-  const totalSteps = MOCK_MOUSE_PATH.length;
-  const data = getMockTelemetrySnapshot(step);
+  const totalSteps = getMazeMockData(mazeSize).path.length;
+  const data = getMockTelemetrySnapshot(step, mazeSize);
 
   const start = useCallback(() => {
     if (running) return;

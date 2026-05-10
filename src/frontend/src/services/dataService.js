@@ -14,7 +14,7 @@ export const MOCK_EXECUTION_HISTORY = [
   {
     id: 2,
     attempt: 2,
-    mazeSize: 10,
+    mazeSize: 12,
     totalTimeSeconds: 31,
     avgSpeedMps: 0.55,
     totalBatteryUsed: 14,
@@ -23,7 +23,7 @@ export const MOCK_EXECUTION_HISTORY = [
   {
     id: 3,
     attempt: 3,
-    mazeSize: 16,
+    mazeSize: 14,
     totalTimeSeconds: 0,
     avgSpeedMps: 0,
     totalBatteryUsed: 5,
@@ -41,11 +41,20 @@ export const MOCK_EXECUTION_HISTORY = [
   {
     id: 5,
     attempt: 5,
-    mazeSize: 16,
+    mazeSize: 18,
     totalTimeSeconds: 0,
     avgSpeedMps: 0,
     totalBatteryUsed: 8,
     status: 'failure',
+  },
+  {
+    id: 6,
+    attempt: 6,
+    mazeSize: 20,
+    totalTimeSeconds: 134,
+    avgSpeedMps: 0.38,
+    totalBatteryUsed: 47,
+    status: 'success',
   },
 ];
 

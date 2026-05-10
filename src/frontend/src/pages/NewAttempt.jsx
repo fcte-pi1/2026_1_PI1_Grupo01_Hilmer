@@ -2,32 +2,14 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './NewAttempt.module.css';
 
-const PRESET_SIZES = [8, 10, 16];
+const MAZE_SIZES = [10, 12, 14, 16, 18, 20];
 
 export function NewAttempt() {
   const navigate = useNavigate();
-  const [mazeSize, setMazeSize] = useState('');
-  const [error, setError] = useState('');
-
-  function handleSizeChange(e) {
-    const val = e.target.value.replace(/\D/g, '');
-    setMazeSize(val);
-    setError('');
-  }
-
-  function handlePreset(size) {
-    setMazeSize(String(size));
-    setError('');
-  }
+  const [mazeSize, setMazeSize] = useState(null);
 
   function handleActivate() {
-    const size = parseInt(mazeSize, 10);
-    if (!mazeSize || isNaN(size) || size < 4 || size > 32) {
-      setError('Insira um tamanho entre 4 e 32.');
-      return;
-    }
-    // Passa o tamanho via state de navegação para o Dashboard usar futuramente
-    navigate('/dashboard', { state: { mazeSize: size } });
+    navigate('/dashboard', { state: { mazeSize } });
   }
 
   return (
@@ -47,36 +29,24 @@ export function NewAttempt() {
 
       <main className={styles.main}>
         <div className={styles.card}>
-          <p className={styles.cardLabel}>Insira o tamanho do labirinto:</p>
+          <p className={styles.cardLabel}>Escolha o tamanho do labirinto:</p>
 
           <div className={styles.presets}>
-            {PRESET_SIZES.map((s) => (
+            {MAZE_SIZES.map((s) => (
               <button
                 key={s}
-                className={`${styles.presetBtn} ${mazeSize === String(s) ? styles.presetActive : ''}`}
-                onClick={() => handlePreset(s)}
+                className={`${styles.presetBtn} ${mazeSize === s ? styles.presetActive : ''}`}
+                onClick={() => setMazeSize(s)}
               >
                 {s}×{s}
               </button>
             ))}
           </div>
 
-          <input
-            className={`${styles.input} ${error ? styles.inputError : ''}`}
-            type="text"
-            inputMode="numeric"
-            maxLength={2}
-            placeholder="ex: 16"
-            value={mazeSize}
-            onChange={handleSizeChange}
-          />
-
-          {error && <p className={styles.error}>{error}</p>}
-
           <button
             className={styles.activateBtn}
             onClick={handleActivate}
-            disabled={!mazeSize}
+            disabled={mazeSize === null}
           >
             Ativar rato
           </button>

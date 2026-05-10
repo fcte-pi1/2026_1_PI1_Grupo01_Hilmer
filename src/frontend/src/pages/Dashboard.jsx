@@ -1,10 +1,13 @@
+import { useLocation } from 'react-router-dom';
 import { MazeView } from '../components/MazeView/MazeView';
 import { Sidebar } from '../components/Sidebar/Sidebar';
 import { useTelemetryData } from '../hooks/useTelemetryData';
 import styles from './Dashboard.module.css';
 
 export function Dashboard() {
-  const { data, running, start, reset } = useTelemetryData();
+  const location = useLocation();
+  const mazeSize = location.state?.mazeSize ?? 10;
+  const { data, running, start, reset } = useTelemetryData(mazeSize);
 
   return (
     <div className={styles.layout}>
