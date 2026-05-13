@@ -1,0 +1,21 @@
+.telemetry-card {
+  background-color: var(--color-secondary);
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.telemetry-card h3 {
+  color: var(--color-primary);
+  margin-top: 0;
+  font-size: 1.2em;
+}
+
+.telemetry-card p {
+  font-size: 1.8em;
+  font-weight: bold;
+  color: var(--color-accent);
+  margin-bottom: 0;
+}
