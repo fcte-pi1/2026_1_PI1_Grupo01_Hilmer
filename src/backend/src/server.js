@@ -4,7 +4,6 @@ import { WebSocketServer, WebSocket } from "ws";
 const port = Number(process.env.PORT || 3001);
 const host = process.env.HOST || "127.0.0.1";
 const frontendOrigin = process.env.FRONTEND_ORIGIN || "http://localhost:5173";
-const esp32Url = process.env.ESP32_WS_URL || "ws://192.168.4.1:81";
 
 function sendJson(response, statusCode, payload) {
   response.writeHead(statusCode, {
@@ -67,6 +66,7 @@ wssReact.on("connection", (ws) => {
 });
 
 function connectToESP32() {
+  const esp32Url = process.env.ESP32_WS_URL || "ws://192.168.4.1:81";
   console.log(`[backend] Tentando conectar na ESP32 em ${esp32Url}...`);
   const esp32Ws = new WebSocket(esp32Url);
 
@@ -92,15 +92,12 @@ function connectToESP32() {
   });
 }
 
-// Dispara a rotina para buscar a ESP32 APENAS se não estivermos rodando testes
 if (process.env.NODE_ENV !== 'test') {
   connectToESP32();
 }
 
-// Inicialização
 server.listen(port, host, () => {
   console.log(`[backend] API e WebSocket escutando em http://${host}:${port}`);
 });
 
-// Exporte o wssReact também para podermos desligá-lo no teste
-export { server, wssReact };
+export { server, wssReact, connectToESP32 };
