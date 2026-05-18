@@ -92,9 +92,15 @@ function connectToESP32() {
   });
 }
 
-connectToESP32();
+// Dispara a rotina para buscar a ESP32 APENAS se não estivermos rodando testes
+if (process.env.NODE_ENV !== 'test') {
+  connectToESP32();
+}
 
-
+// Inicialização
 server.listen(port, host, () => {
   console.log(`[backend] API e WebSocket escutando em http://${host}:${port}`);
 });
+
+// Exporte o wssReact também para podermos desligá-lo no teste
+export { server, wssReact };
