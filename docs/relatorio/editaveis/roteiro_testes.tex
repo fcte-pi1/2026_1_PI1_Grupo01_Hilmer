@@ -1,0 +1,19 @@
+\item \textbf{ Roteiro de testes funcionais:}
+\begin{itemize}
+    \item Código do caso de teste: CT01
+    \item Nome do caso de teste: Chegar ao Centro
+    \item Objetivo do caso de teste: Verificar se o robô consegue calcular a rota correta do início (0,0) até o centro do labirinto usando o algoritmo FloodFill.
+    \item Pré-condições do sistema para o teste ser realizado: O ambiente de simulação ou labirinto físico deve estar montado.
+    \item Descrição dos procedimentos a serem executados para o teste: Executar a simulação e observar o comportamento e o caminho que o robô toma para chegar ao centro.
+    \item Resultado esperado para o teste ser aprovado (pós-condição após realizado o teste): O robô atinge as coordenadas centrais e entra na fase 1.
+\end{itemize}
+
+\item \textbf{ Roteiro de testes funcionais:}
+\begin{itemize}
+    \item Código do caso de teste: CT02
+    \item Nome do caso de teste: Explorar Retorno
+    \item Objetivo do caso de teste: Verificar se o robô calcula a distância e navega corretamente de volta ao ponto (0,0).
+    \item Pré-condições do sistema para o teste ser realizado: O robô deve estar no centro do labirinto (Fase 1 iniciada).
+    \item Descrição dos procedimentos a serem executados para o teste: Analisar o caminho e a movimentação baseada nas leituras de parede (wallFront, wallLeft, wallRight).
+    \item Resultado esperado para o teste ser aprovado (pós-condição após realizado o teste): O robô atinge as coordenadas (0,0) e passa à fase 2.
+\end{itemize}
