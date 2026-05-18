@@ -1,14 +1,31 @@
 #include <WiFi.h>
 #include <WebSocketsServer.h>
+#include <ArduinoJson.h> 
 
-// Definições do Access Point
 const char *ssid = "Micromouse_Telemetry";
-const char *password = "12345678"; // Mínimo 8 caracteres
+const char *password = "12345678";
 
-WebSocketsServer webSocket = WebSocketsServer(81); // Servidor na porta 81
+WebSocketsServer webSocket = WebSocketsServer(81);
 unsigned long lastMillis = 0;
 
-// Função de callback para gerenciar eventos do WebSocket
+
+const int MAP_SIZE = 33;
+
+uint8_t mapaLabirinto[MAP_SIZE][MAP_SIZE];
+
+void inicializarMapa() {
+    
+    for (int i = 0; i < MAP_SIZE; i++) {
+        for (int j = 0; j < MAP_SIZE; j++) {
+            if (i == 0 || i == MAP_SIZE - 1 || j == 0 || j == MAP_SIZE - 1) {
+                mapaLabirinto[i][j] = 1; 
+            } else {
+                mapaLabirinto[i][j] = 2;
+            }
+        }
+    }
+}
+
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
     switch(type) {
         case WStype_DISCONNECTED:
@@ -20,48 +37,55 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
             break;
         }
         case WStype_TEXT:
-            // Caso queira receber comandos do frontend/backend (ex: iniciar robô)
-            Serial.printf("[%d] Mensagem recebida: %s\n", num, payload);
+            Serial.printf("[%d] Comando recebido: %s\n", num, payload);
             break;
     }
 }
 
 void setup() {
     Serial.begin(115200);
-
-    // Configura a ESP32 como Access Point
+    
+    inicializarMapa();
+    
     Serial.println("Configurando Access Point...");
     WiFi.softAP(ssid, password);
-
-    // Por padrão, o IP da ESP32 no modo AP será 192.168.4.1
-    IPAddress IP = WiFi.softAPIP();
-    Serial.print("AP iniciado! Nome da rede: ");
-    Serial.println(ssid);
     Serial.print("IP da ESP32: ");
-    Serial.println(IP);
-
-    // Inicia o servidor WebSocket
+    Serial.println(WiFi.softAPIP());
+    
     webSocket.begin();
     webSocket.onEvent(webSocketEvent);
 }
 
 void loop() {
     webSocket.loop();
-
-    // Envia a telemetria a cada 100ms para TODOS os clientes conectados
+    
     if (millis() - lastMillis > 100) {
         lastMillis = millis();
 
-        // Dados simulados do Micromouse
-        int posX = 5;
-        int posY = 12;
-        float bateria = 7.2;
+        int posX_falsa = random(1, MAP_SIZE - 1);
+        int posY_falsa = random(1, MAP_SIZE - 1);
+        mapaLabirinto[posX_falsa][posY_falsa] = random(0, 2); 
 
-        String jsonPayload = "{\"posX\":" + String(posX) + 
-                             ",\"posY\":" + String(posY) + 
-                             ",\"bateria\":" + String(bateria) + "}";
+        JsonDocument doc;
+        
+        doc["tipoLabirinto"] = "16x16";
+        doc["bateriaConsumo"] = 45.2;               
+        doc["velocidadeMedia"] = 0.55;              
+        doc["tempoConclusao"] = millis() / 1000.0;  
+        doc["desafioCumprido"] = "N";               
+        
+        JsonArray mapaJson = doc["mapa"].to<JsonArray>();
+        for (int i = 0; i < MAP_SIZE; i++) {
+            JsonArray linhaJson = mapaJson.add<JsonArray>();
+            for (int j = 0; j < MAP_SIZE; j++) {
+                linhaJson.add(mapaLabirinto[i][j]);
+            }
+        }
+        
+        String jsonPayload;
+        serializeJson(doc, jsonPayload);
 
-        // Envia o texto para todos os clientes conectados (Node.js ou React direto)
+        
         webSocket.broadcastTXT(jsonPayload);
     }
 }
