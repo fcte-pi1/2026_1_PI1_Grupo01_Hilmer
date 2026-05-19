@@ -4,7 +4,7 @@
 -- =============================================================
 
 CREATE TABLE IF NOT EXISTS HISTORICO (
-    numTentativa      INT      NOT NULL,
+    numTentativa      SERIAL      NOT NULL,
     percentualBateria FLOAT       NOT NULL,
     velocidadeMedia   FLOAT       NOT NULL,
     tempoConclusao    TIMESTAMP   NOT NULL,
