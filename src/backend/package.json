@@ -10,5 +10,9 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "pg": "^8.21.0"
   }
 }
