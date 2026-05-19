@@ -8,7 +8,6 @@ describe('Testes da API HTTP e WebSocket (Vitest)', () => {
     server.close();
     wssReact.close();
   });
-
   
 
   it('A rota /api/health deve retornar status 200', async () => {

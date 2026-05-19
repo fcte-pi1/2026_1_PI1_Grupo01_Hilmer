@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { WebSocketServer, WebSocket } from 'ws';
-import { server, wssReact, connectToESP32 } from '../src/server.js';
+import { server, wssReact, connectToESP32 } from '../../src/server.js';
 
 describe('Teste de Integração: Broker WebSocket', () => {
   let mockESP32Server;
