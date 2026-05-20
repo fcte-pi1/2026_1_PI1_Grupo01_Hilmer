@@ -1,110 +1,31 @@
-/*
-
-/* Ideias: tratar
-as celulas como containers
-para o circulo verde se 
-mover. --> Move Shape 
-to Another Container
-  
-
-moveTo() é uma função
-que desloca o polígono
-
-para teste, é legal fazer
-uma caixa de texto para
-inserir a sequência de 
-celulas que foram 
-inseridas
-
-(0, 0) -> (0, 1) -> (0, 2) -> 
-(0, 3) -> (-1, 3)
-se tiver parede, não passa
-se a cor for vermelha, volte
-
-*/
-
 import { Stage, Layer, Rect, Circle } from "react-konva";
 import { useState } from "react";
+import { maze } from "../utils/mazeModel";
+import { createVisibleMaze, getCellKey, getCellColor } from "../utils/mazeHelpers";
+import { parsePath } from "../utils/mazeDataParser";
+import { startMazeAnimation } from "../utils/mazeAnimation";
 
-// serão alterados
-const CELL_SIZE = 20;
-const ROWS = 15;
-const COLS = 15;
+export default function Maze({ rows, cols, cell_size}) {
 
-/*
-  0 -> caminho
-  1 -> parede
-  2 -> desconhecido
-*/
+  /* 
+    Da linha 14 até 23 fazem a função de marcar posição inicial
+    após a renderização
+  */
+  const [robot, setRobot] = useState({ row: 1, col: 1 });
 
-/* maze pra teste */
+  const [visibleMaze, setVisibleMaze] = useState( createVisibleMaze(rows, cols));
 
-const maze = [
-  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-  [1,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
-  [1,0,1,1,1,0,1,0,1,1,1,1,1,0,1],
-  [1,0,1,0,0,0,1,0,0,0,0,0,1,0,1],
-  [1,0,1,0,1,1,1,1,1,1,1,0,1,0,1],
-  [1,0,1,0,0,0,0,0,0,0,1,0,1,0,1],
-  [1,0,1,1,1,1,1,1,1,0,1,0,1,0,1],
-  [1,0,0,0,0,0,0,0,1,0,1,0,0,0,1],
-  [1,1,1,1,1,1,1,0,1,0,1,1,1,0,1],
-  [1,0,0,0,0,0,1,0,1,0,0,0,1,0,1],
-  [1,0,1,1,1,0,1,0,1,1,1,0,1,0,1],
-  [1,0,1,0,0,0,0,0,0,0,1,0,1,0,1],
-  [1,0,1,1,1,1,1,1,1,0,1,0,1,0,1],
-  [1,0,0,0,0,0,0,0,1,0,0,0,0,0,1],
-  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-];
+  // Armazena células já percorridas.
+  const [visitedCells, setVisitedCells] = useState(new Set());
 
-const createVisibleMaze = () => {
+  const [input, setInput] = useState("");
 
-  return Array(ROWS)
-    .fill()
-    .map(() => Array(COLS).fill(2));
+  const goal = { row: 31, col: 25 };
 
-};
-
-export default function Maze() {
-
-  const [robot, setRobot] = useState({row: 1, col: 1});
-
-  const [visibleMaze, setVisibleMaze] =
-    useState(createVisibleMaze());
-
-  const [visitedCells, setVisitedCells] =
-    useState(new Set());
-
-  const [input, setInput] = useState(`(1,1), (1,2), (1,3), (1,4), (1,5), 
-    (1,6), (1,7)`
-  );
-
-  const goal = {row: 13, col: 13};
-
-  let key = (row, col) => {
-    return `${row}-${col}`;
-  }
-
-  /* parser do input */
-
-  let parsePath = (text) => {
-
-    const matches =
-      text.match(/\((\d+),\s*(\d+)\)/g);
-
-    if (!matches) return [];
-
-    return matches.map(item => {
-      const numbers = item.match(/\d+/g);
-      return {
-        row: Number(numbers[0]),
-        col: Number(numbers[1]),
-      };
-    });
-  }
-
-  /* mostrar os vizinhos */
-
+  /*
+    Revela as células vizinhas
+    ao redor do robô
+  */
   function revealAround(row, col) {
     const directions = [
       [0, 0],
@@ -116,101 +37,92 @@ export default function Maze() {
     setVisibleMaze(prev => {
       const updated = prev.map(r => [...r]);
       directions.forEach(([dr, dc]) => {
+
         const nr = row + dr;
         const nc = col + dc;
-        if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {  
+
+        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
           updated[nr][nc] = maze[nr][nc];
         }
       });
-
       return updated;
     });
   }
 
-  /* marcar o caminho*/
-
-  let markVisited = (row, col) => {
+  // Marca células visitadas pelo micromouse.
+  function markVisited(row, col) {
     setVisitedCells(prev => {
       const updated = new Set(prev);
-      updated.add(key(row, col));
+      updated.add( getCellKey(row, col));
+      
       return updated;
     });
   }
 
-  /* Validar movimento do micromouse */
-
-  let canMove = (current,next) => {
-
-    if (maze[next.row][next.col] === 1) {
-      return false;
-    }
-
-    const rowDiff = Math.abs(next.row - current.row);
-    const colDiff = Math.abs(next.col - current.col);
-
-    return rowDiff + colDiff === 1;
+  // Inicia animação do trajeto
+  function handleStartAnimation() {
+    startMazeAnimation({ input, maze, rows, cols,
+      goal, parsePath, revealAround, markVisited,
+      setRobot,
+    });
   }
 
-  /* aqui eu adiciono a animação */
-
-  let startAnimation = () => {
-
-    const parsed = parsePath(input);
-    if (parsed.length === 0) return;
-    let index = 0;
-    let currentPosition = parsed[0];
-
-    /*
-      posição inicial
-    */
-
-    setRobot(currentPosition);
-    revealAround(currentPosition.row, currentPosition.col);
-
-    markVisited(
-      currentPosition.row,
-      currentPosition.col
-    );
-
-    index = 1;
-
-    const interval = setInterval(() => {
-
-      if (index >= parsed.length) {
-        clearInterval(interval);
-        return;
-      }
-      const next = parsed[index];
-
-      /*
-        bateu em parede
-      */
-
-      if (maze[next.row][next.col] === 1) {
-        revealAround(currentPosition.row, currentPosition.col);
-        clearInterval(interval);
-        return;
-      }
-      if (!canMove(currentPosition,next)) {
-        clearInterval(interval);
-        return;
-      }
-
-      // faltar representar o objetivo       
-      setRobot(next);
-      revealAround(next.row, next.col);
-      markVisited(next.row,next.col);
-
-      /*
-        chegou no objetivo
-      */
-      if (next.row === goal.row && next.col === goal.col) {
-        clearInterval(interval);
-        return;
-      }
-      currentPosition = next;
-      index++;
-    }, 300);
-  }
-
+  return (
+    <div className="maze-container">
+      <div className="maze-controls">
+        <textarea
+          rows={10}
+          cols={35}
+          value={input}
+          onChange={(e) =>
+            setInput(e.target.value)
+          }
+        />
+        <button onClick={handleStartAnimation}>
+          Iniciar
+        </button>
+      </div>
+      <Stage width={cols * cell_size} height={rows * cell_size}>
+        <Layer>
+          {visibleMaze.map((row, r) =>
+            row.map((cell, c) => {
+              const visited =
+                visitedCells.has(
+                  getCellKey(r, c)
+                );
+              return (
+                <Rect
+                  key={`${r}-${c}`}
+                  x={c * cell_size}
+                  y={r * cell_size}
+                  width={cell_size}
+                  height={cell_size}
+                  fill={
+                    getCellColor(
+                      cell,
+                      visited
+                    )
+                  }
+                  stroke="#bdbdbd"
+                  strokeWidth={0.5}
+                />
+              );
+            })
+          )}
+          <Circle
+            x={ goal.col * cell_size + cell_size / 2 }
+            y={ goal.row * cell_size + cell_size / 2 }
+            radius={cell_size / 3}
+            fill="red"
+          />
+          <Circle
+            x={ robot.col * cell_size + cell_size / 2 }
+            y={ robot.row * cell_size + cell_size / 2 }
+            radius={cell_size / 3}
+            fill="green"
+          />
+        </Layer>
+      </Stage>
+    </div>
+  );
 }

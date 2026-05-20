@@ -84,3 +84,15 @@ ul {
 li + li {
   margin-top: 0.35rem;
 }
+
+.maze-container {
+  display: flex;
+  gap: 20px;
+  padding: 20px;
+}
+
+.maze-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
