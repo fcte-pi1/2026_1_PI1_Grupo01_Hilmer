@@ -1,0 +1,28 @@
+Lado esquerdo
+porta 2 - 3V3
+GPIO4 - M1B1
+GPIO5 - M1B2
+GPIO6 - M2B1
+GPIO7 - M2B2
+GPIO8 - RGB
+GND.1  
+    Cant touch this
+    GPIO19 - USB_D-
+    GPIO20 - USB_D+
+
+Lado inferior 
+GPIO 12 - CLK para scl do sensor 1
+    Cant touch this
+    GPIO46 Weak pull-down 0
+    GPIO45 Weak pull-down 0
+    GPIO3 Floating –
+
+Lado direito
+io35 - gnd do sensor 2 conectado ao VIN-
+io36 - sda de sensor 2
+io37 - scl de sensor 2
+io02 - proximidade
+io01 - proximidade
+io38 - proximidade
+    CANT TOUCH THIS !!!!
+    GPIO0 Weak pull-up 1
