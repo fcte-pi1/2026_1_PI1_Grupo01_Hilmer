@@ -3,12 +3,42 @@
 #ifdef ARDUINO
 #include <Arduino.h>
 #else
-// Provide lightweight stubs so code compiles on host for tests.
-#include <iostream>
+// Provide lightweight host-side hooks so tests can inspect motor driver behavior.
+#include <string>
+#include <vector>
+
+namespace firmware_sim {
+namespace {
+std::vector<GpioWrite> digital_writes;
+std::vector<std::string> motor_actions;
+}
+
+void reset() {
+    digital_writes.clear();
+    motor_actions.clear();
+}
+
+std::vector<GpioWrite> getDigitalWrites() {
+    return digital_writes;
+}
+
+std::vector<std::string> getMotorActions() {
+    return motor_actions;
+}
+
+static void recordMotorAction(const std::string& action) {
+    motor_actions.push_back(action);
+}
+
+static void recordDigitalWrite(int pin, int value) {
+    digital_writes.push_back({pin, value});
+}
+}
+
 static void pinMode(int, int) {}
 static int digitalRead(int) { return 0; }
-static void digitalWrite(int, int) {}
-static void delay(int) {}
+static void digitalWrite(int pin, int value) { firmware_sim::recordDigitalWrite(pin, value); }
+static void delay(int ms) { firmware_sim::recordMotorAction("delay(" + std::to_string(ms) + ")"); }
 #define INPUT 0
 #define OUTPUT 1
 #define HIGH 1
@@ -39,6 +69,9 @@ void MotorController::begin() {
 }
 
 void MotorController::stop() {
+    #ifndef ARDUINO
+    firmware_sim::recordMotorAction("stop");
+    #endif
     digitalWrite(IN1, LOW);
     digitalWrite(IN2, LOW);
     digitalWrite(IN3, LOW);
@@ -46,6 +79,9 @@ void MotorController::stop() {
 }
 
 void MotorController::forward() {
+    #ifndef ARDUINO
+    firmware_sim::recordMotorAction("forward");
+    #endif
     digitalWrite(IN1, HIGH);
     digitalWrite(IN2, LOW);
     digitalWrite(IN3, HIGH);
@@ -53,6 +89,9 @@ void MotorController::forward() {
 }
 
 void MotorController::turnLeft() {
+    #ifndef ARDUINO
+    firmware_sim::recordMotorAction("turnLeft");
+    #endif
     digitalWrite(IN1, LOW);
     digitalWrite(IN2, HIGH);
     digitalWrite(IN3, HIGH);
@@ -60,6 +99,9 @@ void MotorController::turnLeft() {
 }
 
 void MotorController::turnRight() {
+    #ifndef ARDUINO
+    firmware_sim::recordMotorAction("turnRight");
+    #endif
     digitalWrite(IN1, HIGH);
     digitalWrite(IN2, LOW);
     digitalWrite(IN3, LOW);
@@ -67,6 +109,9 @@ void MotorController::turnRight() {
 }
 
 void MotorController::backward() {
+    #ifndef ARDUINO
+    firmware_sim::recordMotorAction("backward");
+    #endif
     digitalWrite(IN1, LOW);
     digitalWrite(IN2, HIGH);
     digitalWrite(IN3, LOW);

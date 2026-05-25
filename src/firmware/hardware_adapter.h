@@ -2,6 +2,22 @@
 
 #include "navigation_core.h"
 
+#ifndef ARDUINO
+#include <string>
+#include <vector>
+
+namespace firmware_sim {
+struct GpioWrite {
+    int pin;
+    int value;
+};
+
+void reset();
+std::vector<GpioWrite> getDigitalWrites();
+std::vector<std::string> getMotorActions();
+}
+#endif
+
 // SensorManager and MotorController are provided as hardware adapters.
 // The implementation for ESP32 should include Arduino.h and control real GPIOs.
 
