@@ -1,114 +1,134 @@
 #include <Arduino.h>
 #include <Wire.h>
+#include "pin_mapping.h"
 
-// Motor 1
-#define PIN_M1_B1 4
-#define PIN_M1_B2 5
-
-// Motor 2
-#define PIN_M2_B1 6
-#define PIN_M2_B2 7
-
-// RGB
-#define PIN_RGB 8
-
-// Sensor APDS9960
-#define PIN_APDS9960_SCL 12
-
-// Sensor INA226
-#define PIN_INA226_SDA 36
-#define PIN_INA226_SCL 37
-
-// Sensores de proximidade
-#define PIN_PROX_1 1
-#define PIN_PROX_2 2
-#define PIN_PROX_3 38
+void defineGPIOModes();
+void testAPDS9960();
+void testProximitySensors();
+void testMotors();
+void testINA226();
 
 void setup() {
 
   Serial.begin(115200);
 
-  // Configura as portas dos motores
-  pinMode(PIN_M1_B1, OUTPUT);
-  pinMode(PIN_M1_B2, OUTPUT);
-  pinMode(PIN_M2_B1, OUTPUT);
-  pinMode(PIN_M2_B2, OUTPUT);
+  defineGPIOModes();
 
-  // Configura a porta do RGB
-  pinMode(PIN_RGB, OUTPUT);
+  Serial.println("Início dos testes\n");
 
-  // Configura as portas dos sensores
-  pinMode(PIN_PROX_1, INPUT_PULLUP);
-  pinMode(PIN_PROX_2, INPUT_PULLUP);
-  pinMode(PIN_PROX_3, INPUT_PULLUP);
+  testAPDS9960();
+  testMotors();
+  testProximitySensors();
+  testINA226();
 
-  // Configura porta do APDS9960
-  pinMode(PIN_APDS9960_SCL, OUTPUT);
-
-  // Configura pinos que fazem barramento i2c na INA226
-  Wire.begin(PIN_INA226_SDA, PIN_INA226_SCL);
-
-  Serial.println("Teste de GPIO iniciado");
+  Serial.println("Testes finalizados\n");
 }
 
 void loop() {
 
-  int prox1 = digitalRead(PIN_PROX_1);
-  int prox2 = digitalRead(PIN_PROX_2);
-  int prox3 = digitalRead(PIN_PROX_3);
+  testProximitySensors();
 
-  Serial.printf("P1: %d | P2: %d | P3: %d\n", prox1, prox2, prox3);
+  delay(500);
+}
 
-  // ver se a porta com APDS9960 está mapeada
-  digitalWrite(PIN_APDS9960_SCL, HIGH);
-  delay(300);
+void defineGPIOModes() {
 
-  digitalWrite(PIN_APDS9960_SCL, LOW);
-  delay(300);
 
-  if (prox1 == LOW || prox2 == LOW || prox3 == LOW) {
+  pinMode(PIN_M1B1, OUTPUT);
+  pinMode(PIN_M1B2, OUTPUT);
+  pinMode(PIN_M2B1, OUTPUT);
+  pinMode(PIN_M2B2, OUTPUT);
 
-    Serial.println("Obstaculo detectado");
+  pinMode(PIN_PROX_1, INPUT_PULLUP);
+  pinMode(PIN_PROX_2, INPUT_PULLUP);
+  pinMode(PIN_PROX_3, INPUT_PULLUP);
 
-    digitalWrite(PIN_M1_B1, LOW);
-    digitalWrite(PIN_M1_B2, LOW);
-    digitalWrite(PIN_M2_B1, LOW);
-    digitalWrite(PIN_M2_B2, LOW);
+  pinMode(PIN_CLK_APDS9960_SCL, OUTPUT);
+  Wire.begin(PIN_INA226_SDA, PIN_INA226_SCL);
+}
 
-    digitalWrite(PIN_RGB, HIGH);
+void testMotors() {
+
+  Serial.println("Testando motores...");
+
+
+  digitalWrite(PIN_M1B1, HIGH);
+  digitalWrite(PIN_M1B2, LOW);
+
+  delay(1000);
+
+  digitalWrite(PIN_M1B1, LOW);
+  digitalWrite(PIN_M1B2, LOW);
+
+  delay(500);
+
+  digitalWrite(PIN_M2B1, HIGH);
+  digitalWrite(PIN_M2B2, LOW);
+
+  delay(1000);
+
+  digitalWrite(PIN_M2B1, LOW);
+  digitalWrite(PIN_M2B2, LOW);
+
+  delay(500);
+
+  Serial.println("Motores testados\n");
+}
+
+void testAPDS9960() {
+
+  Serial.println("Verificando APDS9960...");
+
+  Wire.beginTransmission(0x39);
+
+  byte error = Wire.endTransmission();
+
+  if (error == 0) {
+
+    Serial.println("APDS9960 encontrado no endereco 0x39\n");
 
   } else {
 
-    Serial.println("Caminho livre");
-
-    digitalWrite(PIN_M1_B1, HIGH);
-    digitalWrite(PIN_M1_B2, LOW);
-
-    digitalWrite(PIN_M2_B1, HIGH);
-    digitalWrite(PIN_M2_B2, LOW);
-
-    digitalWrite(PIN_RGB, LOW);
+    Serial.println("APDS9960 NAO encontrado\n");
   }
+}
 
-  // Teste marcha re
-  digitalWrite(PIN_M1_B1, LOW);
-  digitalWrite(PIN_M1_B2, HIGH);
+void testINA226() {
 
-  digitalWrite(PIN_M2_B1, LOW);
-  digitalWrite(PIN_M2_B2, HIGH);
+  Serial.println("Verificando INA226...");
 
-  delay(100);
+  Wire.beginTransmission(0x40);
 
-  // Teste dos motores
-  digitalWrite(PIN_M1_B1, LOW);
-  digitalWrite(PIN_M1_B2, LOW);
+  byte error = Wire.endTransmission();
 
-  digitalWrite(PIN_M2_B1, LOW);
-  digitalWrite(PIN_M2_B2, LOW);
+  if (error == 0) {
 
-  Serial.printf("INA226 SDA: %d | SCL: %d\n", PIN_INA226_SDA, PIN_INA226_SCL);
+    Serial.println("INA226 encontrado no endereco 0x40\n");
 
-  Serial.println("----------------");
+  } else {
 
-  delay(100);
+    Serial.println("INA226 NAO encontrado\n");
+  }
+}
+
+void testProximitySensors() {
+
+  Serial.println("Testando sensores de proximidade...");
+
+  uint8_t prox1 = digitalRead(PIN_PROX_1);
+  uint8_t prox2 = digitalRead(PIN_PROX_2);
+  uint8_t prox3 = digitalRead(PIN_PROX_3);
+
+  Serial.print("PROX 1: ");
+  Serial.println(prox1);
+
+  Serial.print("PROX 2: ");
+  Serial.println(prox2);
+
+  Serial.print("PROX 3: ");
+  Serial.println(prox3);
+
+  Serial.println();
+
+  delay(1000);
 }
