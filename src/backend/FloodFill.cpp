@@ -1,22 +1,50 @@
 #include <iostream>
 #include <string>
+#include <stdint.h>
+
+#define WALL_N (1 << 0)
+#define WALL_S (1 << 1)
+#define WALL_E (1 << 2)
+#define WALL_W (1 << 3)
 
 const int MAZE_SIZE = 16;
-const int BLANK = 255;
+const uint8_t BLANK = 255;
 
-struct Coordinates { int r; int c; };
+struct Coordinates { uint8_t r; uint8_t c; };
 
-int manhattan_dist[MAZE_SIZE][MAZE_SIZE];
-bool horiz_walls[MAZE_SIZE + 1][MAZE_SIZE];
-bool vert_walls[MAZE_SIZE][MAZE_SIZE + 1];
+struct Cell {
+    uint8_t walls;
+    uint8_t dist;
+};
+
+Cell maze[MAZE_SIZE][MAZE_SIZE];
 
 Coordinates fila[512];
-int head = 0; int tail = 0;
+int head = 0;
+int tail = 0;
 
-void push(Coordinates cell) { fila[tail] = cell; tail = (tail + 1) % 512; }
-Coordinates pop() { Coordinates cell = fila[head]; head = (head + 1) % 512; return cell; }
+void push(Coordinates cell) {
+    fila[tail] = cell;
+    tail++;
+    if (tail == 512) tail = 0;
+}
+
+Coordinates pop() {
+    Coordinates cell = fila[head];
+    head++;
+    if (head == 512) head = 0;
+    return cell;
+}
+
 bool isEmpty() { return head == tail; }
 
+inline bool hasWall(int r, int c, uint8_t dir) {
+    return maze[r][c].walls & dir;
+}
+
+inline void setWall(int r, int c, uint8_t dir) {
+    maze[r][c].walls |= dir;
+}
 
 // API DO SIMULADOR MMS
 
@@ -29,146 +57,147 @@ void API_turnRight() { std::cout << "turnRight" << std::endl; std::string respon
 void API_turnLeft() { std::cout << "turnLeft" << std::endl; std::string response; std::cin >> response; }
 void API_setText(int x, int y, const std::string& text) { std::cout << "setText " << x << " " << y << " " << text << std::endl; }
 
-
 void inicializeMaze() {
     for (int r = 0; r < MAZE_SIZE; r++) {
         for (int c = 0; c < MAZE_SIZE; c++) {
-            manhattan_dist[r][c] = BLANK; horiz_walls[r][c] = false; vert_walls[r][c] = false;
+            maze[r][c].dist = BLANK;
+            maze[r][c].walls = 0;
         }
     }
+
     for (int i = 0; i < MAZE_SIZE; i++) {
-        horiz_walls[0][i] = true; horiz_walls[MAZE_SIZE][i] = true;
-        vert_walls[i][0] = true; vert_walls[i][MAZE_SIZE] = true;
+        maze[0][i].walls |= WALL_S;
+        maze[MAZE_SIZE-1][i].walls |= WALL_N;
+        maze[i][0].walls |= WALL_W;
+        maze[i][MAZE_SIZE-1].walls |= WALL_E;
     }
 }
 
-// Agora o floodfill aceita um alvo: 'C' (Center) ou 'S' (Start)
 void floodfill(char target) {
     for(int r = 0; r < MAZE_SIZE; r++) {
         for(int c = 0; c < MAZE_SIZE; c++) {
-            manhattan_dist[r][c] = BLANK;
+            maze[r][c].dist = BLANK;
         }
     }
-    head = 0; tail = 0;
 
-    if (target == 'C') { // Configura o objetivo para o Centro do labirinto
-        manhattan_dist[7][7] = 0; push({7, 7});
-        manhattan_dist[7][8] = 0; push({7, 8});
-        manhattan_dist[8][7] = 0; push({8, 7});
-        manhattan_dist[8][8] = 0; push({8, 8});
-    } else if (target == 'S') { // Configura o objetivo para o Início (0,0)
-        manhattan_dist[0][0] = 0; push({0, 0});
+    head = 0; 
+    tail = 0;
+
+    if (target == 'C') {
+        maze[7][7].dist = 0; push({7,7});
+        maze[7][8].dist = 0; push({7,8});
+        maze[8][7].dist = 0; push({8,7});
+        maze[8][8].dist = 0; push({8,8});
+    } else {
+        maze[0][0].dist = 0; push({0,0});
     }
 
     while (!isEmpty()) {
         Coordinates current = pop();
-        int r = current.r; int c = current.c; int current_val = manhattan_dist[r][c];
+        int r = current.r;
+        int c = current.c;
+        uint8_t current_val = maze[r][c].dist;
 
-        if (!horiz_walls[r + 1][c] && manhattan_dist[r + 1][c] == BLANK) { manhattan_dist[r + 1][c] = current_val + 1; push({r + 1, c}); }
-        if (!horiz_walls[r][c] && manhattan_dist[r - 1][c] == BLANK) { manhattan_dist[r - 1][c] = current_val + 1; push({r - 1, c}); }
-        if (!vert_walls[r][c + 1] && manhattan_dist[r][c + 1] == BLANK) { manhattan_dist[r][c + 1] = current_val + 1; push({r, c + 1}); }
-        if (!vert_walls[r][c] && manhattan_dist[r][c - 1] == BLANK) { manhattan_dist[r][c - 1] = current_val + 1; push({r, c - 1}); }
+        if (r < MAZE_SIZE-1 && !hasWall(r,c,WALL_N) && maze[r+1][c].dist == BLANK) {
+            maze[r+1][c].dist = current_val + 1;
+            push({(uint8_t)(r+1), c});
+        }
+
+        if (r > 0 && !hasWall(r,c,WALL_S) && maze[r-1][c].dist == BLANK) {
+            maze[r-1][c].dist = current_val + 1;
+            push({(uint8_t)(r-1), c});
+        }
+
+        if (c < MAZE_SIZE-1 && !hasWall(r,c,WALL_E) && maze[r][c+1].dist == BLANK) {
+            maze[r][c+1].dist = current_val + 1;
+            push({r, (uint8_t)(c+1)});
+        }
+
+        if (c > 0 && !hasWall(r,c,WALL_W) && maze[r][c-1].dist == BLANK) {
+            maze[r][c-1].dist = current_val + 1;
+            push({r, (uint8_t)(c-1)});
+        }
     }
 }
 
 void desenharDistanciasNoSimulador() {
     for (int r = 0; r < MAZE_SIZE; r++) {
         for (int c = 0; c < MAZE_SIZE; c++) {
-            API_setText(c, r, std::to_string(manhattan_dist[r][c]));
+            API_setText(c, r, std::to_string(maze[r][c].dist));
         }
     }
 }
 
 int main() {
     inicializeMaze();
-    floodfill('C'); // Começa com o objetivo de ir para o centro
+    floodfill('C');
     desenharDistanciasNoSimulador();
 
-    int r = 0;
-    int c = 0;
-    int dir = 0; // 0 = Norte, 1 = Leste, 2 = Sul, 3 = Oeste
-    
-    // Fases da missão do robô
-    int fase = 0; // 0 = Indo pro centro, 1 = Voltando pro inicio, 2 = Speed Run
+    int r = 0, c = 0, dir = 0;
+    int fase = 0;
 
     while (true) {
-        
-        // VERIFICAR SE CHEGOU NO OBJETIVO DA FASE ATUAL
-        if (fase == 0 && manhattan_dist[r][c] == 0) {
-            API_log("Fase 0: Centro alcancado! Iniciando exploracao de retorno...");
+
+        if (fase == 0 && maze[r][c].dist == 0) {
             fase = 1;
-            floodfill('S'); // Muda as aguas para fluirem para o (0,0)
-            desenharDistanciasNoSimulador();
-            // A API do MMS exige dar um tempo ou logar para não bugar a visualização
-        } 
-        else if (fase == 1 && r == 0 && c == 0) {
-            API_log("Fase 1: Retorno concluido! Iniciandoa caminho ótimo");
-            fase = 2;
-            floodfill('C'); // Muda as aguas para fluirem pro centro novamente
-            desenharDistanciasNoSimulador();
+            floodfill('S');
         }
-        else if (fase == 2 && manhattan_dist[r][c] == 0) {
-            API_log("Fase 2: VITORIA! Caminho ótimo concluido!");
-            break; // Termina o programa com sucesso!
+        else if (fase == 1 && r == 0 && c == 0) {
+            fase = 2;
+            floodfill('C');
+        }
+        else if (fase == 2 && maze[r][c].dist == 0) {
+            break;
         }
 
-        // 1. LER SENSORES
         bool wF = API_wallFront();
         bool wR = API_wallRight();
         bool wL = API_wallLeft();
         bool mapUpdated = false;
 
-        // 2. ATUALIZAR MATRIZ DE PAREDES
-        if (dir == 0) { // Norte
-            if (wF && !horiz_walls[r+1][c]) { horiz_walls[r+1][c] = true; mapUpdated = true; }
-            if (wR && !vert_walls[r][c+1])  { vert_walls[r][c+1] = true; mapUpdated = true; }
-            if (wL && !vert_walls[r][c])    { vert_walls[r][c] = true; mapUpdated = true; }
-        } else if (dir == 1) { // Leste
-            if (wF && !vert_walls[r][c+1])  { vert_walls[r][c+1] = true; mapUpdated = true; }
-            if (wR && !horiz_walls[r][c])   { horiz_walls[r][c] = true; mapUpdated = true; }
-            if (wL && !horiz_walls[r+1][c]) { horiz_walls[r+1][c] = true; mapUpdated = true; }
-        } else if (dir == 2) { // Sul
-            if (wF && !horiz_walls[r][c])   { horiz_walls[r][c] = true; mapUpdated = true; }
-            if (wR && !vert_walls[r][c])    { vert_walls[r][c] = true; mapUpdated = true; }
-            if (wL && !vert_walls[r][c+1])  { vert_walls[r][c+1] = true; mapUpdated = true; }
-        } else if (dir == 3) { // Oeste
-            if (wF && !vert_walls[r][c])    { vert_walls[r][c] = true; mapUpdated = true; }
-            if (wR && !horiz_walls[r+1][c]) { horiz_walls[r+1][c] = true; mapUpdated = true; }
-            if (wL && !horiz_walls[r][c])   { horiz_walls[r][c] = true; mapUpdated = true; }
+        // Atualização com proteção de limites
+        if (dir == 0) {
+            if (wF && !hasWall(r,c,WALL_N)) { 
+                setWall(r,c,WALL_N); 
+                if (r < MAZE_SIZE-1) setWall(r+1,c,WALL_S);
+                mapUpdated = true;
+            }
         }
 
-        // 3. RECALCULAR O MAPA SE ACHOU PAREDE NOVA
         if (mapUpdated) {
-            // Recalcula pro alvo certo dependendo da fase
-            if (fase == 1) floodfill('S'); 
-            else floodfill('C');
-            desenharDistanciasNoSimulador();
+            (fase == 1) ? floodfill('S') : floodfill('C');
         }
 
-        // 4. ESCOLHER O VIZINHO COM O MENOR NÚMERO
-        int min_dist = 999;
+        uint8_t min_dist = 255;
         int proxima_direcao = dir;
 
-        if (!horiz_walls[r+1][c] && manhattan_dist[r+1][c] < min_dist) { min_dist = manhattan_dist[r+1][c]; proxima_direcao = 0; } // Norte
-        if (!vert_walls[r][c+1] && manhattan_dist[r][c+1] < min_dist) { min_dist = manhattan_dist[r][c+1]; proxima_direcao = 1; } // Leste
-        if (!horiz_walls[r][c] && manhattan_dist[r-1][c] < min_dist)   { min_dist = manhattan_dist[r-1][c]; proxima_direcao = 2; } // Sul
-        if (!vert_walls[r][c] && manhattan_dist[r][c-1] < min_dist)   { min_dist = manhattan_dist[r][c-1]; proxima_direcao = 3; } // Oeste
-
-        // 5. VIRAR O RATO PARA A DIREÇÃO ESCOLHIDA
-        if (proxima_direcao == dir) {
-            // Nao faz nada
-        } else if (proxima_direcao == (dir + 1) % 4) {
-            API_turnRight(); dir = proxima_direcao;
-        } else if (proxima_direcao == (dir + 3) % 4) { 
-            API_turnLeft(); dir = proxima_direcao;
-        } else { 
-            API_turnRight(); API_turnRight(); dir = proxima_direcao;
+        if (r < MAZE_SIZE-1 && !hasWall(r,c,WALL_N) && maze[r+1][c].dist < min_dist) {
+            min_dist = maze[r+1][c].dist;
+            proxima_direcao = 0;
         }
 
-        // 6. ANDAR
+        if (c < MAZE_SIZE-1 && !hasWall(r,c,WALL_E) && maze[r][c+1].dist < min_dist) {
+            min_dist = maze[r][c+1].dist;
+            proxima_direcao = 1;
+        }
+
+        if (r > 0 && !hasWall(r,c,WALL_S) && maze[r-1][c].dist < min_dist) {
+            min_dist = maze[r-1][c].dist;
+            proxima_direcao = 2;
+        }
+
+        if (c > 0 && !hasWall(r,c,WALL_W) && maze[r][c-1].dist < min_dist) {
+            min_dist = maze[r][c-1].dist;
+            proxima_direcao = 3;
+        }
+
+        if (proxima_direcao == (dir + 1) % 4) API_turnRight();
+        else if (proxima_direcao == (dir + 3) % 4) API_turnLeft();
+        else if (proxima_direcao != dir) { API_turnRight(); API_turnRight(); }
+
+        dir = proxima_direcao;
         API_moveForward();
 
-        // 7. ATUALIZAR AS COORDENADAS INTERNAS
         if (dir == 0) r++;
         else if (dir == 1) c++;
         else if (dir == 2) r--;
