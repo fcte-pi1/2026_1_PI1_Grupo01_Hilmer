@@ -4,8 +4,8 @@
 #include <ArduinoJson.h> // Adicionado: Necessário para a sintaxe do objeto 'doc' funcionar
 
 // Definindo os pinos I2C padrão para a ESP32-C3
-#define I2C_SDA 8
-#define I2C_SCL 9
+#define I2C_SDA 21
+#define I2C_SCL 22
 
 SparkFun_APDS9960 apds = SparkFun_APDS9960();
 
