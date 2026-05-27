@@ -1,8 +1,7 @@
-
-#define SENSOR_LEFT   19
-#define SENSOR_FRONT   5
-#define SENSOR_RIGHT  16
-#define FILTER_SIZE 100
+#define SENSOR_LEFT   34
+#define SENSOR_FRONT  35
+#define SENSOR_RIGHT  36
+#define FILTER_SIZE 1
 
 struct SensorParede {
   int pin;
@@ -59,6 +58,10 @@ void loop() {
 
   Serial.print(" | FRENTE: ");
   Serial.print(sensorFrente.wallDetected ? "PAREDE" : "LIVRE");
+  Serial.print(" | direita: ");
+  Serial.print(sensorDir.wallDetected ? "PAREDE" : "LIVRE");
+  Serial.print(" | esquerda: ");
+  Serial.print(sensorEsq.wallDetected ? "PAREDE" : "LIVRE");
   Serial.print("\n");
 
   delay(30);
