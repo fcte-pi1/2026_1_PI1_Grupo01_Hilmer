@@ -27,9 +27,21 @@ void printTelemetry()
     Serial.print(power);
     Serial.println(" W");
 
-    if (lowBattery(voltage))
+    if (criticalBattery(voltage))
+    {
+        Serial.println("CRITICAL BATTERY");
+    }
+    else if (veryLowBattery(voltage))
+    {
+        Serial.println("VERY LOW BATTERY");
+    }
+    else if (lowBattery(voltage))
     {
         Serial.println("LOW BATTERY");
+    }
+    else
+    {
+        Serial.println("BATTERY OK");
     }
 }
 

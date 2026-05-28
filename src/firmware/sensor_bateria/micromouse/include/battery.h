@@ -11,4 +11,8 @@ float readPower();
 
 bool lowBattery(float voltage);
 
+bool veryLowBattery(float voltage);
+
+bool criticalBattery(float voltage);
+
 #endif

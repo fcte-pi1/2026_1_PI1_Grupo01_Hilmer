@@ -6,6 +6,12 @@
 
 #define INA226_ADDRESS 0x40
 
-#define LOW_BATTERY_VOLTAGE 6.0
+/*
+    Limites da bateria LiPo 2S
+*/
+
+#define LOW_BATTERY_VOLTAGE 7.0
+#define VERY_LOW_BATTERY_VOLTAGE 6.6
+#define CRITICAL_BATTERY_VOLTAGE 6.0
 
 #endif

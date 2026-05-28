@@ -97,3 +97,18 @@ bool lowBattery(float voltage)
 {
     return voltage <= LOW_BATTERY_VOLTAGE;
 }
+
+bool lowBattery(float voltage)
+{
+    return voltage <= LOW_BATTERY_VOLTAGE;
+}
+
+bool veryLowBattery(float voltage)
+{
+    return voltage <= VERY_LOW_BATTERY_VOLTAGE;
+}
+
+bool criticalBattery(float voltage)
+{
+    return voltage <= CRITICAL_BATTERY_VOLTAGE;
+}
