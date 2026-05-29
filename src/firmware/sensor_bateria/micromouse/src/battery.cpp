@@ -98,11 +98,6 @@ bool lowBattery(float voltage)
     return voltage <= LOW_BATTERY_VOLTAGE;
 }
 
-bool lowBattery(float voltage)
-{
-    return voltage <= LOW_BATTERY_VOLTAGE;
-}
-
 bool veryLowBattery(float voltage)
 {
     return voltage <= VERY_LOW_BATTERY_VOLTAGE;
@@ -111,4 +106,24 @@ bool veryLowBattery(float voltage)
 bool criticalBattery(float voltage)
 {
     return voltage <= CRITICAL_BATTERY_VOLTAGE;
+}
+
+float batteryPercentage(float voltage)
+{
+    if (voltage >= 8.4)
+        return 100;
+    if (voltage >= 8.2)
+        return 90;
+    if (voltage >= 8.0)
+        return 80;
+    if (voltage >= 7.8)
+        return 60;
+    if (voltage >= 7.6)
+        return 40;
+    if (voltage >= 7.4)
+        return 20;
+    if (voltage >= 7.0)
+        return 10;
+
+    return 0;
 }

@@ -15,4 +15,6 @@ bool veryLowBattery(float voltage);
 
 bool criticalBattery(float voltage);
 
+float batteryPercentage(float voltage);
+
 #endif

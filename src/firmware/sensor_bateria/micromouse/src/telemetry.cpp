@@ -45,4 +45,11 @@ void printTelemetry()
     }
 }
 
+float percentage =
+    batteryPercentage(voltage);
+
+Serial.print("Battery: ");
+Serial.print(percentage);
+Serial.println("%");
+
 #endif
