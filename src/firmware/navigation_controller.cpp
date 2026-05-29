@@ -24,6 +24,10 @@
 #define TURN_TIME_90   220
 #define TURN_TIME_180  450
 
+// Limite de segurança do PWM para proteger o driver MX1508
+// 178 equivale a ~70% de 255 (Simula 6V)
+#define MAX_PWM 178 
+
 //ENUMS
 
 enum Direction : uint8_t {
@@ -137,7 +141,7 @@ public:
     }
 };
 
-//MOTOR CONTROLLER
+//MOTOR CONTROLLER (AJUSTADO COM PWM)
 
 class MotorController {
 
@@ -165,38 +169,38 @@ public:
 
     inline void forward() {
 
-        digitalWrite(MOTOR_IN1, HIGH);
+        analogWrite(MOTOR_IN1, MAX_PWM);
         digitalWrite(MOTOR_IN2, LOW);
 
-        digitalWrite(MOTOR_IN3, HIGH);
+        analogWrite(MOTOR_IN3, MAX_PWM);
         digitalWrite(MOTOR_IN4, LOW);
     }
 
     inline void backward() {
 
         digitalWrite(MOTOR_IN1, LOW);
-        digitalWrite(MOTOR_IN2, HIGH);
+        analogWrite(MOTOR_IN2, MAX_PWM);
 
         digitalWrite(MOTOR_IN3, LOW);
-        digitalWrite(MOTOR_IN4, HIGH);
+        analogWrite(MOTOR_IN4, MAX_PWM);
     }
 
     inline void turnLeft() {
 
         digitalWrite(MOTOR_IN1, LOW);
-        digitalWrite(MOTOR_IN2, HIGH);
+        analogWrite(MOTOR_IN2, MAX_PWM);
 
-        digitalWrite(MOTOR_IN3, HIGH);
+        analogWrite(MOTOR_IN3, MAX_PWM);
         digitalWrite(MOTOR_IN4, LOW);
     }
 
     inline void turnRight() {
 
-        digitalWrite(MOTOR_IN1, HIGH);
+        analogWrite(MOTOR_IN1, MAX_PWM);
         digitalWrite(MOTOR_IN2, LOW);
 
         digitalWrite(MOTOR_IN3, LOW);
-        digitalWrite(MOTOR_IN4, HIGH);
+        analogWrite(MOTOR_IN4, MAX_PWM);
     }
 
     void execute(MoveCommand cmd) {
