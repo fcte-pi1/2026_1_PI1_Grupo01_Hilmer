@@ -1,0 +1,103 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  padding: var(--space-6) var(--space-8);
+  gap: var(--space-6);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.layout {
+  display: flex;
+  gap: var(--space-6);
+  flex: 1;
+  overflow: hidden;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  flex: 1;
+  overflow-y: auto;
+  padding-right: var(--space-2);
+}
+
+.detail {
+  width: 300px;
+  flex-shrink: 0;
+}
+
+.detailHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+}
+
+.detailTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--color-text-primary);
+}
+
+.detailGrid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-sidebar-border);
+}
+
+.detailRow dt {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.detailRow dd {
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--color-text-primary);
+}
+
+.failureNote {
+  margin-top: var(--space-4);
+  font-size: 0.8rem;
+  color: var(--color-error);
+  border-top: 1px solid var(--color-sidebar-border);
+  padding-top: var(--space-3);
+}
+
+.emptyDetail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 120px;
+  border: 1px dashed var(--color-sidebar-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: var(--space-4);
+}
