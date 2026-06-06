@@ -1,6 +1,8 @@
-#define SENSOR_LEFT   34
-#define SENSOR_FRONT  35
-#define SENSOR_RIGHT  36
+#include <Arduino.h>
+
+#define SENSOR_LEFT 34
+#define SENSOR_FRONT 35
+#define SENSOR_RIGHT 36
 #define FILTER_SIZE 1
 
 struct SensorParede {
@@ -10,11 +12,11 @@ struct SensorParede {
   bool wallDetected;
 };
 
-SensorParede sensorEsq    = {SENSOR_LEFT};
+SensorParede sensorEsq = {SENSOR_LEFT};
 SensorParede sensorFrente = {SENSOR_FRONT};
-SensorParede sensorDir    = {SENSOR_RIGHT};
+SensorParede sensorDir = {SENSOR_RIGHT};
 
-void initSensor(SensorParede &sensor) {
+void initSensor(SensorParede& sensor) {
   sensor.index = 0;
   sensor.wallDetected = false;
 
@@ -23,7 +25,7 @@ void initSensor(SensorParede &sensor) {
   }
 }
 
-bool lerSensorFiltrado(SensorParede &sensor) {
+bool lerSensorFiltrado(SensorParede& sensor) {
   int value = digitalRead(sensor.pin);
 
   sensor.readings[sensor.index] = value;
@@ -62,7 +64,7 @@ void loop() {
   Serial.print(sensorDir.wallDetected ? "PAREDE" : "LIVRE");
   Serial.print(" | esquerda: ");
   Serial.print(sensorEsq.wallDetected ? "PAREDE" : "LIVRE");
-  Serial.print("\n");
+  Serial.println();
 
   delay(30);
 }
