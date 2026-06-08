@@ -12,9 +12,7 @@
     "node": ">=18"
   },
   "dependencies": {
-    "ws": "^8.20.1"
-  },
-  "devDependencies": {
-    "vitest": "^4.1.6"
+    "dotenv": "^17.4.2",
+    "pg": "^8.21.0"
   }
 }
