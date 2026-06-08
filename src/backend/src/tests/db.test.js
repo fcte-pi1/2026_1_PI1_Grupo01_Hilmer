@@ -19,11 +19,11 @@ console.log(JSON.stringify(process.env.DB_PASSWORD));
 console.log('ENV carregado:', path.resolve(__dirname, '../../.env'));
 
 const pool = new Pool({
-  host: 'localhost',
-  port: 5432,
-  database: 'micromouse_db',
-  user: 'pi1_user',
-  password: 'pi1senha123',
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
 });
 
 console.log({
@@ -84,10 +84,10 @@ async function testarInsertHistorico() {
   try {
     const res = await pool.query(`
       INSERT INTO HISTORICO
-        (percentualBateria, velocidadeMedia, tempoConclusao, desafioCumprido,
+        (numTentativa, percentualBateria, velocidadeMedia, tempoConclusao, desafioCumprido,
          correnteEletrica, tensaoEletrica, tipoLabirinto)
       VALUES
-        (85.5, 0.45, NOW(), 'SIM', 1.2, 7.4, 'PADRAO')
+        (100, 85.5, 0.45, NOW(), 'SIM', 1.2, 7.4, '16x16')
       RETURNING numTentativa
     `);
     const id = res.rows[0].numtentativa;
@@ -112,7 +112,7 @@ async function testarInsertTelemetria(numTentativa) {
          posHRecente, posVRecente, velocidadeAtual, bateriaAtual,
          tensaoAtual, sensorCor, sensorEsquerda, sensorDireita, sensorFrontal)
       VALUES
-        ($1, NOW(), 7.3, 1.1, 0, 0, 0.5, 88.0, 7.4, 'BRANCO', 15.0, 20.0, 5.0)
+        ($1, NOW(), 7.3, 1.1, 0, 0, 0.5, 88.0, 7.4, '#ffffff', 15.0, 20.0, 5.0)
     `, [numTentativa]);
     ok('TELEMETRIA inserida e vinculada ao HISTORICO');
   } catch (e) {

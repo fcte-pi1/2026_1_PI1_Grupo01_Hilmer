@@ -80,7 +80,7 @@ function connectToESP32() {
       const payload = JSON.parse(data.toString());
 
       // Persiste no banco
-      await simulationService.inserirTelemetria(payload);
+      // await simulationService.inserirTelemetria(payload);
 
       // Retransmite ao frontend
       broadcastToFrontend(data);
