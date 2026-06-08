@@ -1,0 +1,7 @@
+# Artefatos gerados pela suíte de testes
+*.json
+*.html
+*.xml
+*.log
+run-results.json
+!generate_report.js

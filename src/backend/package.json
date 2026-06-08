@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "node --env-file=.env --watch src/server.js",
     "start": "node --env-file=.env src/server.js",
-    "test": "vitest run tests && node --test src/server.test.js"
+    "test": "vitest run tests && node --test src/server.test.js",
+    "test:floodfill:mms": "node tests/mms_harness/run_all.js",
+    "test:floodfill:mms:quick": "node tests/mms_harness/run_all.js --scenario=CT01"
   },
   "engines": {
     "node": ">=18"

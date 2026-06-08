@@ -1,0 +1,14 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+
+#define MAZE_SIZE 16
+
+#define TASK_STACK_SMALL 2048
+#define TASK_STACK_MEDIUM 4096
+#define TASK_STACK_LARGE 8192
+
+#define TASK_PRIORITY_LOW 1
+#define TASK_PRIORITY_MEDIUM 2
+#define TASK_PRIORITY_HIGH 3
+
+#endif
