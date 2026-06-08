@@ -9,6 +9,15 @@ node_modules/
 dist/
 build/
 
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# Relatórios locais (não versionados)
+reports/resultados-testes-filtro-historico.md
+
 # Adicione outros arquivos a serem ignorados aqui
 # ...
 
