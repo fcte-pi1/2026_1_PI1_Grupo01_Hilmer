@@ -1,13 +1,18 @@
 #include "navigation/floodfill.h"
+#include "navigation/floodfill_engine.h"
+#include "config/config.h"
 #include "memory/maze_memory.h"
 
 void floodfill(uint8_t goal)
 {
-    for (int y = 0; y < 16; y++)
+    floodfill_init();
+    floodfill_complete('C');
+
+    if (goal < MAZE_SIZE)
     {
-        for (int x = 0; x < 16; x++)
-        {
-            maze[y][x] = goal;
-        }
+        for (int y = 0; y < MAZE_SIZE; y++)
+            for (int x = 0; x < MAZE_SIZE; x++)
+                if (manhattan_dist[y][x] == goal)
+                    return;
     }
 }
