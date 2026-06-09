@@ -11,12 +11,7 @@
 #include "src/tasks/task_control.h"
 #include "src/tasks/task_comm.h"
 
-void sensors_init()
-{
-#ifdef ARDUINO
-    // Inicialização dos sensores
-#endif
-}
+
 
 void setup()
 {
@@ -60,3 +55,4 @@ void loop()
 {
     vTaskDelay(pdMS_TO_TICKS(1000));
 }
+

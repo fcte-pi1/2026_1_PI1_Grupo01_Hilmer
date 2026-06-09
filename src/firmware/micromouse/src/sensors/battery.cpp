@@ -16,7 +16,7 @@ void initBatteryMonitor()
     if (!ina.begin())
     {
         Serial.println("INA226 NOT DETECTED");
-        while (1);
+        // while (1); // Descomente para travar caso o INA não seja detectado
     }
     Serial.println("INA226 CONNECTED");
 #endif

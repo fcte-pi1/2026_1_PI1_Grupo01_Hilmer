@@ -155,21 +155,21 @@ void floodfill_step() {
   bool mapUpdated = false;
 
   if (dir == 0) {
-    if (wF && !horiz_walls[pos_r+1][pos_c]) { horiz_walls[pos_r+1][pos_c] = true; mapUpdated = true; pushUnique({(uint8_t)pos_r,(uint8_t)pos_c}); if (pos_r+1 < MAZE_SIZE) pushUnique({(uint8_t)(pos_r+1),(uint8_t)pos_c}); }
-    if (wR && !vert_walls[pos_r][pos_c+1])  { vert_walls[pos_r][pos_c+1] = true; mapUpdated = true; pushUnique({(uint8_t)pos_r,(uint8_t)pos_c}); if (pos_c+1 < MAZE_SIZE) pushUnique({(uint8_t)pos_r,(uint8_t)(pos_c+1)}); }
-    if (wL && !vert_walls[pos_r][pos_c])    { vert_walls[pos_r][pos_c] = true; mapUpdated = true; pushUnique({(uint8_t)pos_r,(uint8_t)pos_c}); if (pos_c-1 >= 0) pushUnique({(uint8_t)pos_r,(uint8_t)(pos_c-1)}); }
+    if (wF && pos_r+1 < MAZE_SIZE && !horiz_walls[pos_r+1][pos_c]) { horiz_walls[pos_r+1][pos_c] = true; mapUpdated = true; pushUnique({(uint8_t)pos_r,(uint8_t)pos_c}); if (pos_r+1 < MAZE_SIZE) pushUnique({(uint8_t)(pos_r+1),(uint8_t)pos_c}); }
+    if (wR && pos_c+1 < MAZE_SIZE && !vert_walls[pos_r][pos_c+1])  { vert_walls[pos_r][pos_c+1] = true; mapUpdated = true; pushUnique({(uint8_t)pos_r,(uint8_t)pos_c}); if (pos_c+1 < MAZE_SIZE) pushUnique({(uint8_t)pos_r,(uint8_t)(pos_c+1)}); }
+    if (wL && pos_c > 0 && !vert_walls[pos_r][pos_c])    { vert_walls[pos_r][pos_c] = true; mapUpdated = true; pushUnique({(uint8_t)pos_r,(uint8_t)pos_c}); if (pos_c-1 >= 0) pushUnique({(uint8_t)pos_r,(uint8_t)(pos_c-1)}); }
   } else if (dir == 1) {
-    if (wF && !vert_walls[pos_r][pos_c+1])  { vert_walls[pos_r][pos_c+1] = true; mapUpdated = true; pushUnique({(uint8_t)pos_r,(uint8_t)pos_c}); if (pos_c+1 < MAZE_SIZE) pushUnique({(uint8_t)pos_r,(uint8_t)(pos_c+1)}); }
-    if (wR && !horiz_walls[pos_r][pos_c])   { horiz_walls[pos_r][pos_c] = true; mapUpdated = true; pushUnique({(uint8_t)pos_r,(uint8_t)pos_c}); if (pos_r-1 >= 0) pushUnique({(uint8_t)(pos_r-1),(uint8_t)pos_c}); }
-    if (wL && !horiz_walls[pos_r+1][pos_c]) { horiz_walls[pos_r+1][pos_c] = true; mapUpdated = true; pushUnique({(uint8_t)pos_r,(uint8_t)pos_c}); if (pos_r+1 < MAZE_SIZE) pushUnique({(uint8_t)(pos_r+1),(uint8_t)pos_c}); }
+    if (wF && pos_c+1 < MAZE_SIZE && !vert_walls[pos_r][pos_c+1])  { vert_walls[pos_r][pos_c+1] = true; mapUpdated = true; pushUnique({(uint8_t)pos_r,(uint8_t)pos_c}); if (pos_c+1 < MAZE_SIZE) pushUnique({(uint8_t)pos_r,(uint8_t)(pos_c+1)}); }
+    if (wR && pos_r > 0 && !horiz_walls[pos_r][pos_c])   { horiz_walls[pos_r][pos_c] = true; mapUpdated = true; pushUnique({(uint8_t)pos_r,(uint8_t)pos_c}); if (pos_r-1 >= 0) pushUnique({(uint8_t)(pos_r-1),(uint8_t)pos_c}); }
+    if (wL && pos_r+1 < MAZE_SIZE && !horiz_walls[pos_r+1][pos_c]) { horiz_walls[pos_r+1][pos_c] = true; mapUpdated = true; pushUnique({(uint8_t)pos_r,(uint8_t)pos_c}); if (pos_r+1 < MAZE_SIZE) pushUnique({(uint8_t)(pos_r+1),(uint8_t)pos_c}); }
   } else if (dir == 2) {
-    if (wF && !horiz_walls[pos_r][pos_c])   { horiz_walls[pos_r][pos_c] = true; mapUpdated = true; pushUnique({(uint8_t)pos_r,(uint8_t)pos_c}); if (pos_r-1 >= 0) pushUnique({(uint8_t)(pos_r-1),(uint8_t)pos_c}); }
-    if (wR && !vert_walls[pos_r][pos_c])    { vert_walls[pos_r][pos_c] = true; mapUpdated = true; pushUnique({(uint8_t)pos_r,(uint8_t)pos_c}); if (pos_c-1 >= 0) pushUnique({(uint8_t)pos_r,(uint8_t)(pos_c-1)}); }
-    if (wL && !vert_walls[pos_r][pos_c+1])  { vert_walls[pos_r][pos_c+1] = true; mapUpdated = true; pushUnique({(uint8_t)pos_r,(uint8_t)pos_c}); if (pos_c+1 < MAZE_SIZE) pushUnique({(uint8_t)pos_r,(uint8_t)(pos_c+1)}); }
+    if (wF && pos_r > 0 && !horiz_walls[pos_r][pos_c])   { horiz_walls[pos_r][pos_c] = true; mapUpdated = true; pushUnique({(uint8_t)pos_r,(uint8_t)pos_c}); if (pos_r-1 >= 0) pushUnique({(uint8_t)(pos_r-1),(uint8_t)pos_c}); }
+    if (wR && pos_c > 0 && !vert_walls[pos_r][pos_c])    { vert_walls[pos_r][pos_c] = true; mapUpdated = true; pushUnique({(uint8_t)pos_r,(uint8_t)pos_c}); if (pos_c-1 >= 0) pushUnique({(uint8_t)pos_r,(uint8_t)(pos_c-1)}); }
+    if (wL && pos_c+1 < MAZE_SIZE && !vert_walls[pos_r][pos_c+1])  { vert_walls[pos_r][pos_c+1] = true; mapUpdated = true; pushUnique({(uint8_t)pos_r,(uint8_t)pos_c}); if (pos_c+1 < MAZE_SIZE) pushUnique({(uint8_t)pos_r,(uint8_t)(pos_c+1)}); }
   } else if (dir == 3) {
-    if (wF && !vert_walls[pos_r][pos_c])    { vert_walls[pos_r][pos_c] = true; mapUpdated = true; pushUnique({(uint8_t)pos_r,(uint8_t)pos_c}); if (pos_c-1 >= 0) pushUnique({(uint8_t)pos_r,(uint8_t)(pos_c-1)}); }
-    if (wR && !horiz_walls[pos_r+1][pos_c]) { horiz_walls[pos_r+1][pos_c] = true; mapUpdated = true; pushUnique({(uint8_t)pos_r,(uint8_t)pos_c}); if (pos_r+1 < MAZE_SIZE) pushUnique({(uint8_t)(pos_r+1),(uint8_t)pos_c}); }
-    if (wL && !horiz_walls[pos_r][pos_c])   { horiz_walls[pos_r][pos_c] = true; mapUpdated = true; pushUnique({(uint8_t)pos_r,(uint8_t)pos_c}); if (pos_r-1 >= 0) pushUnique({(uint8_t)(pos_r-1),(uint8_t)pos_c}); }
+    if (wF && pos_c > 0 && !vert_walls[pos_r][pos_c])    { vert_walls[pos_r][pos_c] = true; mapUpdated = true; pushUnique({(uint8_t)pos_r,(uint8_t)pos_c}); if (pos_c-1 >= 0) pushUnique({(uint8_t)pos_r,(uint8_t)(pos_c-1)}); }
+    if (wR && pos_r+1 < MAZE_SIZE && !horiz_walls[pos_r+1][pos_c]) { horiz_walls[pos_r+1][pos_c] = true; mapUpdated = true; pushUnique({(uint8_t)pos_r,(uint8_t)pos_c}); if (pos_r+1 < MAZE_SIZE) pushUnique({(uint8_t)(pos_r+1),(uint8_t)pos_c}); }
+    if (wL && pos_r > 0 && !horiz_walls[pos_r][pos_c])   { horiz_walls[pos_r][pos_c] = true; mapUpdated = true; pushUnique({(uint8_t)pos_r,(uint8_t)pos_c}); if (pos_r-1 >= 0) pushUnique({(uint8_t)(pos_r-1),(uint8_t)pos_c}); }
   }
 
   if (mapUpdated) {
@@ -177,10 +177,10 @@ void floodfill_step() {
   }
 
   int min_dist = 999; int proxima_direcao = dir;
-  if (!horiz_walls[pos_r+1][pos_c] && manhattan_dist[pos_r+1][pos_c] < min_dist) { min_dist = manhattan_dist[pos_r+1][pos_c]; proxima_direcao = 0; }
-  if (!vert_walls[pos_r][pos_c+1] && manhattan_dist[pos_r][pos_c+1] < min_dist)  { min_dist = manhattan_dist[pos_r][pos_c+1]; proxima_direcao = 1; }
-  if (!horiz_walls[pos_r][pos_c] && manhattan_dist[pos_r-1][pos_c] < min_dist)   { min_dist = manhattan_dist[pos_r-1][pos_c]; proxima_direcao = 2; }
-  if (!vert_walls[pos_r][pos_c] && manhattan_dist[pos_r][pos_c-1] < min_dist)    { min_dist = manhattan_dist[pos_r][pos_c-1]; proxima_direcao = 3; }
+  if (pos_r+1 < MAZE_SIZE && !horiz_walls[pos_r+1][pos_c] && manhattan_dist[pos_r+1][pos_c] < min_dist) { min_dist = manhattan_dist[pos_r+1][pos_c]; proxima_direcao = 0; }
+  if (pos_c+1 < MAZE_SIZE && !vert_walls[pos_r][pos_c+1] && manhattan_dist[pos_r][pos_c+1] < min_dist)  { min_dist = manhattan_dist[pos_r][pos_c+1]; proxima_direcao = 1; }
+  if (pos_r > 0 && !horiz_walls[pos_r][pos_c] && manhattan_dist[pos_r-1][pos_c] < min_dist)   { min_dist = manhattan_dist[pos_r-1][pos_c]; proxima_direcao = 2; }
+  if (pos_c > 0 && !vert_walls[pos_r][pos_c] && manhattan_dist[pos_r][pos_c-1] < min_dist)    { min_dist = manhattan_dist[pos_r][pos_c-1]; proxima_direcao = 3; }
 
   if (min_dist == 999) {
     finalizado = true; 
