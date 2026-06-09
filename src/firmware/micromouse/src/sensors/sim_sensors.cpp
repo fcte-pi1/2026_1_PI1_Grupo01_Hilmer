@@ -1,20 +1,20 @@
-#include "sensors.h"
+#include "sim_sensors.h"
 
-void sensors_init()
+void sim_sensors_init()
 {
 }
 
-float sensors_read_front()
+float sim_read_front_sensor()
 {
     return 10.0f;
 }
 
-float sensors_read_left()
+float sim_read_left_sensor()
 {
     return 8.0f;
 }
 
-float sensors_read_right()
+float sim_read_right_sensor()
 {
     return 8.0f;
 }

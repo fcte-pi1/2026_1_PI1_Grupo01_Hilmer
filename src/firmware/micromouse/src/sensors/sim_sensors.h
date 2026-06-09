@@ -1,10 +1,9 @@
-#ifndef SENSORS_H
-#define SENSORS_H
+#ifndef SIM_SENSORS_H
+#define SIM_SENSORS_H
 
-void sensors_init();
-
-float sensors_read_front();
-float sensors_read_left();
-float sensors_read_right();
+void sim_sensors_init();
+float sim_read_front_sensor();
+float sim_read_left_sensor();
+float sim_read_right_sensor();
 
 #endif

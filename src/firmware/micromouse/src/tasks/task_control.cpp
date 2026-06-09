@@ -1,39 +1,18 @@
-#include "sensors/sensors.h"
+#include "task_control.h"
+#include "../navigation/floodfill.h"
 
-#ifdef ARDUINO
+#ifdef TARGET_ESP32
 #include <Arduino.h>
 #endif
 
-void sensors_init()
+void task_control(void *param)
 {
-#ifdef ARDUINO
-    // Inicialização dos sensores
-#endif
-}
+    floodfill_init();
 
-uint16_t sensors_read_front()
-{
-#ifdef ARDUINO
-    return analogRead(34);
-#else
-    return 100;
-#endif
-}
+    while (true)
+    {
+        floodfill_step();
 
-uint16_t sensors_read_left()
-{
-#ifdef ARDUINO
-    return analogRead(35);
-#else
-    return 80;
-#endif
-}
-
-uint16_t sensors_read_right()
-{
-#ifdef ARDUINO
-    return analogRead(32);
-#else
-    return 90;
-#endif
+        vTaskDelay(50 / portTICK_PERIOD_MS);
+    }
 }

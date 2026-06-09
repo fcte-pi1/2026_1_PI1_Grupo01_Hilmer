@@ -1,3 +1,1 @@
-#include "memory/sensor_memory.h"
-
-SensorData sensors = {0, 0, 0};
+#include "sensor_memory.h"`n`nSensorData sensors = {0, 0, 0, 0.0, 0.0, 0.0, {0, 0, 0}};
