@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "node --env-file=.env --watch src/server.js",
     "start": "node --env-file=.env src/server.js",
-    "test": "vitest run tests && node --test src/server.test.js"
+    "test": "vitest run",
+    "test:api": "vitest run tests",
+    "test:db": "vitest run src/tests/db.test.js"
   },
   "engines": {
     "node": ">=18"
@@ -16,6 +18,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "pg": "^8.21.0",
+    "vitest": "^4.1.8",
     "ws": "^8.21.0"
   }
 }

@@ -30,6 +30,18 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'online', timestamp: new Date().toISOString() });
 });
 
+app.get('/api/status', (_req, res) => {
+  res.json({
+    frontend: frontendOrigin,
+    backend: `http://${host}:${port}`,
+    database: {
+      host: process.env.DB_HOST || 'localhost',
+      port: Number(process.env.DB_PORT || 5432),
+      name: process.env.DB_NAME || 'micromouse_db',
+    },
+  });
+});
+
 app.use('/api/mouse', mouseRoutes);
 app.use('/api', simulationRoutes); // monta: /api/historico, /api/telemetria, /api/trajeto
 
@@ -110,4 +122,4 @@ httpServer.listen(port, host, () => {
   console.log(`[backend] Servidor rodando em http://${host}:${port}`);
 });
 
-export { app, httpServer, wssReact };
+export { app, httpServer, httpServer as server, wssReact, connectToESP32 };

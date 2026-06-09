@@ -115,7 +115,7 @@ O `-v` destrói o volume `pgdata`, forçando o PostgreSQL a re-executar o `schem
 Com o banco rodando, execute:
 
 ```bash
-node db.test.js
+npm run test:db
 ```
 
 Os testes verificam:
