@@ -1,7 +1,7 @@
 #include "task_control.h"
 #include "../navigation/floodfill.h"
 
-#ifdef TARGET_ESP32
+#ifdef ARDUINO
 #include <Arduino.h>
 #endif
 

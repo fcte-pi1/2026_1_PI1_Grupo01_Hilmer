@@ -1,4 +1,4 @@
-#include "memory/maze_memory.h"
+#include "maze_memory.h"
 #include <string.h>
 
 uint8_t manhattan_dist[MAZE_SIZE][MAZE_SIZE];

@@ -1,15 +1,15 @@
 #include <Arduino.h>
 
-#include "config/config.h"
+#include "src/config/config.h"
 
-#include "sensors/sensors.h"
-#include "motors/motors.h"
+#include "src/sensors/sensors.h"
+#include "src/motors/motors.h"
 
-#include "communication/comm.h"
+#include "src/communication/comm.h"
 
-#include "tasks/task_sensors.h"
-#include "tasks/task_control.h"
-#include "tasks/task_comm.h"
+#include "src/tasks/task_sensors.h"
+#include "src/tasks/task_control.h"
+#include "src/tasks/task_comm.h"
 
 void sensors_init()
 {

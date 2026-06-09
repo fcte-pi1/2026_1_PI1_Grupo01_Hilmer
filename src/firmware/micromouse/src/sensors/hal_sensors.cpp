@@ -2,7 +2,7 @@
 #include "battery.h"
 #include "rgb_sensor.h"
 
-#ifdef TARGET_ESP32
+#ifdef ARDUINO
 
 #include <Arduino.h>
 

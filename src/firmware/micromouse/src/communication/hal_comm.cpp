@@ -1,6 +1,6 @@
 #include "hal_comm.h"
 
-#ifdef TARGET_ESP32
+#ifdef ARDUINO
 
 #include <Arduino.h>
 

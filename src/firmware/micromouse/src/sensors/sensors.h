@@ -1,7 +1,7 @@
 #ifndef SENSORS_H
 #define SENSORS_H
 
-#ifdef TARGET_ESP32
+#ifdef ARDUINO
 #include "hal_sensors.h"
 #define sensors_init hal_sensors_init
 #define sensors_read_front hal_read_front_sensor

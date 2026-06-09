@@ -1,3 +1,4 @@
+#ifndef ARDUINO
 #include "sim_comm.h"
 
 #include <stdio.h>
@@ -11,3 +12,4 @@ void hal_comm_send(const char *msg)
 {
     printf("[SIM]: %s\n", msg);
 }
+#endif

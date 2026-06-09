@@ -1,11 +1,12 @@
+#ifdef TEST_MODE
 /**
  * Firmware de teste para Wokwi (ESP32-WROOM-32D / esp32dev).
  * Imprime marcadores parseáveis na Serial para automação.
  */
 #include <Arduino.h>
-#include "navigation/floodfill_engine.h"
-#include "memory/maze_memory.h"
-#include "config/config.h"
+#include "../navigation/floodfill_engine.h"
+#include "../memory/maze_memory.h"
+#include "../config/config.h"
 
 static int testsPassed = 0;
 static int testsFailed = 0;
@@ -79,3 +80,4 @@ void loop(void)
 {
     delay(1000);
 }
+#endif

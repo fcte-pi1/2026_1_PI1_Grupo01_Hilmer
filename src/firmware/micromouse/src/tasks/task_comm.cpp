@@ -1,4 +1,4 @@
-#include "tasks/task_comm.h"
+#include "task_comm.h"
 
 #include "comm/comm.h"
 

@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "config/config.h"
+#include "../config/config.h"
 
 #define BLANK 255
 

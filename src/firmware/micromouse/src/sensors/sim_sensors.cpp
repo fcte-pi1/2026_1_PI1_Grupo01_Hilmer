@@ -1,3 +1,4 @@
+#ifndef ARDUINO
 #include "sim_sensors.h"
 
 void sim_sensors_init()
@@ -18,3 +19,4 @@ float sim_read_right_sensor()
 {
     return 8.0f;
 }
+#endif

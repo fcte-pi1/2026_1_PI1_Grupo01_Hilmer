@@ -1,7 +1,7 @@
-#include "navigation/floodfill.h"
-#include "memory/maze_memory.h"
-#include "memory/sensor_memory.h"
-#include "motors/motors.h"
+#include "floodfill.h"
+#include "../memory/maze_memory.h"
+#include "../memory/sensor_memory.h"
+#include "../motors/motors.h"
 #include <Arduino.h>
 #include <string.h>
 

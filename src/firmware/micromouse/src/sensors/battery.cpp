@@ -1,7 +1,7 @@
 #include "battery.h"
 #include "../config/config.h"
 
-#ifdef TARGET_ESP32
+#ifdef ARDUINO
 #include <Arduino.h>
 #include <Wire.h>
 #include <INA226.h>
@@ -11,7 +11,7 @@ INA226 ina(INA226_ADDRESS);
 
 void initBatteryMonitor()
 {
-#ifdef TARGET_ESP32
+#ifdef ARDUINO
     Wire.begin(SDA_PIN, SCL_PIN);
     if (!ina.begin())
     {
@@ -24,7 +24,7 @@ void initBatteryMonitor()
 
 float readVoltage()
 {
-#ifdef TARGET_ESP32
+#ifdef ARDUINO
     return ina.getBusVoltage();
 #else
     return 7.4f;
@@ -33,7 +33,7 @@ float readVoltage()
 
 float readCurrent()
 {
-#ifdef TARGET_ESP32
+#ifdef ARDUINO
     return ina.getCurrent_mA() / 1000.0f;
 #else
     return 0.35f;
@@ -42,7 +42,7 @@ float readCurrent()
 
 float readPower()
 {
-#ifdef TARGET_ESP32
+#ifdef ARDUINO
     return ina.getPower_mW() / 1000.0f;
 #else
     return readVoltage() * readCurrent();

@@ -1,4 +1,4 @@
-#include "utils/bitmask.h"
+#include "bitmask.h"
 
 bool hasWall(uint8_t cell, uint8_t dir)
 {
