@@ -32,7 +32,7 @@ describe('Teste de Integração: Broker WebSocket', () => {
       velocidadeAtual: 0.6,
       bateriaAtual: 84.5,
       tensaoAtual: 7.3,
-      sensorCor: 'BRANCO',
+      sensorCor: '#ffffff',
       sensorEsquerda: 120,
       sensorDireita: 140,
       sensorFrontal: 110,
@@ -61,7 +61,7 @@ describe('Teste de Integração: Broker WebSocket', () => {
         try {
           const recebido = JSON.parse(data);
           expect(recebido.numTentativa).toBe(42);
-          expect(recebido.sensorCor).toBe('BRANCO');
+          expect(recebido.sensorCor).toBe('#ffffff');
           expect(recebido.tensaoAtual).toBe(7.3);
           clearTimeout(timeout);
           resolve();
