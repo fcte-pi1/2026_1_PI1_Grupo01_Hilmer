@@ -16,6 +16,12 @@ export function formatMazeDimension(size) {
   return `${size}x${size}`;
 }
 
+export function mazeSizeToTipoLabirinto(size) {
+  if (size <= 12) return '4x4';
+  if (size <= 16) return '8x8';
+  return '16x16';
+}
+
 export function statusLabel(status) {
   const labels = {
     running: 'EM ANDAMENTO',

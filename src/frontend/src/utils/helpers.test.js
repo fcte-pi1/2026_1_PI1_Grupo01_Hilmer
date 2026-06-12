@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatTime, formatSpeed, formatBattery, formatMazeDimension, statusLabel } from './helpers';
+import { formatTime, formatSpeed, formatBattery, formatMazeDimension, mazeSizeToTipoLabirinto, statusLabel} from './helpers';
 
 describe('Helpers Utility Functions', () => {
   it('formatTime should convert seconds into MM:SS format', () => {
@@ -19,5 +19,11 @@ describe('Helpers Utility Functions', () => {
 
   it('formatMazeDimension should format correctly', () => {
     expect(formatMazeDimension(16)).toBe('16x16');
+  });
+
+  it('mazeSizeToTipoLabirinto should map sizes to the expected schema values', () => {
+    expect(mazeSizeToTipoLabirinto(10)).toBe('4x4');
+    expect(mazeSizeToTipoLabirinto(14)).toBe('8x8');
+    expect(mazeSizeToTipoLabirinto(20)).toBe('16x16');
   });
 });
