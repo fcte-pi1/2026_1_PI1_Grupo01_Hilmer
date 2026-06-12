@@ -63,6 +63,20 @@ export async function listarTrajeto(numTentativa) {
   return request(`/api/trajeto/${numTentativa}`);
 }
 
+/**
+ * Salva um passo do trajeto de uma tentativa.
+ * @param {{
+ *   numTentativa: number,
+ *   passo: number,
+ *   pos_h: number,
+ *   pos_v: number,
+ *   direcao: 'NORTE'|'SUL'|'LESTE'|'OESTE'
+ * }} payload
+ */
+export async function criarPassoTrajeto(payload) {
+  return request('/api/trajeto', { method: 'POST', body: JSON.stringify(payload) });
+}
+
 // ─── Mouse / FloodFill ────────────────────────────────────────────────────────
 
 /**
