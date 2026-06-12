@@ -32,7 +32,7 @@ export function NewAttempt() {
 
   async function handleActivate() {
     if (!mazeSize) return;
-    navigate('/dashboard', { state: { mazeSize, onFinish: handleFinish } });
+    navigate('/dashboard', { state: { mazeSize } });
   }
 
   /**
