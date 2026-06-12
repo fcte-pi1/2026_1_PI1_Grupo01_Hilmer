@@ -2,10 +2,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { server } from '../src/server.js';
 import pool from '../src/database/connection.js';
 
-const uniqueSeed = Date.now();
-const historicoTentativa = Number(String(uniqueSeed).slice(-8));
-const telemetriaTentativa = historicoTentativa + 1;
-const trajetoTentativa = historicoTentativa + 2;
+let createdHistoricoTentativa;
+let telemetriaTentativa;
+let trajetoTentativa;
 
 describe.sequential('Integração das rotas de simulação', () => {
   beforeAll(async () => {
@@ -13,13 +12,12 @@ describe.sequential('Integração das rotas de simulação', () => {
   });
 
   afterAll(async () => {
-    await cleanupTentativas([historicoTentativa, telemetriaTentativa, trajetoTentativa]);
+    await cleanupTentativas([createdHistoricoTentativa, telemetriaTentativa, trajetoTentativa].filter(Boolean));
     await new Promise((resolve) => server.close(resolve));
   });
 
   it('cria e busca um HISTORICO real via HTTP', async () => {
     const payload = {
-      numTentativa: historicoTentativa,
       percentualBateria: 92.5,
       velocidadeMedia: 0.67,
       tempoConclusao: new Date().toISOString(),
@@ -38,13 +36,15 @@ describe.sequential('Integração das rotas de simulação', () => {
     expect(postResponse.status).toBe(201);
     const postData = await postResponse.json();
     expect(postData.success).toBe(true);
-    expect(postData.data.numtentativa).toBe(historicoTentativa);
+    expect(postData.data.numtentativa).toBeTypeOf('number');
+    createdHistoricoTentativa = postData.data.numtentativa;
+    expect(Number.isFinite(createdHistoricoTentativa)).toBe(true);
 
-    const getResponse = await fetch(`http://127.0.0.1:3001/api/historico/${historicoTentativa}`);
+    const getResponse = await fetch(`http://127.0.0.1:3001/api/historico/${createdHistoricoTentativa}`);
     expect(getResponse.status).toBe(200);
 
     const getData = await getResponse.json();
-    expect(getData.data.numtentativa).toBe(historicoTentativa);
+    expect(getData.data.numtentativa).toBe(createdHistoricoTentativa);
   });
 
   it('rejeita HISTORICO inválido com 400', async () => {
@@ -52,7 +52,6 @@ describe.sequential('Integração das rotas de simulação', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        numTentativa: 0,
         percentualBateria: 200,
         velocidadeMedia: 0.1,
         tempoConclusao: new Date().toISOString(),
@@ -67,7 +66,7 @@ describe.sequential('Integração das rotas de simulação', () => {
   });
 
   it('cria, lista e busca TELEMETRIA real via HTTP', async () => {
-    await createHistoricoParaTentativa(telemetriaTentativa);
+    telemetriaTentativa = await createHistoricoParaTentativa();
 
     const payload = {
       numTentativa: telemetriaTentativa,
@@ -102,7 +101,7 @@ describe.sequential('Integração das rotas de simulação', () => {
   });
 
   it('cria e lista TRAJETO real via HTTP', async () => {
-    await createHistoricoParaTentativa(trajetoTentativa);
+    trajetoTentativa = await createHistoricoParaTentativa();
 
     for (const passo of [1, 2, 3]) {
       const response = await fetch('http://127.0.0.1:3001/api/trajeto', {
@@ -129,12 +128,11 @@ describe.sequential('Integração das rotas de simulação', () => {
   });
 });
 
-async function createHistoricoParaTentativa(numTentativa) {
+async function createHistoricoParaTentativa() {
   const response = await fetch('http://127.0.0.1:3001/api/historico', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      numTentativa,
       percentualBateria: 90,
       velocidadeMedia: 0.5,
       tempoConclusao: new Date().toISOString(),
@@ -146,6 +144,9 @@ async function createHistoricoParaTentativa(numTentativa) {
   });
 
   expect(response.status).toBe(201);
+  const payload = await response.json();
+  expect(payload.success).toBe(true);
+  return payload.data.numtentativa;
 }
 
 async function cleanupTentativas(tentativas) {

@@ -22,7 +22,6 @@ export function Dashboard() {
     async function persistAttempt() {
       try {
         await criarHistorico({
-          numTentativa: Date.now(), // TODO: substituir por sequência real do backend
           percentualBateria: data.batteryPercent,
           velocidadeMedia: data.speedMps,
           tempoConclusao: new Date().toISOString(),

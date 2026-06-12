@@ -15,23 +15,29 @@ const router = Router();
 router.post('/historico', async (req, res, next) => {
   try {
     const {
-      numTentativa, percentualBateria, velocidadeMedia,
+      percentualBateria, velocidadeMedia,
       tempoConclusao, desafioCumprido, correnteEletrica,
       tensaoEletrica, tipoLabirinto,
     } = req.body;
 
     // Validações conforme constraints do schema
-    if (!numTentativa || typeof numTentativa !== 'number') {
-      return res.status(400).json({ success: false, error: 'numTentativa é obrigatório e deve ser número.' });
-    }
     if (!['SIM', 'NAO'].includes(desafioCumprido)) {
       return res.status(400).json({ success: false, error: "desafioCumprido deve ser 'SIM' ou 'NAO'." });
+    }
+    if ('numTentativa' in req.body && typeof req.body.numTentativa !== 'number') {
+      return res.status(400).json({ success: false, error: 'numTentativa, quando informado, deve ser número.' });
     }
     if (!['4x4', '8x8', '16x16'].includes(tipoLabirinto)) {
       return res.status(400).json({ success: false, error: "tipoLabirinto deve ser '4x4', '8x8' ou '16x16'." });
     }
     if (percentualBateria < 0 || percentualBateria > 100) {
       return res.status(400).json({ success: false, error: 'percentualBateria deve estar entre 0 e 100.' });
+    }
+    if (typeof velocidadeMedia !== 'number' || typeof correnteEletrica !== 'number' || typeof tensaoEletrica !== 'number') {
+      return res.status(400).json({ success: false, error: 'velocidadeMedia, correnteEletrica e tensaoEletrica devem ser números.' });
+    }
+    if (!tempoConclusao || Number.isNaN(Date.parse(tempoConclusao))) {
+      return res.status(400).json({ success: false, error: 'tempoConclusao deve ser uma data ISO válida.' });
     }
 
     const record = await simulationService.criarHistorico(req.body);

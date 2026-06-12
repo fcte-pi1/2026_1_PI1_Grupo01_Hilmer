@@ -15,11 +15,10 @@ afterEach(() => {
 });
 
 describe('simulationService', () => {
-  it('criarHistorico monta o INSERT com os parâmetros corretos', async () => {
+  it('criarHistorico monta o INSERT sem numTentativa quando o banco deve gerar o id', async () => {
     queryMock.mockResolvedValueOnce({ rows: [{ numtentativa: 12 }] });
 
     const payload = {
-      numTentativa: 12,
       percentualBateria: 90,
       velocidadeMedia: 0.45,
       tempoConclusao: '2026-06-08T12:00:00.000Z',
@@ -34,7 +33,6 @@ describe('simulationService', () => {
     expect(queryMock).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO HISTORICO'),
       [
-        12,
         90,
         0.45,
         '2026-06-08T12:00:00.000Z',

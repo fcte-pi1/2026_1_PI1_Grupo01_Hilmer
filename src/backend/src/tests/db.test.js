@@ -64,7 +64,7 @@ describe.sequential('Banco Micromouse PI1', () => {
          tensaoAtual, sensorCor, sensorEsquerda, sensorDireita, sensorFrontal)
        VALUES
         ($1, NOW(), 7.3, 1.1, 0, 0, 0.5, 88.0, 7.4, '#FFFFFF', 15.0, 20.0, 5.0)
-       RETURNING *`,
+      RETURNING *`,
       [numTentativa]
     );
 

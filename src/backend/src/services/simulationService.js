@@ -12,7 +12,6 @@ import pool from '../database/connection.js';
 /**
  * Cria um registro de tentativa no HISTORICO.
  * @param {{
- *   numTentativa: number,
  *   percentualBateria: number,
  *   velocidadeMedia: number,
  *   tempoConclusao: string,   // ISO timestamp
@@ -24,19 +23,26 @@ import pool from '../database/connection.js';
  */
 async function criarHistorico(dados) {
   const {
-    numTentativa, percentualBateria, velocidadeMedia,
+    percentualBateria, velocidadeMedia,
     tempoConclusao, desafioCumprido, correnteEletrica,
     tensaoEletrica, tipoLabirinto,
   } = dados;
 
   const result = await pool.query(
     `INSERT INTO HISTORICO
-       (numTentativa, percentualBateria, velocidadeMedia, tempoConclusao,
+       (percentualBateria, velocidadeMedia, tempoConclusao,
         desafioCumprido, correnteEletrica, tensaoEletrica, tipoLabirinto)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING *`,
-    [numTentativa, percentualBateria, velocidadeMedia, tempoConclusao,
-     desafioCumprido, correnteEletrica, tensaoEletrica, tipoLabirinto]
+    [
+      percentualBateria,
+      velocidadeMedia,
+      tempoConclusao,
+      desafioCumprido,
+      correnteEletrica,
+      tensaoEletrica,
+      tipoLabirinto,
+    ]
   );
 
   return result.rows[0];

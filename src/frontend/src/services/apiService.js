@@ -22,7 +22,6 @@ async function request(path, options = {}) {
 /**
  * Registra uma tentativa concluída.
  * @param {{
- *   numTentativa: number,
  *   percentualBateria: number,
  *   velocidadeMedia: number,
  *   tempoConclusao: string,
