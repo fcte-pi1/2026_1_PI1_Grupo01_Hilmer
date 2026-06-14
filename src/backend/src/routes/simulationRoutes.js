@@ -6,6 +6,7 @@
 
 import { Router } from 'express';
 import simulationService from '../services/simulationService.js';
+import mouseService from '../services/mouseService.js';
 
 const router = Router();
 
@@ -52,6 +53,35 @@ router.get('/historico', async (_req, res, next) => {
   try {
     const records = await simulationService.listarHistorico();
     return res.json({ success: true, data: records });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/historico/:numTentativa/analise — reconstrói grid e caminhos ida/volta/ótimo
+router.get('/historico/:numTentativa/analise', async (req, res, next) => {
+  try {
+    const numTentativa = Number(req.params.numTentativa);
+    const historico = await simulationService.buscarHistoricoPorTentativa(numTentativa);
+
+    if (!historico) {
+      return res.status(404).json({ success: false, error: 'Tentativa não encontrada.' });
+    }
+
+    const trajeto = await simulationService.listarTrajetoPorTentativa(numTentativa);
+    const telemetria = await simulationService.listarTelemetriaPorTentativa(numTentativa);
+
+    if (!trajeto.length) {
+      return res.status(404).json({ success: false, error: 'Trajeto não encontrado para esta tentativa.' });
+    }
+
+    const analysis = mouseService.analyzeAttempt(
+      trajeto,
+      telemetria,
+      historico.tipolabirinto ?? historico.tipoLabirinto,
+    );
+
+    return res.json({ success: true, data: analysis });
   } catch (err) {
     next(err);
   }
