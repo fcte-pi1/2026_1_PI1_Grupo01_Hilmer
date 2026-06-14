@@ -114,12 +114,68 @@ function connectToESP32() {
 
 // ─── Inicialização ────────────────────────────────────────────────────────────
 
-if (process.env.NODE_ENV !== 'test') {
-  connectToESP32();
+let startedByTests = false;
+
+export function ensureServerStarted() {
+  if (httpServer.listening) {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve, reject) => {
+    const onError = (err) => {
+      if (err.code === 'EADDRINUSE') {
+        resolve();
+        return;
+      }
+      reject(err);
+    };
+
+    httpServer.once('error', onError);
+    httpServer.listen(port, host, () => {
+      httpServer.off('error', onError);
+      startedByTests = true;
+      console.log(`[backend] Servidor rodando em http://${host}:${port}`);
+      resolve();
+    });
+  });
 }
 
-httpServer.listen(port, host, () => {
-  console.log(`[backend] Servidor rodando em http://${host}:${port}`);
-});
+export function stopServerIfStarted() {
+  if (!startedByTests || !httpServer.listening) {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve) => {
+    httpServer.close(() => {
+      startedByTests = false;
+      resolve();
+    });
+  });
+}
+
+function startHttpServer() {
+  const onListenError = (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(
+        `[backend] Porta ${port} já está em uso. Encerre o processo anterior (ex.: netstat -ano | findstr :${port}) e tente novamente.`,
+      );
+    } else {
+      console.error('[backend] Erro ao iniciar servidor:', err.message);
+    }
+    process.exit(1);
+  };
+
+  httpServer.once('error', onListenError);
+  wssReact.once('error', onListenError);
+
+  httpServer.listen(port, host, () => {
+    console.log(`[backend] Servidor rodando em http://${host}:${port}`);
+  });
+}
+
+if (process.env.NODE_ENV !== 'test') {
+  connectToESP32();
+  startHttpServer();
+}
 
 export { app, httpServer, httpServer as server, wssReact, connectToESP32 };

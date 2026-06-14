@@ -1,0 +1,10 @@
+{
+  "name": "pi1-micromouse",
+  "private": true,
+  "scripts": {
+    "test:unit": "node scripts/run-tests.mjs unit",
+    "test:integration": "node scripts/run-tests.mjs integration",
+    "test:e2e": "node scripts/run-tests.mjs e2e",
+    "test:all": "node scripts/run-tests.mjs unit && node scripts/run-tests.mjs integration && node scripts/run-tests.mjs e2e"
+  }
+}

@@ -208,3 +208,16 @@ export function getMockTelemetrySnapshot(stepIndex, mazeSize = 10) {
     speedMps: 0.45 + Math.random() * 0.1,
   };
 }
+
+export function analysisToMazeViewProps(analysis, pathKey = 'outboundPath') {
+  const visitedPath = analysis?.[pathKey] ?? [];
+
+  return {
+    grid: analysis.grid,
+    visitedPath,
+    start: analysis.start,
+    goal: analysis.goal,
+    position: visitedPath[visitedPath.length - 1] ?? analysis.start,
+    status: pathKey === 'optimalPath' ? 'success' : 'running',
+  };
+}

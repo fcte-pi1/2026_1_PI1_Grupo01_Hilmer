@@ -10,7 +10,7 @@
 
 .contentGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 680px);
   gap: var(--space-5);
   align-items: start;
 }
@@ -193,11 +193,34 @@
 }
 
 .detailBody {
-  width: min(100%, 300px);
-  margin: 0 auto;
+  width: 100%;
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.02);
   overflow: hidden;
+}
+
+.mazeComparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.mazeCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.mazeCardTitle {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--color-text-primary);
+}
+
+.mazeCardSubtitle {
+  margin: 0 0 var(--space-2);
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
 }
 
 .good,
@@ -256,5 +279,9 @@
   .detailHeader {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .mazeComparison {
+    grid-template-columns: 1fr;
   }
 }

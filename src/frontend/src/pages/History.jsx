@@ -6,12 +6,11 @@
 
 import { useEffect, useState } from 'react';
 import { MazeView } from '../components/MazeView/MazeView';
-import { listarHistorico, listarTrajeto } from '../services/apiService';
-import { getMazeMockData } from '../services/telemetryService';
+import { analisarTentativa, listarHistorico } from '../services/apiService';
+import { analysisToMazeViewProps } from '../services/telemetryService';
 import styles from './History.module.css';
 
 const TIPO_LABEL = { '4x4': '4×4', '8x8': '8×8', '16x16': '16×16' };
-const DEFAULT_MAZE_SIZE_BY_TYPE = { '4x4': 10, '8x8': 14, '16x16': 18 };
 const FILTER_OPTIONS = [
   { value: 'ALL', label: 'Todos' },
   { value: '4x4', label: '4×4' },
@@ -19,44 +18,14 @@ const FILTER_OPTIONS = [
   { value: '16x16', label: '16×16' },
 ];
 
-function inferMazeSize(tipoLabirinto, trajeto) {
-  if (!trajeto.length) return DEFAULT_MAZE_SIZE_BY_TYPE[tipoLabirinto] ?? 10;
-
-  const maxCoord = trajeto.reduce(
-    (currentMax, step) => Math.max(currentMax, Number(step.pos_h), Number(step.pos_v)),
-    0,
-  );
-
-  if (tipoLabirinto === '4x4') return maxCoord >= 10 ? 12 : 10;
-  if (tipoLabirinto === '8x8') return maxCoord >= 14 ? 16 : 14;
-  if (tipoLabirinto === '16x16') return maxCoord >= 18 ? 20 : 18;
-  return 10;
-}
-
-function buildMazePreview(attempt, trajeto) {
-  if (!trajeto.length) return null;
-
-  const mazeSize = inferMazeSize(attempt.tipolabirinto, trajeto);
-  const maze = getMazeMockData(mazeSize);
-  const visitedPath = trajeto.map((step) => [Number(step.pos_v), Number(step.pos_h)]);
-
-  return {
-    ...maze,
-    mazeSize,
-    visitedPath,
-    start: visitedPath[0] ?? maze.start,
-    position: visitedPath[visitedPath.length - 1] ?? maze.start,
-    status: attempt.desafiocumprido === 'SIM' ? 'success' : 'failure',
-  };
-}
-
 export function History() {
   const [historico, setHistorico] = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [sizeFilter, setSizeFilter] = useState('ALL');
   const [selectedAttempt, setSelectedAttempt] = useState(null);
-  const [selectedMaze, setSelectedMaze] = useState(null);
+  const [outboundMaze, setOutboundMaze] = useState(null);
+  const [optimalMaze, setOptimalMaze] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState(null);
 
@@ -75,20 +44,22 @@ export function History() {
 
   async function handleSelectAttempt(attempt) {
     setSelectedAttempt(attempt);
-    setSelectedMaze(null);
+    setOutboundMaze(null);
+    setOptimalMaze(null);
     setDetailError(null);
     setDetailLoading(true);
 
     try {
-      const response = await listarTrajeto(attempt.numtentativa);
-      const trajeto = response.data ?? [];
+      const response = await analisarTentativa(attempt.numtentativa);
+      const analysis = response.data;
 
-      if (!trajeto.length) {
+      if (!analysis?.outboundPath?.length) {
         setDetailError('Essa tentativa ainda não tem trajeto salvo.');
         return;
       }
 
-      setSelectedMaze(buildMazePreview(attempt, trajeto));
+      setOutboundMaze(analysisToMazeViewProps(analysis, 'outboundPath'));
+      setOptimalMaze(analysisToMazeViewProps(analysis, 'optimalPath'));
     } catch (err) {
       setDetailError(err.message);
     } finally {
@@ -108,16 +79,17 @@ export function History() {
   ));
 
   if (loading) return renderFeedback('Carregando histórico...');
-  if (error)   return renderFeedback(`Erro: ${error}`);
-  if (historico.length === 0)
-    return renderFeedback('Nenhuma tentativa registrada ainda.');
+  if (error) return renderFeedback(`Erro: ${error}`);
+  if (historico.length === 0) return renderFeedback('Nenhuma tentativa registrada ainda.');
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Histórico de Tentativas</h1>
-          <p className={styles.subtitle}>Clique em uma tentativa para abrir o desenho do percurso.</p>
+          <p className={styles.subtitle}>
+            Clique em uma tentativa para comparar o primeiro caminho e o caminho ótimo.
+          </p>
         </div>
         <div className={styles.filterField}>
           <span className={styles.filterLabel}>Tamanho</span>
@@ -155,6 +127,7 @@ export function History() {
               {filteredHistorico.map((h) => (
                 <tr
                   key={h.numtentativa}
+                  data-testid={`history-row-${h.numtentativa}`}
                   className={selectedAttempt?.numtentativa === h.numtentativa ? styles.selectedRow : ''}
                   onClick={() => handleSelectAttempt(h)}
                 >
@@ -184,7 +157,7 @@ export function History() {
         <section className={styles.detailPanel}>
           <div className={styles.detailHeader}>
             <h2 className={styles.detailTitle}>
-              {selectedAttempt ? `Tentativa #${selectedAttempt.numtentativa}` : 'Percurso da Tentativa'}
+              {selectedAttempt ? `Tentativa #${selectedAttempt.numtentativa}` : 'Análise de Trajetos'}
             </h2>
             {selectedAttempt && (
               <span className={styles.detailMeta}>
@@ -194,27 +167,45 @@ export function History() {
           </div>
 
           {!selectedAttempt && (
-            <p className={styles.feedback}>Selecione uma tentativa na tabela para ver o labirinto.</p>
+            <p className={styles.feedback}>Selecione uma tentativa na tabela para ver os caminhos.</p>
           )}
 
           {selectedAttempt && detailLoading && (
-            <p className={styles.feedback}>Carregando trajeto da tentativa...</p>
+            <p className={styles.feedback}>Carregando análise da tentativa...</p>
           )}
 
           {selectedAttempt && !detailLoading && detailError && (
             <p className={styles.feedback}>{detailError}</p>
           )}
 
-          {selectedAttempt && !detailLoading && !detailError && selectedMaze && (
+          {selectedAttempt && !detailLoading && !detailError && outboundMaze && optimalMaze && (
             <div className={styles.detailBody}>
-              <MazeView
-                grid={selectedMaze.grid}
-                position={selectedMaze.position}
-                goal={selectedMaze.goal}
-                start={selectedMaze.start}
-                visitedPath={selectedMaze.visitedPath}
-                status={selectedMaze.status}
-              />
+              <div className={styles.mazeComparison}>
+                <div className={styles.mazeCard}>
+                  <h3 className={styles.mazeCardTitle}>Primeiro caminho</h3>
+                  <p className={styles.mazeCardSubtitle}>Start até o centro 2×2</p>
+                  <MazeView
+                    grid={outboundMaze.grid}
+                    position={outboundMaze.position}
+                    goal={outboundMaze.goal}
+                    start={outboundMaze.start}
+                    visitedPath={outboundMaze.visitedPath}
+                    status={outboundMaze.status}
+                  />
+                </div>
+                <div className={styles.mazeCard}>
+                  <h3 className={styles.mazeCardTitle}>Caminho ótimo</h3>
+                  <p className={styles.mazeCardSubtitle}>Menor entre ida e volta</p>
+                  <MazeView
+                    grid={optimalMaze.grid}
+                    position={optimalMaze.position}
+                    goal={optimalMaze.goal}
+                    start={optimalMaze.start}
+                    visitedPath={optimalMaze.visitedPath}
+                    status={optimalMaze.status}
+                  />
+                </div>
+              </div>
             </div>
           )}
         </section>

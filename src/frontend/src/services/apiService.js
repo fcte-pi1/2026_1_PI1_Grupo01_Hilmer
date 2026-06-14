@@ -5,7 +5,7 @@
  * Mapeada exatamente às tabelas HISTORICO, TELEMETRIA e TRAJETO.
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const BASE_URL = import.meta.env.VITE_API_URL || '';
 
 async function request(path, options = {}) {
   const res = await fetch(`${BASE_URL}${path}`, {
@@ -19,18 +19,6 @@ async function request(path, options = {}) {
 
 // ─── HISTORICO ────────────────────────────────────────────────────────────────
 
-/**
- * Registra uma tentativa concluída.
- * @param {{
- *   percentualBateria: number,
- *   velocidadeMedia: number,
- *   tempoConclusao: string,
- *   desafioCumprido: 'SIM'|'NAO',
- *   correnteEletrica: number,
- *   tensaoEletrica: number,
- *   tipoLabirinto: '4x4'|'8x8'|'16x16'
- * }} payload
- */
 export async function criarHistorico(payload) {
   return request('/api/historico', { method: 'POST', body: JSON.stringify(payload) });
 }
@@ -43,47 +31,28 @@ export async function buscarHistorico(numTentativa) {
   return request(`/api/historico/${numTentativa}`);
 }
 
+export async function analisarTentativa(numTentativa) {
+  return request(`/api/historico/${numTentativa}/analise`);
+}
+
 // ─── TELEMETRIA ───────────────────────────────────────────────────────────────
 
-/**
- * Retorna toda a telemetria de uma tentativa (para replay/análise no frontend).
- * @param {number} numTentativa
- */
 export async function listarTelemetria(numTentativa) {
   return request(`/api/telemetria/${numTentativa}`);
 }
 
 // ─── TRAJETO ──────────────────────────────────────────────────────────────────
 
-/**
- * Retorna o trajeto completo de uma tentativa.
- * @param {number} numTentativa
- */
 export async function listarTrajeto(numTentativa) {
   return request(`/api/trajeto/${numTentativa}`);
 }
 
-/**
- * Salva um passo do trajeto de uma tentativa.
- * @param {{
- *   numTentativa: number,
- *   passo: number,
- *   pos_h: number,
- *   pos_v: number,
- *   direcao: 'NORTE'|'SUL'|'LESTE'|'OESTE'
- * }} payload
- */
 export async function criarPassoTrajeto(payload) {
   return request('/api/trajeto', { method: 'POST', body: JSON.stringify(payload) });
 }
 
 // ─── Mouse / FloodFill ────────────────────────────────────────────────────────
 
-/**
- * Calcula próximo movimento via FloodFill no backend.
- * @param {{ row: number, col: number }} currentPosition
- * @param {number[][]} mazeMatrix
- */
 export async function getNextMove(currentPosition, mazeMatrix) {
   return request('/api/mouse/next-move', {
     method: 'POST',
@@ -93,4 +62,8 @@ export async function getNextMove(currentPosition, mazeMatrix) {
 
 export async function getHealth() {
   return request('/api/health');
+}
+
+export async function reconectarEsp32() {
+  return request('/api/esp32/reconnect', { method: 'POST' });
 }

@@ -7,6 +7,9 @@
     "dev": "node --env-file=.env --watch src/server.js",
     "start": "node --env-file=.env src/server.js",
     "test": "vitest run",
+    "test:unit": "node scripts/run-vitest.mjs unit",
+    "test:integration": "node scripts/run-vitest.mjs integration",
+    "test:integration:all": "vitest run --config vitest.config.js tests/simulationRoutes.integration.test.js tests/server.test.js tests/integration.test.js",
     "test:api": "vitest run tests",
     "test:db": "vitest run src/tests/db.test.js"
   },

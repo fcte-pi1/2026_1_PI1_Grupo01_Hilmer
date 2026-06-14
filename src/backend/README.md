@@ -112,6 +112,28 @@ O `-v` destrói o volume `pgdata`, forçando o PostgreSQL a re-executar o `schem
 
 ## Rodando os testes
 
+### Camadas (History / analise)
+
+Na raiz do repositório (no Windows, **não** coloque comentários na mesma linha do comando):
+
+```bash
+npm run test:unit
+npm run test:integration
+npm run test:e2e
+npm run test:all
+```
+
+| Comando | Precisa DB | Precisa servidor |
+|---------|------------|------------------|
+| `npm run test:unit` | Não | Não |
+| `npm run test:integration` | Sim | Sim (`npm run dev` na porta 3001) |
+| `npm run test:integration:all` | Sim | Sim (inclui WebSocket + server.test) |
+| `npm run test:e2e` | Sim | Sim (reutiliza servidores locais se já estiverem rodando) |
+
+Unitários cobrem `mouseService.analyzeAttempt`, rota `GET /historico/:id/analise` (mock), `History.jsx` e `analysisToMazeViewProps`. A fixture compartilhada fica em `tests/fixtures/analysisAttempt.js`.
+
+### Testes de banco
+
 Com o banco rodando, execute:
 
 ```bash

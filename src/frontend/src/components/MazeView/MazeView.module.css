@@ -81,3 +81,7 @@
 .goalDot  { background: var(--color-goal); }
 .visitedDot { background: var(--color-maze-visited); border-radius: 2px; }
 .wallDot  { background: var(--color-maze-wall); border-radius: 2px; }
+.unknown {
+  background: #888888;
+}
+.unknownDot { background: #888888; border-radius: 2px; }
