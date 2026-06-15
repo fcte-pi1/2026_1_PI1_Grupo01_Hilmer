@@ -12,7 +12,7 @@
   grid-template-columns: repeat(var(--cols), 1fr);
   grid-template-rows: repeat(var(--rows), 1fr);
   gap: 2px;
-  max-width: min(100%, 540px);
+  max-width: min(100%, calc(var(--cols) * 28px));
   width: 100%;
   aspect-ratio: 1;
   background: var(--color-surface-alt);
@@ -63,7 +63,9 @@
 
 .legend {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: var(--space-5);
   font-size: 0.78rem;
   color: var(--color-text-secondary);

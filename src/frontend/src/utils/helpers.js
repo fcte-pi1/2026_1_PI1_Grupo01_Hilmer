@@ -17,8 +17,8 @@ export function formatMazeDimension(size) {
 }
 
 export function mazeSizeToTipoLabirinto(size) {
-  if (size <= 12) return '4x4';
-  if (size <= 16) return '8x8';
+  if (size === 4)  return '4x4';
+  if (size === 8)  return '8x8';
   return '16x16';
 }
 

@@ -1,24 +1,26 @@
 /**
  * NewAttempt.jsx
  *
- * tipoLabirinto é mapeado do mazeSize numérico para o formato do schema:
- *   10/12 → '4x4' | 14/16 → '8x8' | 18/20 → '16x16'
+ * tipoLabirinto corresponde diretamente ao schema: '4x4' | '8x8' | '16x16'
  */
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { mazeSizeToTipoLabirinto } from '../utils/helpers';
 import styles from './NewAttempt.module.css';
 
-const MAZE_SIZES = [10, 12, 14, 16, 18, 20];
+const MAZE_OPTIONS = [
+  { size: 4,  label: '4×4',   tipo: '4x4'   },
+  { size: 8,  label: '8×8',   tipo: '8x8'   },
+  { size: 16, label: '16×16', tipo: '16x16' },
+];
 
 export function NewAttempt() {
   const navigate  = useNavigate();
-  const [mazeSize, setMazeSize] = useState(null);
+  const [selected, setSelected] = useState(null); // { size, label, tipo }
 
   async function handleActivate() {
-    if (!mazeSize) return;
-    navigate('/dashboard', { state: { mazeSize } });
+    if (!selected) return;
+    navigate('/dashboard', { state: { mazeSize: selected.size } });
   }
 
   return (
@@ -29,7 +31,7 @@ export function NewAttempt() {
         </button>
 
         <div className={styles.metrics}>
-          <MetricRow label="Dimensão"           value={mazeSize ? `${mazeSize}×${mazeSize}` : '---'} />
+          <MetricRow label="Dimensão"           value={selected ? selected.label : '---'} />
           <MetricRow label="Consumo de bateria" value="---" />
           <MetricRow label="Velocidade"         value="---" />
           <MetricRow label="Tempo"              value="00:00:00" />
@@ -41,14 +43,14 @@ export function NewAttempt() {
           <p className={styles.cardLabel}>Escolha o tamanho do labirinto:</p>
 
           <div className={styles.presets}>
-            {MAZE_SIZES.map((s) => (
+            {MAZE_OPTIONS.map((opt) => (
               <button
-                key={s}
-                className={`${styles.presetBtn} ${mazeSize === s ? styles.presetActive : ''}`}
-                onClick={() => setMazeSize(s)}
+                key={opt.size}
+                className={`${styles.presetBtn} ${selected?.size === opt.size ? styles.presetActive : ''}`}
+                onClick={() => setSelected(opt)}
               >
-                {s}×{s}
-                <span className={styles.presetSub}> ({mazeSizeToTipoLabirinto(s)})</span>
+                {opt.label}
+                <span className={styles.presetSub}> ({opt.tipo})</span>
               </button>
             ))}
           </div>
@@ -56,7 +58,7 @@ export function NewAttempt() {
           <button
             className={styles.activateBtn}
             onClick={handleActivate}
-            disabled={mazeSize === null}
+            disabled={selected === null}
           >
             Ativar rato
           </button>
