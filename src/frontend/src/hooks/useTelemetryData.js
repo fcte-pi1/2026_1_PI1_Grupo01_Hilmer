@@ -11,6 +11,12 @@ export function useTelemetryData(mazeSize = 10) {
   const [running, setRunning] = useState(false);
   const intervalRef = useRef(null);
 
+  useEffect(() => {
+    clearInterval(intervalRef.current);
+    setRunning(false);
+    setStep(0);
+  }, [mazeSize]);
+
   const totalSteps = getMazeMockData(mazeSize).path.length;
   const data = getMockTelemetrySnapshot(step, mazeSize);
 

@@ -28,6 +28,57 @@
   gap: var(--space-3);
 }
 
+.configGrid {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.fieldLabel {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.select {
+  width: 100%;
+  padding: 0.65rem 0.8rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-sidebar-border);
+  background: var(--color-surface-alt);
+  color: var(--color-text-primary);
+  font: inherit;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.select:focus {
+  border-color: var(--color-accent-blue);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+}
+
+.feedback {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.sending {
+  color: var(--color-text-muted);
+}
+
+.success {
+  color: var(--color-success);
+}
+
+.error {
+  color: var(--color-error);
+}
+
 .sectionTitle {
   font-size: 0.7rem;
   font-weight: 700;
