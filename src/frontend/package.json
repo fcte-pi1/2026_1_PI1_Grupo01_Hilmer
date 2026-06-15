@@ -9,7 +9,10 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
     "react": "^18.2.0",
@@ -17,6 +20,7 @@
     "react-router-dom": "^7.15.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@testing-library/dom": "^9.3.4",
     "@testing-library/jest-dom": "^6.4.2",
     "@testing-library/react": "^14.2.1",

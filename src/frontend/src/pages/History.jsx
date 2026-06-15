@@ -6,17 +6,27 @@ import { Card } from '../components/Card/Card';
 import { ExecutionCard } from '../components/ExecutionCard/ExecutionCard';
 import { StatusBadge } from '../components/StatusBadge/StatusBadge';
 import { getExecutionHistory } from '../services/dataService';
+import { Filter } from "../components/Filter/Filter";
 import {
   formatBattery,
   formatMazeDimension,
   formatSpeed,
   formatTime,
+  filterExecutions
 } from '../utils/helpers';
 import styles from './History.module.css';
 
 export function History() {
   const [executions, setExecutions] = useState([]);
   const [selected, setSelected] = useState(null);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [filters, setFilters] = useState({
+    mazeSize: [],
+    totalTime: [],
+    avgSpeed: [],
+    totalBatteryUsed: [],
+    status: [],
+  });
 
   useEffect(() => {
     getExecutionHistory().then(setExecutions);
@@ -26,16 +36,25 @@ export function History() {
     setSelected((prev) => (prev?.id === execution.id ? null : execution));
   };
 
+  const filteredExecutions = filterExecutions(executions, filters);
+
   return (
     <div className={styles.page}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>Histórico de Execuções</h1>
-        <span className="mock-banner">DADOS MOCKADOS</span>
-      </div>
-
+    <div className={styles.header}>
+      <h1 className={styles.title}>Histórico de Execuções</h1>
+      <span className="mock-banner">
+        DADOS MOCKADOS
+      </span>
+      <button
+        className={styles.filterButton}
+        onClick={() => setIsFilterOpen(true)}
+      >
+        Filtros
+      </button>
+    </div>
       <div className={styles.layout}>
         <div className={styles.list}>
-          {executions.map((exec) => (
+          {filteredExecutions.map((exec) => (
             <ExecutionCard
               key={exec.id}
               execution={exec}
@@ -82,6 +101,12 @@ export function History() {
             </div>
           )}
         </aside>
+        <Filter
+          isOpen={isFilterOpen}
+          onClose={() => setIsFilterOpen(false)}
+          filters={filters}
+          setFilters={setFilters}
+        />
       </div>
     </div>
   );
