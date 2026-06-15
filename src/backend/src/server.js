@@ -6,6 +6,7 @@ const host = process.env.HOST || "127.0.0.1";
 const frontendOrigin = process.env.FRONTEND_ORIGIN || "http://localhost:5173";
 
 const simulationDatabase = [];
+let esp32Connection = null;
 
 function sendJson(response, statusCode, payload) {
   response.writeHead(statusCode, {
@@ -37,6 +38,15 @@ function getRequestBody(request) {
       }
     });
   });
+}
+
+function sendToESP32(payload) {
+  if (!esp32Connection || esp32Connection.readyState !== WebSocket.OPEN) {
+    return false;
+  }
+
+  esp32Connection.send(JSON.stringify(payload));
+  return true;
 }
 
 const server = createServer(async (request, response) => {
@@ -71,6 +81,44 @@ const server = createServer(async (request, response) => {
         sensors: "pendente de definicao"
       });
       return;
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/micromouse/configuracoes") {
+      const body = await getRequestBody(request);
+      const mazeSize = Number(body.mazeSize);
+      const run = Number(body.run);
+
+      if (![10, 12, 14, 16, 18, 20].includes(mazeSize)) {
+        return sendJson(response, 400, { success: false, error: "Tamanho do labirinto inválido." });
+      }
+
+      if (![1, 2].includes(run)) {
+        return sendJson(response, 400, { success: false, error: "A execução deve ser 1 ou 2." });
+      }
+
+      const configurationPayload = {
+        tipoLabirinto: `${mazeSize}x${mazeSize}`,
+        mazeSize,
+        run,
+        execucao: run === 1 ? "primeira" : "segunda"
+      };
+
+      const delivered = sendToESP32(configurationPayload);
+
+      if (!delivered) {
+        return sendJson(response, 503, {
+          success: false,
+          error: "A ESP32 não está conectada para receber a configuração."
+        });
+      }
+
+      logOperation("INFO", "Configuração enviada ao Micromouse", configurationPayload);
+
+      return sendJson(response, 200, {
+        success: true,
+        message: "Configurações enviadas ao Micromouse.",
+        data: configurationPayload
+      });
     }
 
     // CRITÉRIO CA-43.1: Endpoint POST para salvar dados e processar regras do Micromouse
@@ -138,6 +186,7 @@ function connectToESP32() {
   const esp32Url = process.env.ESP32_WS_URL || "ws://192.168.4.1:81";
   console.log(`[backend] Tentando conectar na ESP32 em ${esp32Url}...`);
   const esp32Ws = new WebSocket(esp32Url);
+  esp32Connection = esp32Ws;
 
   esp32Ws.on("open", () => {
     console.log("[backend] Conectado com sucesso à ESP32-C3!");
@@ -153,6 +202,9 @@ function connectToESP32() {
 
   esp32Ws.on("close", () => {
     console.log("[backend] Conexão com a ESP32 perdida. Tentando reconectar em 2 segundos...");
+    if (esp32Connection === esp32Ws) {
+      esp32Connection = null;
+    }
     setTimeout(connectToESP32, 2000);
   });
 
