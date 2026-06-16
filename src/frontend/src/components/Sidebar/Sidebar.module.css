@@ -1,6 +1,7 @@
 .sidebar {
   width: var(--sidebar-width);
-  min-height: 100%;
+  min-height: 0;
+  height: 100%;
   background: var(--color-sidebar);
   border-right: 1px solid var(--color-sidebar-border);
   display: flex;
@@ -8,6 +9,8 @@
   padding: var(--space-6);
   gap: var(--space-6);
   flex-shrink: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .header {
@@ -41,6 +44,46 @@
 .fieldLabel {
   font-size: 0.76rem;
   font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.optionGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.optionButton {
+  min-height: 2.5rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-sidebar-border);
+  background: var(--color-surface-alt);
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s, background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.optionButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--color-accent-blue);
+  color: var(--color-text-primary);
+}
+
+.optionButtonActive {
+  background: rgba(59, 130, 246, 0.16);
+  border-color: var(--color-accent-blue);
+  color: var(--color-text-primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12) inset;
+}
+
+.helperText {
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.45;
   color: var(--color-text-muted);
 }
 
@@ -113,4 +156,11 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+}
+
+.startHint {
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: var(--color-text-muted);
 }
