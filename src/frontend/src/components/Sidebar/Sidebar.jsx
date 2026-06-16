@@ -1,6 +1,6 @@
 import { Button } from '../Button/Button';
 import { StatusBadge } from '../StatusBadge/StatusBadge';
-import {formatBattery, formatMazeDimension, formatSpeed, formatTime} from '../../utils/helpers';
+import { formatBattery, formatMazeDimension, formatSpeed, formatTime } from '../../utils/helpers';
 import styles from './Sidebar.module.css';
 
 const MAZE_SIZE_OPTIONS = [10, 12, 14, 16, 18, 20];
@@ -18,12 +18,17 @@ function InfoRow({ label, value }) {
   );
 }
 
-function SelectField({ label, children }) {
+function OptionButton({ active, onClick, children, ariaLabel }) {
   return (
-    <label className={styles.field}>
-      <span className={styles.fieldLabel}>{label}</span>
+    <button
+      type="button"
+      className={`${styles.optionButton} ${active ? styles.optionButtonActive : ''}`}
+      onClick={onClick}
+      aria-pressed={active}
+      aria-label={ariaLabel}
+    >
       {children}
-    </label>
+    </button>
   );
 }
 
@@ -34,6 +39,8 @@ export function Sidebar({
   onConfigChange,
   onSendConfiguration,
   configStatus,
+  canStartSelectedRun,
+  startBlockedMessage,
   onStart,
   onReset,
 }) {
@@ -61,33 +68,40 @@ export function Sidebar({
         <h3 className={styles.sectionTitle}>Configurações</h3>
 
         <div className={styles.configGrid}>
-          <SelectField label="Tamanho do labirinto">
-            <select
-              className={styles.select}
-              value={config.mazeSize}
-              onChange={(event) => onConfigChange({ mazeSize: Number(event.target.value) })}
-            >
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>Tamanho do labirinto</span>
+            <div className={styles.optionGroup}>
               {MAZE_SIZE_OPTIONS.map((mazeSize) => (
-                <option key={mazeSize} value={mazeSize}>
+                <OptionButton
+                  key={mazeSize}
+                  active={config.mazeSize === mazeSize}
+                  onClick={() => onConfigChange({ mazeSize })}
+                  ariaLabel={`Selecionar labirinto de ${mazeSize} por ${mazeSize}`}
+                >
                   {mazeSize}x{mazeSize}
-                </option>
+                </OptionButton>
               ))}
-            </select>
-          </SelectField>
+            </div>
+          </div>
 
-          <SelectField label="Execução">
-            <select
-              className={styles.select}
-              value={config.run}
-              onChange={(event) => onConfigChange({ run: Number(event.target.value) })}
-            >
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>Execução</span>
+            <div className={styles.optionGroup}>
               {RUN_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
+                <OptionButton
+                  key={option.value}
+                  active={config.run === option.value}
+                  onClick={() => onConfigChange({ run: option.value })}
+                  ariaLabel={`Selecionar ${option.label.toLowerCase()}`}
+                >
+                  <span>{option.label}</span>
+                </OptionButton>
               ))}
-            </select>
-          </SelectField>
+            </div>
+            <p className={styles.helperText}>
+              Na primeira execução, o rato identifica o caminho. Na segunda, ele usa o caminho descoberto para ir mais rápido.
+            </p>
+          </div>
         </div>
 
         <Button onClick={onSendConfiguration} variant="ghost" fullWidth disabled={configStatus.state === 'sending'}>
@@ -102,9 +116,14 @@ export function Sidebar({
       </section>
 
       <section className={styles.controls}>
-        <Button onClick={onStart} disabled={running || data.status === 'success'} fullWidth>
+        <Button onClick={onStart} disabled={running || data.status === 'success' || !canStartSelectedRun} fullWidth>
           {data.status === 'success' ? 'Concluído' : running ? 'Executando...' : 'Ativar rato'}
         </Button>
+        {startBlockedMessage && (
+          <p className={styles.startHint} role="status" aria-live="polite">
+            {startBlockedMessage}
+          </p>
+        )}
         <Button onClick={onReset} variant="ghost" fullWidth>
           Reiniciar
         </Button>

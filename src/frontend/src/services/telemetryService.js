@@ -32,23 +32,23 @@ const MOCK_MAZES = {
     start: [1, 1],
     goal: [10, 10],
     grid: [
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1],
-    [1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1],
-    [1, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1],
-    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
-    [1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 1],
-    [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1],
-    [1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1],
-    [1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1],
-    [1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+      [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+      [1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1],
+      [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1],
+      [1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1],
+      [1, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1],
+      [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
+      [1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 1],
+      [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1],
+      [1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1],
+      [1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1],
+      [1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1],
+      [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     ],
     path: [
-    [1, 1], [2, 1], [3, 1], [4, 1],
-    [5, 1], [5, 2], [5, 3], [5, 4], [5, 5], [5, 6], [5, 7], [5, 8], [5, 9],
-    [6, 9], [7, 9], [8, 9], [9, 9], [10, 9], [10, 10],
+      [1, 1], [2, 1], [3, 1], [4, 1],
+      [5, 1], [5, 2], [5, 3], [5, 4], [5, 5], [5, 6], [5, 7], [5, 8], [5, 9],
+      [6, 9], [7, 9], [8, 9], [9, 9], [10, 9], [10, 10],
     ],
   },
 
@@ -188,12 +188,14 @@ export function getMazeMockData(mazeSize) {
   return MOCK_MAZES[mazeSize] ?? MOCK_MAZES[10];
 }
 
-export function getMockTelemetrySnapshot(stepIndex, mazeSize = 10) {
+export function getMockTelemetrySnapshot(stepIndex, mazeSize = 10, run = 1) {
   const maze = getMazeMockData(mazeSize);
   const step = Math.min(stepIndex, maze.path.length - 1);
   const position = maze.path[step];
   const visitedPath = maze.path.slice(0, step + 1);
   const isFinished = step === maze.path.length - 1;
+  const speedMultiplier = run === 2 ? 1.8 : 1;
+  const elapsedSeconds = Math.round(step * (run === 2 ? 0.45 : 1));
 
   return {
     mazeSize: maze.size,
@@ -203,8 +205,9 @@ export function getMockTelemetrySnapshot(stepIndex, mazeSize = 10) {
     start: maze.start,
     grid: maze.grid,
     status: isFinished ? 'success' : 'running',
-    elapsedSeconds: step,
-    batteryPercent: Math.max(85 - step * 2, 40),
-    speedMps: 0.45 + Math.random() * 0.1,
+    elapsedSeconds,
+    batteryPercent: Math.max(85 - step * (run === 2 ? 1 : 2), 40),
+    speedMps: (run === 2 ? 0.75 : 0.45) + Math.random() * (0.08 * speedMultiplier),
+    phase: run === 2 ? 'segunda passagem' : 'primeira passagem',
   };
 }

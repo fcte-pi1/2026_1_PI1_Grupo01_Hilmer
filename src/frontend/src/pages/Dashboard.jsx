@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { MazeView } from '../components/MazeView/MazeView';
 import { Sidebar } from '../components/Sidebar/Sidebar';
@@ -11,16 +11,37 @@ const DEFAULT_RUN = 1;
 export function Dashboard() {
   const location = useLocation();
   const mazeSize = location.state?.mazeSize ?? 10;
+  const run = location.state?.run ?? DEFAULT_RUN;
   const [config, setConfig] = useState({
     mazeSize,
-    run: DEFAULT_RUN,
+    run,
   });
   const [configStatus, setConfigStatus] = useState({
     state: 'idle',
     message: '',
   });
+  const [completedFirstPassByMaze, setCompletedFirstPassByMaze] = useState({});
 
-  const { data, running, start, reset } = useTelemetryData(config.mazeSize);
+  const { data, running, start, reset } = useTelemetryData(config.mazeSize, config.run);
+
+  useEffect(() => {
+    if (running || data.status !== 'success' || config.run !== 1) return;
+
+    setCompletedFirstPassByMaze((currentState) => {
+      if (currentState[config.mazeSize]) return currentState;
+
+      return {
+        ...currentState,
+        [config.mazeSize]: true,
+      };
+    });
+  }, [running, data.status, config.run, config.mazeSize]);
+
+  const hasCompletedFirstPass = Boolean(completedFirstPassByMaze[config.mazeSize]);
+  const canStartSelectedRun = config.run === 1 || hasCompletedFirstPass;
+  const startBlockedMessage = config.run === 2 && !hasCompletedFirstPass
+    ? `Conclua a primeira passagem no labirinto ${config.mazeSize}x${config.mazeSize} para liberar a segunda.`
+    : '';
 
   const handleConfigChange = useCallback((partialConfig) => {
     setConfig((currentConfig) => ({
@@ -47,6 +68,12 @@ export function Dashboard() {
     }
   }, [config]);
 
+  const handleStart = useCallback(() => {
+    if (!canStartSelectedRun) return;
+
+    start();
+  }, [canStartSelectedRun, start]);
+
   const sidebarConfig = useMemo(() => ({
     mazeSize: config.mazeSize,
     run: config.run,
@@ -61,12 +88,17 @@ export function Dashboard() {
         onConfigChange={handleConfigChange}
         onSendConfiguration={handleSendConfiguration}
         configStatus={configStatus}
-        onStart={start}
+        canStartSelectedRun={canStartSelectedRun}
+        startBlockedMessage={startBlockedMessage}
+        onStart={handleStart}
         onReset={reset}
       />
       <div className={styles.main}>
         <div className={styles.statusBar}>
           <h1 className={styles.title}>Telemetria em Tempo Real</h1>
+          <span className={styles.passLabel}>
+            {config.run === 1 ? 'Primeira passagem' : 'Segunda passagem'}
+          </span>
           {data.status === 'running' && (
             <span className={styles.livePulse}>● AO VIVO</span>
           )}
