@@ -1,11 +1,71 @@
 import { createServer } from "node:http";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { WebSocketServer, WebSocket } from "ws";
 
 const port = Number(process.env.PORT || 3001);
 const host = process.env.HOST || "127.0.0.1";
 const frontendOrigin = process.env.FRONTEND_ORIGIN || "http://localhost:5173";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const runtimeDataDir = join(__dirname, "..", "runtime-data");
+const firstPassStateFilePath = join(runtimeDataDir, "first-pass-status.json");
 
 const simulationDatabase = [];
+let esp32Connection = null;
+let activeConfiguration = null;
+const firstPassStatusByMaze = new Map();
+
+function loadFirstPassStateFromDisk() {
+  try {
+    if (!existsSync(firstPassStateFilePath)) return;
+
+    const raw = readFileSync(firstPassStateFilePath, "utf-8");
+    const parsed = JSON.parse(raw);
+
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return;
+
+    for (const [mazeSizeKey, status] of Object.entries(parsed)) {
+      const mazeSize = Number(mazeSizeKey);
+      if (!Number.isFinite(mazeSize)) continue;
+      if (!status || typeof status !== "object") continue;
+
+      firstPassStatusByMaze.set(mazeSize, {
+        started: status.started === true,
+        completed: status.completed === true,
+        updatedAt: typeof status.updatedAt === "string" ? status.updatedAt : new Date().toISOString()
+      });
+    }
+  } catch (error) {
+    logOperation("WARN", "Falha ao carregar estado de primeira passagem do disco", { error: error.message });
+  }
+}
+
+function persistFirstPassStateToDisk() {
+  try {
+    mkdirSync(runtimeDataDir, { recursive: true });
+
+    const serialized = Object.fromEntries(firstPassStatusByMaze.entries());
+    writeFileSync(firstPassStateFilePath, JSON.stringify(serialized, null, 2), "utf-8");
+  } catch (error) {
+    logOperation("WARN", "Falha ao persistir estado de primeira passagem no disco", { error: error.message });
+  }
+}
+
+function parseMazeSizeFromLabel(label) {
+  if (typeof label !== "string") return null;
+
+  const match = label.match(/^(\d+)x\1$/);
+  if (!match) return null;
+
+  return Number(match[1]);
+}
+
+function isFirstPassCompletedTelemetry(payload) {
+  const completionFlag = payload?.desafioCumprido;
+  return completionFlag === true || completionFlag === "S" || completionFlag === "s" || completionFlag === "true";
+}
 
 function sendJson(response, statusCode, payload) {
   response.writeHead(statusCode, {
@@ -37,6 +97,60 @@ function getRequestBody(request) {
       }
     });
   });
+}
+
+function sendToESP32(payload) {
+  if (!esp32Connection || esp32Connection.readyState !== WebSocket.OPEN) {
+    return false;
+  }
+
+  esp32Connection.send(JSON.stringify(payload));
+  return true;
+}
+
+function buildMicromouseConfiguration(body) {
+  const mazeSize = Number(body.mazeSize);
+  const run = Number(body.run);
+
+  if (![4, 8, 16].includes(mazeSize)) {
+    return { error: "Tamanho do labirinto inválido.", statusCode: 400 };
+  }
+
+  if (![1, 2].includes(run)) {
+    return { error: "A execução deve ser 1 ou 2.", statusCode: 400 };
+  }
+
+  if (run === 2) {
+    const firstPassStatus = firstPassStatusByMaze.get(mazeSize);
+
+    if (!firstPassStatus?.completed) {
+      return {
+        error: `A segunda passagem para ${mazeSize}x${mazeSize} só é liberada após concluir a primeira.`,
+        statusCode: 409
+      };
+    }
+  }
+
+  return {
+    configuration: {
+      tipoLabirinto: `${mazeSize}x${mazeSize}`,
+      mazeSize,
+      run,
+      execucao: run === 1 ? "primeira" : "segunda"
+    }
+  };
+}
+
+function markFirstPassStarted(configurationPayload) {
+  if (configurationPayload.run !== 1) return;
+
+  const previousStatus = firstPassStatusByMaze.get(configurationPayload.mazeSize);
+  firstPassStatusByMaze.set(configurationPayload.mazeSize, {
+    started: true,
+    completed: previousStatus?.completed === true,
+    updatedAt: new Date().toISOString()
+  });
+  persistFirstPassStateToDisk();
 }
 
 const server = createServer(async (request, response) => {
@@ -73,6 +187,102 @@ const server = createServer(async (request, response) => {
       return;
     }
 
+    if (request.method === "POST" && url.pathname === "/api/micromouse/configuracoes") {
+      const body = await getRequestBody(request);
+      const mazeSize = Number(body.mazeSize);
+      const run = Number(body.run);
+
+      if (![4, 8, 16].includes(mazeSize)) {
+        return sendJson(response, 400, { success: false, error: "Tamanho do labirinto inválido." });
+      }
+
+      if (![1, 2].includes(run)) {
+        return sendJson(response, 400, { success: false, error: "A execução deve ser 1 ou 2." });
+      }
+
+      if (run === 2) {
+        const firstPassStatus = firstPassStatusByMaze.get(mazeSize);
+
+        if (!firstPassStatus?.completed) {
+          return sendJson(response, 409, {
+            success: false,
+            error: `A segunda passagem para ${mazeSize}x${mazeSize} só é liberada após concluir a primeira.`
+          });
+        }
+      }
+
+      const configurationPayload = {
+        tipoLabirinto: `${mazeSize}x${mazeSize}`,
+        mazeSize,
+        run,
+        execucao: run === 1 ? "primeira" : "segunda"
+      };
+
+      const delivered = sendToESP32(configurationPayload);
+
+      if (!delivered) {
+        return sendJson(response, 503, {
+          success: false,
+          error: "A ESP32 não está conectada para receber a configuração."
+        });
+      }
+
+      activeConfiguration = configurationPayload;
+
+      if (run === 1) {
+        const previousStatus = firstPassStatusByMaze.get(mazeSize);
+        firstPassStatusByMaze.set(mazeSize, {
+          started: true,
+          completed: previousStatus?.completed === true,
+          updatedAt: new Date().toISOString()
+        });
+        persistFirstPassStateToDisk();
+      }
+
+      logOperation("INFO", "Configuração enviada ao Micromouse", configurationPayload);
+
+      return sendJson(response, 200, {
+        success: true,
+        message: "Configurações enviadas ao Micromouse.",
+        data: configurationPayload
+      });
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/micromouse/ativar") {
+      const body = await getRequestBody(request);
+      const { configuration: configurationPayload, error, statusCode } = buildMicromouseConfiguration(body);
+
+      if (error) {
+        return sendJson(response, statusCode, { success: false, error });
+      }
+
+      const activationPayload = {
+        ...configurationPayload,
+        comando: "ativar",
+        command: "start"
+      };
+
+      const delivered = sendToESP32(activationPayload);
+
+      if (!delivered) {
+        return sendJson(response, 503, {
+          success: false,
+          error: "A ESP32 não está conectada para receber o comando de ativação."
+        });
+      }
+
+      activeConfiguration = configurationPayload;
+      markFirstPassStarted(configurationPayload);
+
+      logOperation("INFO", "Comando de ativação enviado ao Micromouse", activationPayload);
+
+      return sendJson(response, 200, {
+        success: true,
+        message: "Rato ativado com sucesso.",
+        data: activationPayload
+      });
+    }
+
     // CRITÉRIO CA-43.1: Endpoint POST para salvar dados e processar regras do Micromouse
     if (request.method === "POST" && url.pathname === "/api/simulations") {
       const body = await getRequestBody(request);
@@ -104,7 +314,7 @@ const server = createServer(async (request, response) => {
       };
 
       simulationDatabase.push(record);
-      
+
       // CRITÉRIO CA-43.6: Registro de logs básicos de operação bem-sucedida
       logOperation("INFO", `Nova simulação salva com sucesso. ID: ${record.id}`);
 
@@ -138,21 +348,50 @@ function connectToESP32() {
   const esp32Url = process.env.ESP32_WS_URL || "ws://192.168.4.1:81";
   console.log(`[backend] Tentando conectar na ESP32 em ${esp32Url}...`);
   const esp32Ws = new WebSocket(esp32Url);
+  esp32Connection = esp32Ws;
 
   esp32Ws.on("open", () => {
     console.log("[backend] Conectado com sucesso à ESP32-C3!");
   });
 
   esp32Ws.on("message", (data) => {
+    const rawMessage = data.toString();
+
+    try {
+      const telemetryPayload = JSON.parse(rawMessage);
+      const telemetryMazeSize = parseMazeSizeFromLabel(telemetryPayload?.tipoLabirinto);
+      const activeMazeSize = activeConfiguration?.mazeSize;
+      const mazeSize = telemetryMazeSize ?? activeMazeSize;
+
+      if (mazeSize && activeConfiguration?.run === 1 && isFirstPassCompletedTelemetry(telemetryPayload)) {
+        const previousStatus = firstPassStatusByMaze.get(mazeSize);
+        if (!previousStatus?.completed) {
+          firstPassStatusByMaze.set(mazeSize, {
+            started: true,
+            completed: true,
+            updatedAt: new Date().toISOString()
+          });
+          persistFirstPassStateToDisk();
+
+          logOperation("INFO", "Primeira passagem concluída e liberada para segunda", { mazeSize });
+        }
+      }
+    } catch {
+      // Mensagem sem formato JSON esperado; apenas repassa ao frontend.
+    }
+
     wssReact.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
-        client.send(data.toString());
+        client.send(rawMessage);
       }
     });
   });
 
   esp32Ws.on("close", () => {
     console.log("[backend] Conexão com a ESP32 perdida. Tentando reconectar em 2 segundos...");
+    if (esp32Connection === esp32Ws) {
+      esp32Connection = null;
+    }
     setTimeout(connectToESP32, 2000);
   });
 
@@ -162,6 +401,7 @@ function connectToESP32() {
 }
 
 if (process.env.NODE_ENV !== 'test') {
+  loadFirstPassStateFromDisk();
   connectToESP32();
 }
 
