@@ -2,6 +2,41 @@
 // Este arquivo será substituído pela integração com o backend via WebSocket/HTTP.
 
 const MOCK_MAZES = {
+  4: {
+    size: 4,
+    start: [1, 1],
+    goal: [2, 2],
+    grid: [
+      [1, 1, 1, 1],
+      [1, 0, 0, 1],
+      [1, 1, 0, 1],
+      [1, 1, 1, 1],
+    ],
+    path: [
+      [1, 1], [1, 2], [2, 2],
+    ],
+  },
+
+  8: {
+    size: 8,
+    start: [1, 1],
+    goal: [6, 6],
+    grid: [
+      [1, 1, 1, 1, 1, 1, 1, 1],
+      [1, 0, 0, 0, 1, 0, 0, 1],
+      [1, 1, 1, 0, 1, 0, 1, 1],
+      [1, 0, 0, 0, 0, 0, 0, 1],
+      [1, 0, 1, 1, 1, 1, 0, 1],
+      [1, 0, 0, 0, 0, 1, 0, 1],
+      [1, 1, 1, 1, 0, 0, 0, 1],
+      [1, 1, 1, 1, 1, 1, 1, 1],
+    ],
+    path: [
+      [1, 1], [1, 2], [1, 3], [2, 3], [3, 3],
+      [3, 4], [3, 5], [3, 6], [4, 6], [5, 6], [6, 6],
+    ],
+  },
+
   10: {
     size: 10,
     start: [1, 1],
@@ -185,10 +220,10 @@ const MOCK_MAZES = {
 };
 
 export function getMazeMockData(mazeSize) {
-  return MOCK_MAZES[mazeSize] ?? MOCK_MAZES[10];
+  return MOCK_MAZES[mazeSize] ?? MOCK_MAZES[16];
 }
 
-export function getMockTelemetrySnapshot(stepIndex, mazeSize = 10, run = 1) {
+export function getMockTelemetrySnapshot(stepIndex, mazeSize = 16, run = 1) {
   const maze = getMazeMockData(mazeSize);
   const step = Math.min(stepIndex, maze.path.length - 1);
   const position = maze.path[step];
