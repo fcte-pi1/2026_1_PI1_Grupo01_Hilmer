@@ -32,7 +32,7 @@ export function Filter({ isOpen, onClose, filters, setFilters }) {
         <ListOptions
           title="DIMENSÃO"
           category="mazeSize"
-          listSet={["10x10", "12x12", "14x14", "16x16", "18x18", "20x20"]}
+          listSet={["4x4", "8x8", "16x16"]}
           filters={filters}
           onChange={handleFilterChange}
         />
