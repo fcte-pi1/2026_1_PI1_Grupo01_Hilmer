@@ -47,8 +47,8 @@ describe('filterExecutions', () => {
       ...emptyFilters,
       mazeSize: ['16x16'],
     });
-    expect(result).toHaveLength(1);
-    expect(result[0].mazeSize).toBe(16);
+    expect(result).toHaveLength(2);
+    expect(result.every((e) => e.mazeSize === 16)).toBe(true);
   });
 
   it('filters by status Sucesso', () => {
@@ -87,10 +87,10 @@ describe('filterExecutions', () => {
   it('applies multiple filters together', () => {
     const result = filterExecutions(MOCK_EXECUTION_HISTORY, {
       ...emptyFilters,
-      mazeSize: ['10x10', '12x12'],
+      mazeSize: ['4x4', '8x8'],
       status: ['Sucesso'],
     });
-    expect(result).toHaveLength(2);
-    expect(result.map((e) => e.mazeSize)).toEqual([10, 12]);
+    expect(result).toHaveLength(3);
+    expect(result.map((e) => e.mazeSize)).toEqual([4, 8, 8]);
   });
 });
