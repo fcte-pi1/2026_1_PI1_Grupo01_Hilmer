@@ -108,6 +108,51 @@ function sendToESP32(payload) {
   return true;
 }
 
+function buildMicromouseConfiguration(body) {
+  const mazeSize = Number(body.mazeSize);
+  const run = Number(body.run);
+
+  if (![4, 8, 16].includes(mazeSize)) {
+    return { error: "Tamanho do labirinto inválido.", statusCode: 400 };
+  }
+
+  if (![1, 2].includes(run)) {
+    return { error: "A execução deve ser 1 ou 2.", statusCode: 400 };
+  }
+
+  if (run === 2) {
+    const firstPassStatus = firstPassStatusByMaze.get(mazeSize);
+
+    if (!firstPassStatus?.completed) {
+      return {
+        error: `A segunda passagem para ${mazeSize}x${mazeSize} só é liberada após concluir a primeira.`,
+        statusCode: 409
+      };
+    }
+  }
+
+  return {
+    configuration: {
+      tipoLabirinto: `${mazeSize}x${mazeSize}`,
+      mazeSize,
+      run,
+      execucao: run === 1 ? "primeira" : "segunda"
+    }
+  };
+}
+
+function markFirstPassStarted(configurationPayload) {
+  if (configurationPayload.run !== 1) return;
+
+  const previousStatus = firstPassStatusByMaze.get(configurationPayload.mazeSize);
+  firstPassStatusByMaze.set(configurationPayload.mazeSize, {
+    started: true,
+    completed: previousStatus?.completed === true,
+    updatedAt: new Date().toISOString()
+  });
+  persistFirstPassStateToDisk();
+}
+
 const server = createServer(async (request, response) => {
   const url = new URL(request.url || "/", `http://${request.headers.host}`);
   if (request.method === "OPTIONS") {
@@ -147,7 +192,7 @@ const server = createServer(async (request, response) => {
       const mazeSize = Number(body.mazeSize);
       const run = Number(body.run);
 
-      if (![10, 12, 14, 16, 18, 20].includes(mazeSize)) {
+      if (![4, 8, 16].includes(mazeSize)) {
         return sendJson(response, 400, { success: false, error: "Tamanho do labirinto inválido." });
       }
 
@@ -200,6 +245,41 @@ const server = createServer(async (request, response) => {
         success: true,
         message: "Configurações enviadas ao Micromouse.",
         data: configurationPayload
+      });
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/micromouse/ativar") {
+      const body = await getRequestBody(request);
+      const { configuration: configurationPayload, error, statusCode } = buildMicromouseConfiguration(body);
+
+      if (error) {
+        return sendJson(response, statusCode, { success: false, error });
+      }
+
+      const activationPayload = {
+        ...configurationPayload,
+        comando: "ativar",
+        command: "start"
+      };
+
+      const delivered = sendToESP32(activationPayload);
+
+      if (!delivered) {
+        return sendJson(response, 503, {
+          success: false,
+          error: "A ESP32 não está conectada para receber o comando de ativação."
+        });
+      }
+
+      activeConfiguration = configurationPayload;
+      markFirstPassStarted(configurationPayload);
+
+      logOperation("INFO", "Comando de ativação enviado ao Micromouse", activationPayload);
+
+      return sendJson(response, 200, {
+        success: true,
+        message: "Rato ativado com sucesso.",
+        data: activationPayload
       });
     }
 
