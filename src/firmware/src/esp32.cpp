@@ -7,6 +7,9 @@ const char *password = "12345678";
 
 WebSocketsServer webSocket = WebSocketsServer(81);
 unsigned long lastMillis = 0;
+bool ratoAtivo = false;
+String tipoLabirintoAtual = "16x16";
+int execucaoAtual = 1;
 
 
 const int MAP_SIZE = 33;
@@ -38,6 +41,24 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
         }
         case WStype_TEXT:
             Serial.printf("[%d] Comando recebido: %s\n", num, payload);
+            {
+                JsonDocument comandoJson;
+                DeserializationError erro = deserializeJson(comandoJson, payload, length);
+
+                if (!erro) {
+                    const char* tipoLabirinto = comandoJson["tipoLabirinto"] | tipoLabirintoAtual.c_str();
+                    const char* comando = comandoJson["comando"] | "";
+                    const char* command = comandoJson["command"] | "";
+
+                    tipoLabirintoAtual = tipoLabirinto;
+                    execucaoAtual = comandoJson["run"] | execucaoAtual;
+
+                    if (strcmp(comando, "ativar") == 0 || strcmp(command, "start") == 0) {
+                        ratoAtivo = true;
+                        Serial.printf("Rato ativado: labirinto=%s, execucao=%d\n", tipoLabirintoAtual.c_str(), execucaoAtual);
+                    }
+                }
+            }
             break;
     }
 }
@@ -58,6 +79,10 @@ void setup() {
 
 void loop() {
     webSocket.loop();
+
+    if (!ratoAtivo) {
+        return;
+    }
     
     if (millis() - lastMillis > 100) {
         lastMillis = millis();
@@ -68,11 +93,17 @@ void loop() {
 
         JsonDocument doc;
         
-        doc["tipoLabirinto"] = "16x16";
+        doc["tipoLabirinto"] = tipoLabirintoAtual;
+        doc["run"] = execucaoAtual;
+        doc["ratoAtivo"] = ratoAtivo;
         doc["bateriaConsumo"] = 45.2;               
         doc["velocidadeMedia"] = 0.55;              
         doc["tempoConclusao"] = millis() / 1000.0;  
         doc["desafioCumprido"] = "N";               
+
+        JsonArray posicaoJson = doc["posicaoAtual"].to<JsonArray>();
+        posicaoJson.add(posX_falsa);
+        posicaoJson.add(posY_falsa);
         
         JsonArray mapaJson = doc["mapa"].to<JsonArray>();
         for (int i = 0; i < MAP_SIZE; i++) {
