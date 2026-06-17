@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { sendMicromouseConfiguration } from '../services/configurationService';
+import { activateMicromouse, sendMicromouseConfiguration } from '../services/configurationService';
 import styles from './NewAttempt.module.css';
 
-const MAZE_SIZES = [10, 12, 14, 16, 18, 20];
+const MAZE_SIZES = [4, 8, 16];
 const RUN_OPTIONS = [
   { value: 1, label: '1ª Passagem' },
   { value: 2, label: '2ª Passagem' },
@@ -14,6 +14,10 @@ export function NewAttempt() {
   const [mazeSize, setMazeSize] = useState(null);
   const [run, setRun] = useState(1);
   const [configStatus, setConfigStatus] = useState({
+    state: 'idle',
+    message: '',
+  });
+  const [activationStatus, setActivationStatus] = useState({
     state: 'idle',
     message: '',
   });
@@ -36,8 +40,19 @@ export function NewAttempt() {
     }
   }
 
-  function handleActivate() {
-    navigate('/dashboard', { state: { mazeSize, run } });
+  async function handleActivate() {
+    if (mazeSize === null) return;
+    setActivationStatus({ state: 'sending', message: 'Ativando rato...' });
+
+    try {
+      await activateMicromouse({ mazeSize, run });
+      navigate('/dashboard', { state: { mazeSize, run, activated: true } });
+    } catch (error) {
+      setActivationStatus({
+        state: 'error',
+        message: error.message || 'Falha ao ativar o rato.',
+      });
+    }
   }
 
   return (
@@ -67,6 +82,7 @@ export function NewAttempt() {
                 onClick={() => {
                   setMazeSize(s);
                   setConfigStatus({ state: 'idle', message: '' });
+                  setActivationStatus({ state: 'idle', message: '' });
                 }}
               >
                 {s}×{s}
@@ -85,6 +101,7 @@ export function NewAttempt() {
                 onClick={() => {
                   setRun(option.value);
                   setConfigStatus({ state: 'idle', message: '' });
+                  setActivationStatus({ state: 'idle', message: '' });
                 }}
               >
                 {option.label}
@@ -104,15 +121,20 @@ export function NewAttempt() {
             <button
               className={styles.activateBtn}
               onClick={handleActivate}
-              disabled={mazeSize === null}
+              disabled={mazeSize === null || activationStatus.state === 'sending'}
             >
-              Ativar Rato
+              {activationStatus.state === 'sending' ? 'Ativando...' : 'Ativar Rato'}
             </button>
           </div>
 
           {configStatus.message && (
             <p className={`${styles.feedback} ${styles[configStatus.state]}`} role="status" aria-live="polite">
               {configStatus.message}
+            </p>
+          )}
+          {activationStatus.message && (
+            <p className={`${styles.feedback} ${styles[activationStatus.state]}`} role="status" aria-live="polite">
+              {activationStatus.message}
             </p>
           )}
         </div>
