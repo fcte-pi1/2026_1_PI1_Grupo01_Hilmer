@@ -3,7 +3,7 @@ import { StatusBadge } from '../StatusBadge/StatusBadge';
 import { formatBattery, formatMazeDimension, formatSpeed, formatTime } from '../../utils/helpers';
 import styles from './Sidebar.module.css';
 
-const MAZE_SIZE_OPTIONS = [10, 12, 14, 16, 18, 20];
+const MAZE_SIZE_OPTIONS = [4, 8, 16];
 const RUN_OPTIONS = [
   { value: 1, label: 'Primeira passagem' },
   { value: 2, label: 'Segunda passagem' },
@@ -116,7 +116,11 @@ export function Sidebar({
       </section>
 
       <section className={styles.controls}>
-        <Button onClick={onStart} disabled={running || data.status === 'success' || !canStartSelectedRun} fullWidth>
+        <Button
+          onClick={onStart}
+          disabled={running || data.status === 'success' || !canStartSelectedRun || configStatus.state === 'sending'}
+          fullWidth
+        >
           {data.status === 'success' ? 'Concluído' : running ? 'Executando...' : 'Ativar rato'}
         </Button>
         {startBlockedMessage && (
