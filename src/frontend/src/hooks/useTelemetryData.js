@@ -1,57 +1,138 @@
-// MOCK HOOK — simula dados de telemetria em tempo real.
-// TODO: substituir por integração com WebSocket ou polling HTTP do backend.
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { getMockTelemetrySnapshot } from '../services/telemetryService';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { getMockTelemetrySnapshot, getMazeMockData } from '../services/telemetryService';
+function getTelemetryWebSocketUrl() {
+  if (import.meta.env.VITE_TELEMETRY_WS_URL) {
+    return import.meta.env.VITE_TELEMETRY_WS_URL;
+  }
 
-const RUN_SPEED = {
-  1: 800,
-  2: 320,
-};
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const hostname = window.location.hostname || 'localhost';
+  return `${protocol}//${hostname}:3001`;
+}
 
-export function useTelemetryData(mazeSize = 10, run = 1) {
-  const [step, setStep] = useState(0);
-  const [running, setRunning] = useState(false);
-  const intervalRef = useRef(null);
+function parseMazeSize(tipoLabirinto, fallback) {
+  if (typeof tipoLabirinto !== 'string') return fallback;
+
+  const match = tipoLabirinto.match(/^(\d+)x\1$/);
+  return match ? Number(match[1]) : fallback;
+}
+
+function toNumber(value, fallback = 0) {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : fallback;
+}
+
+function toCoordinate(value, fallback) {
+  if (Array.isArray(value) && value.length >= 2) {
+    return [toNumber(value[0], fallback[0]), toNumber(value[1], fallback[1])];
+  }
+
+  if (value && typeof value === 'object') {
+    const row = value.row ?? value.linha ?? value.x;
+    const col = value.col ?? value.coluna ?? value.y;
+    return [toNumber(row, fallback[0]), toNumber(col, fallback[1])];
+  }
+
+  return fallback;
+}
+
+function isFinished(payload) {
+  const flag = payload?.desafioCumprido;
+  return flag === true || flag === 'S' || flag === 's' || flag === 'true' || flag === 'SIM';
+}
+
+function normalizeTelemetry(payload, previousData, mazeSize, run) {
+  const grid = Array.isArray(payload.mapa) && Array.isArray(payload.mapa[0])
+    ? payload.mapa
+    : previousData.grid;
+  const rows = grid.length;
+  const cols = Array.isArray(grid[0]) ? grid[0].length : rows;
+  const start = toCoordinate(payload.inicio ?? payload.start, previousData.start ?? [1, 1]);
+  const goal = toCoordinate(
+    payload.objetivo ?? payload.goal,
+    previousData.goal ?? [Math.floor(rows / 2), Math.floor(cols / 2)],
+  );
+  const position = toCoordinate(
+    payload.posicaoAtual ?? payload.posicao ?? payload.position,
+    previousData.position ?? start,
+  );
+  const previousPath = previousData.visitedPath ?? [];
+  const alreadyVisited = previousPath.some(([row, col]) => row === position[0] && col === position[1]);
+  const visitedPath = alreadyVisited ? previousPath : [...previousPath, position];
+
+  return {
+    mazeSize: parseMazeSize(payload.tipoLabirinto, mazeSize),
+    position,
+    visitedPath,
+    goal,
+    start,
+    grid,
+    status: isFinished(payload) ? 'success' : 'running',
+    elapsedSeconds: toNumber(payload.tempoConclusao ?? payload.tempo ?? payload.elapsedSeconds, previousData.elapsedSeconds),
+    batteryPercent: toNumber(payload.percentualBateria ?? payload.bateriaConsumo ?? payload.batteryPercent, previousData.batteryPercent),
+    speedMps: toNumber(payload.velocidadeMedia ?? payload.speedMps, previousData.speedMps),
+    phase: run === 2 ? 'segunda passagem' : 'primeira passagem',
+  };
+}
+
+export function useTelemetryData(mazeSize = 16, run = 1, initiallyRunning = false) {
+  const initialData = useMemo(() => getMockTelemetrySnapshot(0, mazeSize, run), [mazeSize, run]);
+  const [data, setData] = useState(initialData);
+  const [running, setRunning] = useState(initiallyRunning);
+  const [connectionStatus, setConnectionStatus] = useState('disconnected');
+  const wsRef = useRef(null);
 
   useEffect(() => {
-    clearInterval(intervalRef.current);
-    setRunning(false);
-    setStep(0);
+    setData(getMockTelemetrySnapshot(0, mazeSize, run));
+    setRunning(initiallyRunning);
+  }, [mazeSize, run, initiallyRunning]);
+
+  useEffect(() => {
+    const ws = new WebSocket(getTelemetryWebSocketUrl());
+    wsRef.current = ws;
+
+    ws.addEventListener('open', () => {
+      setConnectionStatus('connected');
+    });
+
+    ws.addEventListener('message', (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        setRunning(true);
+        setData((currentData) => normalizeTelemetry(payload, currentData, mazeSize, run));
+      } catch {
+        setConnectionStatus('invalid-message');
+      }
+    });
+
+    ws.addEventListener('close', () => {
+      setConnectionStatus('disconnected');
+      setRunning(false);
+    });
+
+    ws.addEventListener('error', () => {
+      setConnectionStatus('error');
+    });
+
+    return () => {
+      ws.close();
+      wsRef.current = null;
+    };
   }, [mazeSize, run]);
 
-  const totalSteps = getMazeMockData(mazeSize).path.length;
-  const data = getMockTelemetrySnapshot(step, mazeSize, run);
-  const tickMs = RUN_SPEED[run] ?? RUN_SPEED[1];
-
   const start = useCallback(() => {
-    if (running) return;
-    setStep(0);
     setRunning(true);
-  }, [running]);
-
-  const reset = useCallback(() => {
-    clearInterval(intervalRef.current);
-    setRunning(false);
-    setStep(0);
+    setData((currentData) => ({
+      ...currentData,
+      status: currentData.status === 'success' ? 'running' : currentData.status,
+    }));
   }, []);
 
-  useEffect(() => {
-    if (!running) return;
+  const reset = useCallback(() => {
+    setRunning(false);
+    setData(getMockTelemetrySnapshot(0, mazeSize, run));
+  }, [mazeSize, run]);
 
-    intervalRef.current = setInterval(() => {
-      setStep((prev) => {
-        if (prev >= totalSteps - 1) {
-          clearInterval(intervalRef.current);
-          setRunning(false);
-          return prev;
-        }
-        return prev + 1;
-      });
-    }, tickMs);
-
-    return () => clearInterval(intervalRef.current);
-  }, [running, totalSteps, tickMs]);
-
-  return { data, running, start, reset };
+  return { data, running, connectionStatus, start, reset };
 }
