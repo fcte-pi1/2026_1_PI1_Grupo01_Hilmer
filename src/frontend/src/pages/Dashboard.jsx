@@ -3,15 +3,16 @@ import { useLocation } from 'react-router-dom';
 import { MazeView } from '../components/MazeView/MazeView';
 import { Sidebar } from '../components/Sidebar/Sidebar';
 import { useTelemetryData } from '../hooks/useTelemetryData';
-import { sendMicromouseConfiguration } from '../services/configurationService';
+import { activateMicromouse, sendMicromouseConfiguration } from '../services/configurationService';
 import styles from './Dashboard.module.css';
 
 const DEFAULT_RUN = 1;
 
 export function Dashboard() {
   const location = useLocation();
-  const mazeSize = location.state?.mazeSize ?? 10;
+  const mazeSize = location.state?.mazeSize ?? 16;
   const run = location.state?.run ?? DEFAULT_RUN;
+  const initiallyRunning = location.state?.activated === true;
   const [config, setConfig] = useState({
     mazeSize,
     run,
@@ -22,7 +23,7 @@ export function Dashboard() {
   });
   const [completedFirstPassByMaze, setCompletedFirstPassByMaze] = useState({});
 
-  const { data, running, start, reset } = useTelemetryData(config.mazeSize, config.run);
+  const { data, running, start, reset } = useTelemetryData(config.mazeSize, config.run, initiallyRunning);
 
   useEffect(() => {
     if (running || data.status !== 'success' || config.run !== 1) return;
@@ -68,11 +69,25 @@ export function Dashboard() {
     }
   }, [config]);
 
-  const handleStart = useCallback(() => {
+  const handleStart = useCallback(async () => {
     if (!canStartSelectedRun) return;
 
-    start();
-  }, [canStartSelectedRun, start]);
+    setConfigStatus({ state: 'sending', message: 'Ativando rato...' });
+
+    try {
+      const response = await activateMicromouse(config);
+      start();
+      setConfigStatus({
+        state: 'success',
+        message: response.message || 'Rato ativado com sucesso.',
+      });
+    } catch (error) {
+      setConfigStatus({
+        state: 'error',
+        message: error.message || 'Falha ao ativar o rato.',
+      });
+    }
+  }, [canStartSelectedRun, config, start]);
 
   const sidebarConfig = useMemo(() => ({
     mazeSize: config.mazeSize,
