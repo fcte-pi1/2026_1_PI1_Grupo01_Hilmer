@@ -9,6 +9,9 @@
 // =============================================================================
 
 #include <Arduino.h>
+#include <ArduinoJson.h>
+#include <WiFi.h>
+#include <WebSocketsServer.h>
 #include <stdint.h>
 
 // =============================================================================
@@ -68,6 +71,18 @@
 #define FINISH_COLOR  0xFFFFFF
 
 // =============================================================================
+// COMUNICAÇÃO WEB
+// =============================================================================
+const char *ssid = "Micromouse_Telemetry";
+const char *password = "12345678";
+
+WebSocketsServer webSocket = WebSocketsServer(81);
+unsigned long lastTelemetryMillis = 0;
+
+constexpr uint8_t MAP_SIZE = 33;
+constexpr uint8_t PATH_CAPACITY = MAZE_SIZE * MAZE_SIZE;
+
+// =============================================================================
 // ENUMS
 // =============================================================================
 enum RobotState : uint8_t {
@@ -120,6 +135,23 @@ struct Position {
     int8_t c;
 };
 
+struct TelemetryPoint {
+    int8_t row;
+    int8_t col;
+};
+
+uint8_t mapaLabirinto[MAP_SIZE][MAP_SIZE];
+TelemetryPoint caminhoPercorrido[PATH_CAPACITY];
+uint16_t caminhoPercorridoSize = 0;
+uint32_t numeroTentativa = 0;
+unsigned long inicioCorrida = 0;
+bool desafioCumprido = false;
+String tempoConclusaoISO;
+
+const int8_t deltaLinha[4] = {1, 0, -1, 0};
+const int8_t deltaColuna[4] = {0, 1, 0, -1};
+const char *nomesDirecao[4] = {"NORTE", "LESTE", "SUL", "OESTE"};
+
 // =============================================================================
 // SENSOR DE PAREDE COM FILTRO
 // =============================================================================
@@ -158,6 +190,216 @@ bool lerSensorFiltrado(SensorParede &s) {
 
     // Com 5 leituras, 3 LOW já contam como parede
     return leiturasLow >= 3;
+}
+
+bool dentroDoLabirinto(int8_t linha, int8_t coluna) {
+    return linha >= 0 && linha < MAZE_SIZE && coluna >= 0 && coluna < MAZE_SIZE;
+}
+
+void inicializarMapaWeb() {
+    for (uint8_t i = 0; i < MAP_SIZE; i++) {
+        for (uint8_t j = 0; j < MAP_SIZE; j++) {
+            if (i == 0 || i == MAP_SIZE - 1 || j == 0 || j == MAP_SIZE - 1) {
+                mapaLabirinto[i][j] = 1;
+            } else {
+                mapaLabirinto[i][j] = 2;
+            }
+        }
+    }
+}
+
+void celulaParaMapa(int8_t linha, int8_t coluna, uint8_t &mapaLinha, uint8_t &mapaColuna) {
+    mapaLinha = (uint8_t)(linha * 2 + 1);
+    mapaColuna = (uint8_t)(coluna * 2 + 1);
+}
+
+void marcarCelulaVisitada(int8_t linha, int8_t coluna) {
+    if (!dentroDoLabirinto(linha, coluna)) {
+        return;
+    }
+
+    uint8_t mapaLinha = 0;
+    uint8_t mapaColuna = 0;
+    celulaParaMapa(linha, coluna, mapaLinha, mapaColuna);
+    mapaLabirinto[mapaLinha][mapaColuna] = 0;
+}
+
+void marcarSegmentoVisitado(int8_t linhaAnterior, int8_t colunaAnterior, int8_t linhaAtualWeb, int8_t colunaAtualWeb) {
+    if (!dentroDoLabirinto(linhaAnterior, colunaAnterior) || !dentroDoLabirinto(linhaAtualWeb, colunaAtualWeb)) {
+        return;
+    }
+
+    uint8_t linhaA = 0;
+    uint8_t colunaA = 0;
+    uint8_t linhaB = 0;
+    uint8_t colunaB = 0;
+
+    celulaParaMapa(linhaAnterior, colunaAnterior, linhaA, colunaA);
+    celulaParaMapa(linhaAtualWeb, colunaAtualWeb, linhaB, colunaB);
+
+    mapaLabirinto[(linhaA + linhaB) / 2][(colunaA + colunaB) / 2] = 0;
+}
+
+void registrarCaminho(int8_t linha, int8_t coluna) {
+    if (caminhoPercorridoSize >= PATH_CAPACITY) {
+        return;
+    }
+
+    caminhoPercorrido[caminhoPercorridoSize++] = {linha, coluna};
+}
+
+String timestampISO(unsigned long elapsedMillis) {
+    unsigned long totalSeconds = elapsedMillis / 1000UL;
+    unsigned int seconds = totalSeconds % 60UL;
+    unsigned int minutes = (totalSeconds / 60UL) % 60UL;
+    unsigned int hours = (totalSeconds / 3600UL) % 24UL;
+
+    char buffer[25];
+    snprintf(buffer, sizeof(buffer), "2026-06-27T%02u:%02u:%02uZ", hours, minutes, seconds);
+    return String(buffer);
+}
+
+String direcaoParaTexto(uint8_t direcao) {
+    if (direcao < 4) {
+        return String(nomesDirecao[direcao]);
+    }
+
+    return String("NORTE");
+}
+
+bool atCenter(Position pos) {
+    const int8_t mid = MAZE_SIZE / 2;
+    return (pos.r == mid - 1 || pos.r == mid) && (pos.c == mid - 1 || pos.c == mid);
+}
+
+uint8_t posicaoParaDirecaoAtual(Direction dir) {
+    switch (dir) {
+        case NORTH: return 0;
+        case EAST:  return 1;
+        case SOUTH: return 2;
+        case WEST:  return 3;
+    }
+
+    return 0;
+}
+
+void atualizarMapaMovimento(Position anterior, Position atual) {
+    if (dentroDoLabirinto(anterior.r, anterior.c)) {
+        marcarCelulaVisitada(anterior.r, anterior.c);
+    }
+
+    if (dentroDoLabirinto(atual.r, atual.c)) {
+        marcarCelulaVisitada(atual.r, atual.c);
+        marcarSegmentoVisitado(anterior.r, anterior.c, atual.r, atual.c);
+        registrarCaminho(atual.r, atual.c);
+    }
+}
+
+void preencherMatriz(JsonDocument &doc, const char *chave) {
+    JsonArray matriz = doc[chave].to<JsonArray>();
+
+    for (uint8_t i = 0; i < MAP_SIZE; i++) {
+        JsonArray linha = matriz.add<JsonArray>();
+        for (uint8_t j = 0; j < MAP_SIZE; j++) {
+            linha.add(mapaLabirinto[i][j]);
+        }
+    }
+}
+
+void preencherPayloadWeb(JsonDocument &doc) {
+    uint8_t posMapaLinha = 0;
+    uint8_t posMapaColuna = 0;
+    uint8_t startMapaLinha = 0;
+    uint8_t startMapaColuna = 0;
+    uint8_t goalMapaLinha = 0;
+    uint8_t goalMapaColuna = 0;
+
+    celulaParaMapa(currentPos.r, currentPos.c, posMapaLinha, posMapaColuna);
+    celulaParaMapa(0, 0, startMapaLinha, startMapaColuna);
+    celulaParaMapa((int8_t)(MAZE_SIZE / 2 - 1), (int8_t)(MAZE_SIZE / 2 - 1), goalMapaLinha, goalMapaColuna);
+
+    doc["numTentativa"] = numeroTentativa;
+    doc["tempoColeta"] = timestampISO(millis() - inicioCorrida);
+    doc["tensaoRecente"] = 7.4;
+    doc["correnteRecente"] = 1.0;
+    doc["posHRecente"] = currentPos.c;
+    doc["posVRecente"] = currentPos.r;
+    doc["velocidadeAtual"] = 0.55;
+    doc["bateriaAtual"] = 100.0;
+    doc["tensaoAtual"] = 7.4;
+    doc["sensorCor"] = "#000000";
+    doc["sensorEsquerda"] = sensorEsq.wallDetected ? 1 : 0;
+    doc["sensorDireita"] = sensorDir.wallDetected ? 1 : 0;
+    doc["sensorFrontal"] = sensorFrente.wallDetected ? 1 : 0;
+    doc["tipoLabirinto"] = "16x16";
+    doc["desafioCumprido"] = desafioCumprido ? "SIM" : "NAO";
+    doc["status"] = desafioCumprido ? "success" : "running";
+    doc["elapsedSeconds"] = millis() / 1000.0;
+    doc["batteryPercent"] = 100.0;
+    doc["speedMps"] = 0.55;
+
+    JsonArray position = doc["position"].to<JsonArray>();
+    position.add(posMapaLinha);
+    position.add(posMapaColuna);
+
+    JsonArray start = doc["start"].to<JsonArray>();
+    start.add(startMapaLinha);
+    start.add(startMapaColuna);
+
+    JsonArray goal = doc["goal"].to<JsonArray>();
+    goal.add(goalMapaLinha);
+    goal.add(goalMapaColuna);
+
+    JsonArray path = doc["visitedPath"].to<JsonArray>();
+    for (uint16_t i = 0; i < caminhoPercorridoSize; i++) {
+        uint8_t mapaLinha = 0;
+        uint8_t mapaColuna = 0;
+        celulaParaMapa(caminhoPercorrido[i].row, caminhoPercorrido[i].col, mapaLinha, mapaColuna);
+
+        JsonArray point = path.add<JsonArray>();
+        point.add(mapaLinha);
+        point.add(mapaColuna);
+    }
+
+    JsonObject trajetoriaAtual = doc["trajetoAtual"].to<JsonObject>();
+    trajetoriaAtual["numTentativa"] = numeroTentativa;
+    trajetoriaAtual["passo"] = caminhoPercorridoSize == 0 ? 1 : caminhoPercorridoSize;
+    trajetoriaAtual["pos_h"] = currentPos.c;
+    trajetoriaAtual["pos_v"] = currentPos.r;
+    trajetoriaAtual["direcao"] = direcaoParaTexto(posicaoParaDirecaoAtual(currentDir));
+
+    if (desafioCumprido) {
+        doc["tempoConclusao"] = timestampISO(millis() - inicioCorrida);
+    }
+
+    preencherMatriz(doc, "mapa");
+
+    JsonObject historico = doc["historico"].to<JsonObject>();
+    historico["percentualBateria"] = 100.0;
+    historico["velocidadeMedia"] = 0.55;
+    historico["tempoConclusao"] = desafioCumprido ? timestampISO(millis() - inicioCorrida) : "";
+    historico["desafioCumprido"] = desafioCumprido ? "SIM" : "NAO";
+    historico["correnteEletrica"] = 1.0;
+    historico["tensaoEletrica"] = 7.4;
+    historico["tipoLabirinto"] = "16x16";
+}
+
+void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
+    switch(type) {
+        case WStype_DISCONNECTED:
+            Serial.printf("[%d] Desconectado!\n", num);
+            break;
+        case WStype_CONNECTED: {
+            IPAddress ip = webSocket.remoteIP(num);
+            Serial.printf("[%d] Conectado de %d.%d.%d.%d\n", num, ip[0], ip[1], ip[2], ip[3]);
+            break;
+        }
+        case WStype_TEXT:
+            Serial.printf("[%d] Comando recebido: %s\n", num, payload);
+            break;
+        default:
+            break;
+    }
 }
 
 // Sensores globais
@@ -780,6 +1022,16 @@ void updatePosition(MoveCommand cmd, bool avancou) {
     currentPos.c = constrain(currentPos.c, 0, MAZE_SIZE - 1);
 }
 
+void publicarTelemetria() {
+    JsonDocument doc;
+    preencherPayloadWeb(doc);
+
+    String jsonPayload;
+    serializeJson(doc, jsonPayload);
+
+    webSocket.broadcastTXT(jsonPayload);
+}
+
 // =============================================================================
 // VERIFICAÇÃO DE CHEGADA
 // =============================================================================
@@ -795,6 +1047,8 @@ void setup() {
     Serial.begin(115200);
     delay(1000);
 
+    randomSeed((uint32_t)millis());
+
     initSensorParede(sensorEsq);
     initSensorParede(sensorFrente);
     initSensorParede(sensorDir);
@@ -808,6 +1062,24 @@ void setup() {
 
     motors.begin();
     maze.begin();
+    inicializarMapaWeb();
+
+    numeroTentativa = random(1000, 9999);
+    inicioCorrida = millis();
+    caminhoPercorridoSize = 0;
+    desafioCumprido = false;
+    tempoConclusaoISO = "";
+
+    registrarCaminho(currentPos.r, currentPos.c);
+    marcarCelulaVisitada(currentPos.r, currentPos.c);
+
+    Serial.println("Configurando Access Point...");
+    WiFi.softAP(ssid, password);
+    Serial.print("IP da ESP32: ");
+    Serial.println(WiFi.softAPIP());
+
+    webSocket.begin();
+    webSocket.onEvent(webSocketEvent);
 
     Serial.println("[MICROMOUSE] Hardware inicializado.");
     Serial.println("[MICROMOUSE] Iniciando automaticamente...");
@@ -828,9 +1100,11 @@ void setup() {
 // =============================================================================
 void loop() {
     if (estadoAtual == FINALIZADO) {
+        webSocket.loop();
         return;
     }
 
+    webSocket.loop();
     atualizarSensores();
     imprimirStatus();
 
@@ -840,33 +1114,42 @@ void loop() {
     floodFill.computeMulti(centroGoals, 4);
 
     if (atCenter() || corRGB == FINISH_COLOR) {
+        desafioCumprido = true;
+        tempoConclusaoISO = timestampISO(millis() - inicioCorrida);
         estadoAtual = FINALIZADO;
         motors.stop();
         Serial.println("[MICROMOUSE] DESTINO ALCANCADO! Encerrando...");
-        return;
     }
 
-    MoveCommand cmd = navigator.decide(currentPos, currentDir);
+    if (estadoAtual != FINALIZADO) {
+        MoveCommand cmd = navigator.decide(currentPos, currentDir);
 
-    // Segurança: se o Flood Fill mandar ir para frente, mas tem parede,
-    // escolhe uma alternativa simples.
-    if (cmd == MOVE_FORWARD && sensorFrente.wallDetected) {
-        if (!sensorDir.wallDetected) {
-            cmd = TURN_RIGHT_CMD;
-        } else if (!sensorEsq.wallDetected) {
-            cmd = TURN_LEFT_CMD;
-        } else {
-            cmd = TURN_BACK_CMD;
+        // Segurança: se o Flood Fill mandar ir para frente, mas tem parede,
+        // escolhe uma alternativa simples.
+        if (cmd == MOVE_FORWARD && sensorFrente.wallDetected) {
+            if (!sensorDir.wallDetected) {
+                cmd = TURN_RIGHT_CMD;
+            } else if (!sensorEsq.wallDetected) {
+                cmd = TURN_LEFT_CMD;
+            } else {
+                cmd = TURN_BACK_CMD;
+            }
+        }
+
+        Position posicaoAnterior = currentPos;
+        bool avancou = motors.execute(cmd);
+
+        updatePosition(cmd, avancou);
+
+        if (avancou) {
+            atualizarMapaMovimento(posicaoAnterior, currentPos);
+        }
+
+        if (maze.valid(currentPos.r, currentPos.c)) {
+            maze.get(currentPos.r, currentPos.c).visited = 1;
         }
     }
 
-    bool avancou = motors.execute(cmd);
-
-    updatePosition(cmd, avancou);
-
-    if (maze.valid(currentPos.r, currentPos.c)) {
-        maze.get(currentPos.r, currentPos.c).visited = 1;
-    }
-
+    publicarTelemetria();
     delay(20);
 }
