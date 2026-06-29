@@ -306,6 +306,27 @@
       color: var(--muted);
     }
 
+    /* ── MoSCoW tag ── */
+    .moscow-must   { background: rgba(248,113,113,0.15); color: #f87171; border: 1px solid rgba(248,113,113,0.3); border-radius: 6px; padding: 2px 8px; font-size: 0.75rem; font-weight: 700; }
+    .moscow-should { background: rgba(245,158,11,0.15);  color: #f59e0b; border: 1px solid rgba(245,158,11,0.3);  border-radius: 6px; padding: 2px 8px; font-size: 0.75rem; font-weight: 700; }
+    .moscow-could  { background: rgba(34,197,94,0.15);   color: #22c55e; border: 1px solid rgba(34,197,94,0.3);   border-radius: 6px; padding: 2px 8px; font-size: 0.75rem; font-weight: 700; }
+
+    /* ── HU card ── */
+    .hu-card {
+      background: rgba(2,6,23,0.6);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .hu-card:last-child { margin-bottom: 0; }
+    .hu-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+    .hu-id { font-family: 'Courier New', monospace; font-size: 0.8rem; color: var(--accent); font-weight: 700; }
+    .hu-title { font-size: 0.95rem; font-weight: 700; color: var(--text); }
+    .hu-desc { color: var(--muted); font-size: 0.88rem; margin: 0 0 8px; }
+    .hu-criteria { color: var(--muted); font-size: 0.85rem; padding-left: 16px; margin: 0; }
+    .hu-criteria li { margin-bottom: 4px; }
+
     @media (max-width: 860px) {
       .grid-2, .grid-3 { grid-template-columns: 1fr; }
       .img-row.cols-2, .img-row.cols-3 { grid-template-columns: 1fr; }
@@ -340,6 +361,9 @@
 <main>
   <div class="container">
 
+    <!-- ══════════════════════════════════════════
+         SEÇÃO: O RATO (HARDWARE)
+    ══════════════════════════════════════════ -->
     <section id="rato" class="detail-section">
       <div class="section-header">
         <div class="section-icon icon-rato">🤖</div>
@@ -353,7 +377,7 @@
       <div class="stat-grid">
         <div class="stat-card">
           <span class="stat-label">Comprimento</span>
-          <span class="stat-value c-blue">11.2 cm</span>
+          <span class="stat-value c-blue">14 cm</span>
         </div>
         <div class="stat-card">
           <span class="stat-label">Largura</span>
@@ -371,7 +395,8 @@
         </div>
         <div class="stat-card">
           <span class="stat-label">Sistema de tração</span>
-          <span class="stat-value c-green" style="font-size:1.2rem">2 rodas</span>
+          <span class="stat-value c-green" style="font-size:1.2rem">4 rodas</span>
+          <span class="stat-unit">tração dianteira</span>
         </div>
         <div class="stat-card">
           <span class="stat-label">Microcontrolador</span>
@@ -390,13 +415,15 @@
             <li>CG rebaixado — componentes pesados na parte inferior para manter aderência nas curvas</li>
             <li>Estrutura o mais larga possível para resistir à força centrípeta nas curvas</li>
             <li>Centro de rotação situado no centro geométrico do robô</li>
-            <li>Sistema de 2 rodas com tração dianteira e diferencial lateral</li>
-            <li>Controle independente por motor acoplado a cada roda (direção diferencial)</li>
+            <li>Sistema de 4 rodas com tração dianteira e diferencial lateral</li>
+            <li>Controle independente por motor acoplado a cada lado (direção diferencial)</li>
+            <li>Chassi de dois andares em PETG (impressão 3D), com 3 cm de espaçamento entre andares</li>
+            <li>Labirinto de teste em MDF — estrutura modular para diferentes configurações</li>
           </ul>
-          <h4>Materiais estruturais</h4
+          <h4>Materiais estruturais</h4>
           <ul>
-            <li>Chassi: PETG — resistente, durável e flexível para absorção de impactos</li>
-            <li>Labirinto de teste: MDF 12mm — versátil e de fácil reconfiguração</li>
+            <li><strong>Chassi:</strong> PETG — resistente, durável e flexível para absorção de impactos</li>
+            <li><strong>Labirinto de teste:</strong> MDF 12mm — versátil e de fácil reconfiguração</li>
             <li>Colunas com arredondamentos nas bases para evitar concentradores de tensão</li>
           </ul>
         </div>
@@ -433,7 +460,7 @@
               <tr><td><strong>Bateria LiPo 7.4V 1100mAh 20C</strong></td><td><span class="badge badge-coral">Elétrico</span></td><td>R$ 129,00</td><td>Fonte de alimentação</td></tr>
               <tr><td><strong>Micro Motor N20 6V 500RPM (×2)</strong></td><td><span class="badge badge-coral">Elétrico</span></td><td>R$ 28,40</td><td>Tração e locomoção</td></tr>
               <tr><td><strong>Mini Ponte H L298N (×2)</strong></td><td><span class="badge badge-blue">Matéria-prima</span></td><td>R$ 4,90</td><td>Driver de controle dos motores</td></tr>
-              <tr><td><strong>Sensor APDS-9960</strong></td><td><span class="badge badge-purple">Eletrônico</span></td><td>R$ 25,40</td><td>Sensor de gestos e cores (detecção de chão)</td></tr>
+              <tr><td><strong>Sensor APDS-9960</strong></td><td><span class="badge badge-purple">Eletrônico</span></td><td>R$ 25,40</td><td>Sensor de gestos e cores (detecção de chão/paredes)</td></tr>
               <tr><td><strong>Módulo RF MX-FS-03V 433MHz</strong></td><td><span class="badge badge-purple">Eletrônico</span></td><td>R$ 9,90</td><td>Detecção de proximidade / obstáculos</td></tr>
               <tr><td><strong>Encoder AS5048A (×3)</strong></td><td><span class="badge badge-purple">Eletrônico</span></td><td>R$ 27,79</td><td>Odometria e controle de velocidade</td></tr>
               <tr><td><strong>Sensor INA226</strong></td><td><span class="badge badge-purple">Eletrônico</span></td><td>R$ 37,85</td><td>Monitoramento de tensão, corrente e potência</td></tr>
@@ -449,60 +476,64 @@
         <div class="stat-grid" style="margin-top:20px">
           <div class="stat-card">
             <span class="stat-label">Matéria-prima</span>
-            <span class="stat-value c-amber">R$ 270,36 </span>
+            <span class="stat-value c-amber">R$ 270,30</span>
             <span class="stat-unit">realizado</span>
           </div>
           <div class="stat-card">
             <span class="stat-label">Comp. eletrônicos</span>
-            <span class="stat-value c-purple">R$ 171,09</span>
+            <span class="stat-value c-purple">R$ 140,30</span>
             <span class="stat-unit">realizado</span>
           </div>
           <div class="stat-card">
             <span class="stat-label">Comp. elétricos</span>
-            <span class="stat-value c-coral">R$ 157</span>
+            <span class="stat-value c-coral">R$ 157,40</span>
             <span class="stat-unit">realizado</span>
           </div>
           <div class="stat-card">
-            <span class="stat-label">Total geral</span>
-            <span class="stat-value c-blue">R$ 598,85</span>
-            <span class="stat-unit">aprox. realizado</span>
+            <span class="stat-label">Montagem</span>
+            <span class="stat-value c-blue">R$ 27,79</span>
+            <span class="stat-unit">realizado</span>
           </div>
         </div>
       </div>
     </section>
 
+    <!-- ══════════════════════════════════════════
+         SEÇÃO: ELETRÔNICA
+    ══════════════════════════════════════════ -->
     <section id="eletronica" class="detail-section">
       <div class="section-header">
         <div class="section-icon icon-eletronica">⚡</div>
         <div class="section-header-text">
           <h2>Eletrônica</h2>
-          <p>Arquitetura do circuito, divisores de tensão e diagrama de blocos</p>
+          <p>Arquitetura do circuito, regulação de tensão e diagrama de blocos</p>
         </div>
       </div>
 
       <div class="grid-2">
         <div class="card border-purple">
           <h3>Arquitetura eletrônica</h3>
-          <p>O ESP32-C3-MINI-1 atua como unidade central de processamento, lendo sinais dos sensores e gerando comandos de controle. O sistema opera com três níveis de tensão derivados da bateria LiPo 7,4V.</p>
+          <p>O ESP32-C3-MINI-1 atua como unidade central de processamento, lendo sinais dos sensores e gerando comandos de controle. A bateria LiPo 7,4V alimenta o sistema, com regulação de tensão por regulador Buck LM2596 para a linha lógica de 3,3V.</p>
           <h4>Fluxo de controle</h4>
           <ul>
             <li><strong>Sensores →</strong> ESP32-C3 (leitura e processamento)</li>
             <li><strong>ESP32-C3 →</strong> Driver L298N (comandos PWM/direção)</li>
             <li><strong>Driver L298N →</strong> Motores N20 (potência elétrica)</li>
-            <li><strong>Chaveamento flip-flop tipo D →</strong> ligar/desligar rodas independentemente</li>
+            <li><strong>Chaveamento flip-flop tipo D →</strong> ligar/desligar rodas independentemente (00/11 = parado; 10/01 = rotação)</li>
             <li><strong>INA226 →</strong> monitoramento energético em tempo real</li>
           </ul>
           <h4>Sensores embarcados</h4>
           <ul>
-            <li><strong>APDS-9960</strong> — detecção de cor no chão do labirinto</li>
+            <li><strong>APDS-9960</strong> — detecção de cor no topo da parede do labirinto (até 400 kHz)</li>
             <li><strong>Módulo IR LM393 (×3)</strong> — detecção de obstáculos frontais e laterais (até 20 kHz)</li>
             <li><strong>AS5048A (×3)</strong> — encoders magnéticos para odometria</li>
-            <li><strong>INA226</strong> — tensão, corrente e potência da bateria</li>
+            <li><strong>INA226</strong> — tensão, corrente e potência da bateria via I²C</li>
           </ul>
+          <h4>Comunicação</h4>
           <ul>
-            <li>Comunicação Wi-Fi 2,4 GHz via ESP32 — rede própria gerada pelo microcontrolador.</li>
-            <li>Comunicação bidirecional via WebSocket (porta 3001).</li>
-            <li>Firmware armazenado na ROM; processamento em RAM do ESP32.</li>
+            <li>Wi-Fi 2,4 GHz via ESP32 — rede própria gerada pelo microcontrolador</li>
+            <li>Comunicação bidirecional via WebSocket (porta 3001)</li>
+            <li>Firmware armazenado na ROM; processamento em RAM do ESP32</li>
           </ul>
         </div>
 
@@ -512,18 +543,19 @@
         </div>
       </div>
 
+      <!-- Regulação de tensão -->
       <div class="card border-purple">
-        <h3>Divisores de tensão</h3>
+        <h3>Regulação de tensão</h3>
         <p>A bateria fornece 7,4V. O sistema utiliza um regulador Buck LM2596 para fornecer a tensão de 3,3V à linha lógica (ESP32, sensores, encoders). Os motores são alimentados diretamente pela bateria (7,4V via driver L298N). Um fusível de vidro 1,5A protege o sistema de sobrecorrente.</p>
 
         <div class="grid-3" style="margin-top:16px">
           <div style="background:rgba(2,6,23,0.6); border:1px solid var(--border); border-radius:12px; padding:16px;">
-            <div class="badge badge-coral" style="margin-bottom:10px">Nível 1</div>
+            <div class="badge badge-coral" style="margin-bottom:10px">Motores e Drivers</div>
             <p style="color:var(--text); font-size:1.1rem; font-weight:700; margin:0 0 4px">7,4V direto</p>
             <p style="color:var(--muted); font-size:0.88rem; margin:0">Alimentação direta da bateria para os drivers L298N e motores N20</p>
           </div>
           <div style="background:rgba(2,6,23,0.6); border:1px solid var(--border); border-radius:12px; padding:16px;">
-            <div class="badge badge-purple" style="margin-bottom:10px">Nível 2</div>
+            <div class="badge badge-purple" style="margin-bottom:10px">Linha Lógica</div>
             <p style="color:var(--text); font-size:1.1rem; font-weight:700; margin:0 0 4px">7,4V → 3,3V</p>
             <p style="color:var(--muted); font-size:0.88rem; margin:0">Regulador Buck LM2596 — ESP32, sensores IR, encoders, INA226</p>
           </div>
@@ -544,9 +576,7 @@
       <div class="grid-2">
         <div class="card">
           <h3>Esquemático do circuito</h3>
-          <div class="img-placeholder" style="min-height:220px">
           <img src="../assets/img/schematic.png" style="width:100%; border-radius:14px; display:block;">
-          </div>
         </div>
         <div class="card">
           <h3>PCB — Layout da placa</h3>
@@ -558,6 +588,9 @@
       </div>
     </section>
 
+    <!-- ══════════════════════════════════════════
+         SEÇÃO: ENERGIA
+    ══════════════════════════════════════════ -->
     <section id="energia" class="detail-section">
       <div class="section-header">
         <div class="section-icon icon-energia">🔋</div>
@@ -571,15 +604,15 @@
         <div class="stat-card">
           <span class="stat-label">Energia total consumida</span>
           <span class="stat-value c-coral">7.505,91 J</span>
-          <span class="stat-unit">≈  2,085 Wh em 30 min</span>
+          <span class="stat-unit">≈ 2,085 Wh em 30 min</span>
         </div>
         <div class="stat-card">
           <span class="stat-label">Corrente média do sistema</span>
-          <span class="stat-value c-coral">635,63  mA</span>
+          <span class="stat-value c-coral">635,63 mA</span>
           <span class="stat-unit">todos os componentes</span>
         </div>
         <div class="stat-card">
-          <span class="stat-label">Corrente c/ margem 40%</span>
+          <span class="stat-label">Corrente c/ margem 50%</span>
           <span class="stat-value c-amber">0,9534 A</span>
           <span class="stat-unit">projetada para a bateria</span>
         </div>
@@ -682,13 +715,15 @@
       </div>
     </section>
 
-
+    <!-- ══════════════════════════════════════════
+         SEÇÃO: ESTRUTURA
+    ══════════════════════════════════════════ -->
     <section id="estrutura" class="detail-section">
       <div class="section-header">
         <div class="section-icon icon-estrutura">🏗️</div>
         <div class="section-header-text">
           <h2>Estrutura Física e Mecânica</h2>
-          <p>Dimensionamento do robô, análise dinâmica, locomoção e labirinto de teste</p>
+          <p>Dimensionamento do robô, análise dinâmica, locomoção, simulações e labirinto de teste</p>
         </div>
       </div>
 
@@ -756,6 +791,7 @@
         </div>
       </div>
 
+      <!-- Simulações ANSYS — seção nova -->
       <div class="card border-amber">
         <h3>Simulações estruturais (ANSYS)</h3>
         <p style="color:var(--muted)">Duas simulações complementares foram realizadas para verificar a integridade estrutural do chassi PETG. As tensões mecânicas permaneceram rigorosamente na zona elástica em ambos os cenários.</p>
@@ -790,11 +826,17 @@
         <div class="card border-amber">
           <h3>Sistema de locomoção</h3>
           <h4>Estabilidade</h4>
-          <p>4 rodas com tração dianteira. Configuração adotada pela bateria compacta e pesada que exige ponto extra de apoio.</p>
+          <p>4 rodas com tração dianteira. A bateria compacta e pesada exige ponto extra de apoio, tornando a configuração 4 rodas necessária.</p>
           <h4>Manobragem</h4>
           <p>Direção diferencial — um motor por lado. Sistema de engrenagens garante tração em todas as rodas com diferencial entre lateral esquerda e direita. As rodas rotacionam em torno do ponto central geométrico do robô.</p>
           <h4>Controle dos motores</h4>
           <p>Circuito de chaveamento baseado em flip-flop tipo D permite ligar/desligar cada motor independentemente. Drivers L298N fazem a interface de potência entre ESP32 e motores.</p>
+          <h4>Desempenho verificado</h4>
+          <ul>
+            <li>Motores capazes de atingir <strong>750 RPM</strong>; operados no máximo a <strong>500 RPM</strong></li>
+            <li>Velocidade real a 500 RPM: <strong>3,2 km/h</strong></li>
+            <li>Curvas de 90° executadas sem derrapagens ou colisões nos testes físicos</li>
+          </ul>
         </div>
 
         <div class="card">
@@ -813,12 +855,19 @@
               <li>Dimensão: <strong>4×4 células</strong> (para validação inicial)</li>
               <li>Material: <strong>MDF 12mm</strong> (R$ 250,06 realizado)</li>
               <li>Objetivo: <strong>módulo central 2×2</strong> — robô deve parar ao atingir essa região</li>
+              <li>Estrutura modular — permite mudanças de layout entre testes</li>
               <li>Compatível com padrões de competições acadêmicas</li>
             </ul>
             <h4>Casos de teste planejados</h4>
             <ul>
               <li><strong>CT01 — "Chegar ao Centro":</strong> robô parte de (0,0) e alcança o centro usando FloodFill</li>
               <li><strong>CT02 — "Explorar Retorno":</strong> do centro, robô retorna ao ponto (0,0) para iniciar Fase 2</li>
+            </ul>
+            <h4>Resultados de integração física</h4>
+            <ul>
+              <li>Robô navegou pelo labirinto desconhecido identificando paredes físicas</li>
+              <li>Região central (2×2) detectada e parada completada dentro da tolerância</li>
+              <li>Speed Run executado sem colisões após mapeamento</li>
             </ul>
           </div>
           <div>
@@ -828,12 +877,15 @@
       </div>
     </section>
 
+    <!-- ══════════════════════════════════════════
+         SEÇÃO: SOFTWARE
+    ══════════════════════════════════════════ -->
     <section id="software" class="detail-section">
       <div class="section-header">
         <div class="section-icon icon-software">💻</div>
         <div class="section-header-text">
           <h2>Software</h2>
-          <p>Firmware embarcado, arquitetura web, banco de dados e protótipos de interface</p>
+          <p>Firmware embarcado, arquitetura web, banco de dados, backlog e resultados de testes</p>
         </div>
       </div>
 
@@ -842,7 +894,7 @@
         <div class="stat-card">
           <span class="stat-label">Firmware</span>
           <span class="stat-value c-green" style="font-size:1.1rem">C++</span>
-          <span class="stat-unit">ESP32-C3</span>
+          <span class="stat-unit">ESP32-C3 / PlatformIO</span>
         </div>
         <div class="stat-card">
           <span class="stat-label">Front-end</span>
@@ -852,7 +904,7 @@
         <div class="stat-card">
           <span class="stat-label">Back-end</span>
           <span class="stat-value c-green" style="font-size:1rem">Node.js</span>
-          <span class="stat-unit">Express</span>
+          <span class="stat-unit">Express + WebSocket</span>
         </div>
         <div class="stat-card">
           <span class="stat-label">Banco de dados</span>
@@ -874,17 +926,22 @@
       <div class="grid-2">
         <div class="card border-green">
           <h3>Firmware embarcado (C++)</h3>
-          <p>Roda diretamente no ESP32-C3-MINI-1. É a camada mais próxima do hardware.</p>
+          <p>Roda diretamente no ESP32-C3-MINI-1 via PlatformIO. É a camada mais próxima do hardware.</p>
           <h4>Responsabilidades</h4>
           <ul>
-            <li>Leitura contínua dos sensores (APDS-9960, RF, encoders)</li>
+            <li>Leitura contínua dos sensores (APDS-9960, IR LM393, encoders)</li>
             <li>Processamento FIFO dos dados sensoriais</li>
             <li>Validação e descarte de leituras inválidas</li>
             <li>Geração de comandos de navegação a cada ciclo (≤ 30 ms)</li>
             <li>Execução do algoritmo FloodFill para mapeamento e rota ótima</li>
             <li>Controle PWM dos motores via driver L298N</li>
-            <li>Transmissão de telemetria para o servidor</li>
+            <li>Transmissão de telemetria para o servidor via Wi-Fi/WebSocket</li>
             <li>Fail-safe automático em perda de conexão > 10s</li>
+          </ul>
+          <h4>Recursos de hardware utilizados</h4>
+          <ul>
+            <li>RAM: 7,1% ocupado (23.112 / 327.680 bytes)</li>
+            <li>Flash: 20,5% ocupado (269.097 / 1.310.720 bytes)</li>
           </ul>
         </div>
 
@@ -898,13 +955,15 @@
             <li>Painel de telemetria: velocidade, bateria, tempo, posição</li>
             <li>Botões de início e parada de emergência</li>
             <li>Tela de detalhe com replay de execução</li>
+            <li>Filtros de histórico por status, tamanho de matriz e métricas de bateria</li>
           </ul>
           <h4>Back-end — Node.js</h4>
           <ul>
-            <li>Recepção dos dados de telemetria do firmware</li>
+            <li>Broker WebSocket (porta 3001) para telemetria bidirecional</li>
             <li>Comunicação com banco de dados PostgreSQL</li>
-            <li>Exposição de APIs para o front-end</li>
+            <li>Exposição de APIs REST para o front-end</li>
             <li>Gerenciamento de início e encerramento de execuções</li>
+            <li>Latência de telemetria backend → frontend: inferior a <strong>50 ms</strong></li>
           </ul>
         </div>
       </div>
@@ -922,7 +981,7 @@
           <div style="background:rgba(2,6,23,0.6); border:1px solid rgba(34,197,94,0.2); border-radius:12px; padding:16px;">
             <div class="badge badge-green" style="margin-bottom:10px">TELEMETRIA</div>
             <p style="color:var(--muted); font-size:0.85rem; margin:0">
-              numTentativa · tempoColeta · tensaoRecente · correnteRecente · posHRecente · posVRecente · velocidadeAtual · bateriaAtual · sensorCor · sensorEsquerda · sensorDireita · sensorFrontal
+              numTentativa · tempoColeta · tensaoRecente · correnteRecente · posHRecente · posVRecente · velocidadeAtual · bateriaAtual · tensaoAtual · sensorCor · sensorEsquerda · sensorDireita · sensorFrontal
             </p>
           </div>
           <div style="background:rgba(2,6,23,0.6); border:1px solid rgba(245,158,11,0.2); border-radius:12px; padding:16px;">
@@ -974,37 +1033,7 @@
         </div>
       </div>
 
-      <!-- Protótipos de interface -->
-      <div class="card border-green">
-        <h3>Protótipos de interface (Figma)</h3>
-        <p style="color:var(--muted); margin-bottom:16px">Protótipos desenvolvidos para testar telas e fluxos de navegação antes da implementação.</p>
-        <div class="img-row cols-3">
-          <div>
-          <img src="../assets/img/inicio.png" style="width:100%; border-radius:14px; display:block;">
-            <p style="color:var(--muted); font-size:0.82rem; text-align:center; margin-top:8px">Acesso para nova travessia e histórico</p>
-          </div>
-          <div>
-            <img src="../assets/img/tentativa.png" style="width:100%; border-radius:14px; display:block;">
-            <p style="color:var(--muted); font-size:0.82rem; text-align:center; margin-top:8px">Telemetria em tempo real + mapa do labirinto</p>
-          </div>
-          <div>
-            <img src="../assets/img/tamanho.png" style="width:100%; border-radius:14px; display:block;">
-            <p style="color:var(--muted); font-size:0.82rem; text-align:center; margin-top:8px">Lista com status: SUCESSO / FALHA</p>
-          </div>
-        </div>
-        <div class="img-row cols-2" style="margin-top:14px">
-          <div>
-            <img src="../assets/img/rodando.png" style="width:100%; border-radius:14px; display:block;">
-            <p style="color:var(--muted); font-size:0.82rem; text-align:center; margin-top:8px">Rodando a tentativa</p>            
-          </div>
-          <div>
-            <img src="../assets/img/exec.png" style="width:100%; border-radius:14px; display:block;">
-            <p style="color:var(--muted); font-size:0.82rem; text-align:center; margin-top:8px">Início de tentativa</p>
-          </div>
-        </div>
-      </div>
-
-            <!-- Backlog — seção nova -->
+      <!-- Backlog — seção nova -->
       <div class="card border-green">
         <h3>Backlog do Produto — Requisitos Funcionais (MoSCoW)</h3>
         <p style="color:var(--muted); margin-bottom:20px">Requisitos priorizados conforme metodologia MoSCoW. Todos os <em>Must Have</em> foram implementados e validados.</p>
@@ -1308,7 +1337,37 @@
         </div>
       </div>
 
-  </div><!-- /container -->
+      <!-- Protótipos de interface -->
+      <div class="card border-green">
+        <h3>Protótipos de interface (Figma)</h3>
+        <p style="color:var(--muted); margin-bottom:16px">Protótipos desenvolvidos para testar telas e fluxos de navegação antes da implementação.</p>
+        <div class="img-row cols-3">
+          <div>
+          <img src="../assets/img/inicio.png" style="width:100%; border-radius:14px; display:block;">
+            <p style="color:var(--muted); font-size:0.82rem; text-align:center; margin-top:8px">Acesso para nova travessia e histórico</p>
+          </div>
+          <div>
+            <img src="../assets/img/tentativa.png" style="width:100%; border-radius:14px; display:block;">
+            <p style="color:var(--muted); font-size:0.82rem; text-align:center; margin-top:8px">Telemetria em tempo real + mapa do labirinto</p>
+          </div>
+          <div>
+            <img src="../assets/img/tamanho.png" style="width:100%; border-radius:14px; display:block;">
+            <p style="color:var(--muted); font-size:0.82rem; text-align:center; margin-top:8px">Lista com status: SUCESSO / FALHA</p>
+          </div>
+        </div>
+        <div class="img-row cols-2" style="margin-top:14px">
+          <div>
+            <img src="../assets/img/rodando.png" style="width:100%; border-radius:14px; display:block;">
+            <p style="color:var(--muted); font-size:0.82rem; text-align:center; margin-top:8px">Rodando a tentativa</p>            
+          </div>
+          <div>
+            <img src="../assets/img/exec.png" style="width:100%; border-radius:14px; display:block;">
+            <p style="color:var(--muted); font-size:0.82rem; text-align:center; margin-top:8px">Início de tentativa</p>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /container -->
 </main>
 
 <footer>
