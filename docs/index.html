@@ -231,6 +231,89 @@
       text-align: center;
     }
 
+    .section-description {
+      color: var(--muted);
+      max-width: 70ch;
+      margin-bottom: 28px;
+      font-size: 1.05rem;
+    }
+
+    .flow-diagram {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+
+    .flow-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      background: rgba(17, 24, 39, 0.7);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 24px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      width: 100%;
+      max-width: 680px;
+    }
+
+    .flow-badge {
+      flex-shrink: 0;
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: var(--accent);
+      font-size: 0.78rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      letter-spacing: 0.5px;
+    }
+
+    .flow-content h3 {
+      margin: 0 0 6px;
+      font-size: 1rem;
+      color: var(--text);
+    }
+
+    .flow-content p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    .flow-arrow {
+      color: var(--accent);
+      font-size: 1.4rem;
+      line-height: 1;
+      padding: 6px 0;
+      opacity: 0.6;
+    }
+
+    .flow-parallel {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      width: 100%;
+      max-width: 680px;
+    }
+
+    .flow-parallel .flow-step {
+      max-width: 100%;
+    }
+
+    @media (max-width: 600px) {
+      .flow-parallel {
+        grid-template-columns: 1fr;
+      }
+    }
+
     @media (max-width: 860px) {
       .hero,
       .grid {
@@ -318,25 +401,36 @@
 
       <section id="objetivos" style="margin-top: 48px;">
         <h2 class="section-title">Objetivos</h2>
+        <p class="section-description">
+          O projeto busca desenvolver um micromouse autônomo capaz de navegar e solucionar labirintos com eficiência,
+          integrando hardware embarcado, firmware e interface web em uma solução educacional de baixo custo.
+        </p>
+
         <div class="grid">
           <article class="card">
             <h3>Objetivo geral</h3>
             <p>
-              Construir um projeto funcional que simule ou controle o deslocamento de um rato em um labirinto.
+              Desenvolver um sistema robótico autônomo capaz de mapear labirintos, identificar trajetórias otimizadas
+              e transmitir telemetria em tempo real por meio de interface web de monitoramento remoto.
             </p>
           </article>
 
           <article class="card">
             <h3>Objetivos específicos</h3>
-            <p>
-              Implementar a lógica de movimentação, testar diferentes caminhos e validar o funcionamento do sistema.
-            </p>
+            <ul>
+              <li>Projetar e construir a estrutura mecânica e eletrônica do robô com componentes de baixo custo</li>
+              <li>Desenvolver firmware em C++ para controle de sensores, motores e lógica de navegação</li>
+              <li>Implementar back-end com Node.js e banco de dados PostgreSQL para persistência dos dados de execução</li>
+              <li>Construir interface web em React para visualização de telemetria e histórico de percursos</li>
+            </ul>
           </article>
 
           <article class="card">
             <h3>Resultados esperados</h3>
             <p>
-              Demonstrar que o rato consegue navegar pelo labirinto e alcançar a saída com consistência.
+              Ao final do projeto, espera-se um micromouse funcional capaz de percorrer labirintos de forma autônoma,
+              registrar e transmitir dados de telemetria em tempo real e ter seu desempenho monitorado remotamente —
+              entregue dentro do prazo acadêmico estabelecido para 07/07/2026.
             </p>
           </article>
         </div>
@@ -344,27 +438,69 @@
 
       <section id="funcionamento" style="margin-top: 48px;">
         <h2 class="section-title">Como funciona</h2>
-        <div class="grid">
-          <article class="card">
-            <h3>Entrada</h3>
-            <p>
-              O sistema recebe a estrutura do labirinto e define a posição inicial do rato.
-            </p>
-          </article>
+        <p class="section-description">
+          O Micromouse opera como um sistema integrado de hardware e software que percorre labirintos de forma autônoma,
+          mapeando o ambiente e transmitindo dados em tempo real para uma interface de monitoramento remoto.
+        </p>
 
-          <article class="card">
-            <h3>Processamento</h3>
-            <p>
-              A lógica do projeto analisa os caminhos possíveis e decide os movimentos a serem executados.
-            </p>
-          </article>
+        <div class="flow-diagram">
+          <!-- Etapa 1 -->
+          <div class="flow-step">
+            <div class="flow-badge">01</div>
+            <div class="flow-content">
+              <h3>Detecção sensorial</h3>
+              <p>Sensores frontais e laterais identificam paredes e obstáculos, fornecendo dados contínuos sobre o ambiente ao redor do robô.</p>
+            </div>
+          </div>
+          <div class="flow-arrow">↓</div>
 
-          <article class="card">
-            <h3>Saída</h3>
-            <p>
-              O resultado é a trajetória realizada pelo rato até encontrar a saída do labirinto.
-            </p>
-          </article>
+          <!-- Etapa 2 -->
+          <div class="flow-step">
+            <div class="flow-badge">02</div>
+            <div class="flow-content">
+              <h3>Processamento embarcado</h3>
+              <p>O microcontrolador ESP32-C3-MINI-1, executando firmware em C++, processa os dados sensoriais e toma decisões de navegação em tempo real.</p>
+            </div>
+          </div>
+          <div class="flow-arrow">↓</div>
+
+          <!-- Etapa 3 (paralela) -->
+          <div class="flow-parallel">
+            <div class="flow-step">
+              <div class="flow-badge">03a</div>
+              <div class="flow-content">
+                <h3>Mapeamento</h3>
+                <p>O robô registra as células visitadas e a estrutura do labirinto, construindo progressivamente um mapa interno do ambiente.</p>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-badge">03b</div>
+              <div class="flow-content">
+                <h3>Navegação autônoma</h3>
+                <p>Com base no mapa acumulado, o sistema calcula e executa a trajetória ótima até a saída do labirinto.</p>
+              </div>
+            </div>
+          </div>
+          <div class="flow-arrow">↓</div>
+
+          <!-- Etapa 4 -->
+          <div class="flow-step">
+            <div class="flow-badge">04</div>
+            <div class="flow-content">
+              <h3>Transmissão de telemetria</h3>
+              <p>Dados de posição, trajetória e status operacional são transmitidos continuamente via rede para a camada de software.</p>
+            </div>
+          </div>
+          <div class="flow-arrow">↓</div>
+
+          <!-- Etapa 5 -->
+          <div class="flow-step">
+            <div class="flow-badge">05</div>
+            <div class="flow-content">
+              <h3>Monitoramento web</h3>
+              <p>Uma interface desenvolvida em React exibe em tempo real o mapa percorrido, métricas de desempenho e histórico de execuções, com persistência em PostgreSQL.</p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -400,7 +536,7 @@
             <p>
               Área preparada para publicar o planejamento temporal do projeto, com marcos, entregas e acompanhamento.
             </p>
-            <a class="btn btn-secondary" href="#" aria-disabled="true">Em breve</a>
+            <a class="btn btn-primary" href="recursos/cronograma_projeto.html">Acessar</a>
           </article>
 
           <article class="card resource-card">
@@ -441,12 +577,12 @@
           </article>
 
           <article class="card resource-card">
-            <span class="resource-meta">Em breve</span>
+            <span class="resource-meta">Informações do projeto</span>
             <h3>Documentação do projeto</h3>
             <p>
               Espaço preparado para centralizar relatórios, atas, registros técnicos e outros materiais complementares.
             </p>
-            <a class="btn btn-secondary" href="#" aria-disabled="true">Em breve</a>
+            <a class="btn btn-primary" href="recursos/detalhes.html"> Detalhes</a>
           </article>
         </div>
       </section>
