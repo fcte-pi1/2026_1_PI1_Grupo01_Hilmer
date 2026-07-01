@@ -9,7 +9,9 @@ import {
   getEmptyTelemetry,
   getMazeMockData,
   getMockTelemetrySnapshot,
+  sendStartMappingCommand,
   sendStartRaceCommand,
+  sendStopCommand,
 } from '../services/telemetryService';
 import { getStatusEsp32, reconectarEsp32 } from '../services/apiService';
 
@@ -18,7 +20,7 @@ const TICK_MS = 800;
 const ESP32_STATUS_POLL_MS = 4000;
 const TELEMETRY_MODE = import.meta.env.VITE_TELEMETRY_MODE || 'mock';
 
-function useLiveTelemetry() {
+function useLiveTelemetry(mazeSize) {
   const [data, setData] = useState(getEmptyTelemetry());
   const [connected, setConnected] = useState(false);
   // `connected` só diz se o navegador está falando com o backend (broker).
@@ -28,6 +30,10 @@ function useLiveTelemetry() {
   const socketRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
   const mountedRef = useRef(true);
+  // Garante que o START (com o tamanho do labirinto escolhido em NewAttempt)
+  // é enviado só uma vez por montagem do Dashboard — não a cada reconexão do
+  // broker/ESP32, pra não reiniciar o mapeamento/corrida do robô à toa.
+  const mappingStartedRef = useRef(false);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -89,8 +95,26 @@ function useLiveTelemetry() {
     };
   }, []);
 
+  // Assim que o broker E a ESP32 estiverem prontos, manda o comando START
+  // com o tamanho do labirinto escolhido — é isso que faz o robô sair de
+  // AGUARDANDO_INICIO e começar o mapeamento de verdade.
+  useEffect(() => {
+    if (!connected || !esp32Connected || !mazeSize || mappingStartedRef.current) {
+      return;
+    }
+
+    const sent = sendStartMappingCommand(socketRef.current, mazeSize);
+    if (sent) {
+      mappingStartedRef.current = true;
+    }
+  }, [connected, esp32Connected, mazeSize]);
+
   const start = useCallback(() => {
     sendStartRaceCommand(socketRef.current);
+  }, []);
+
+  const stop = useCallback(() => {
+    sendStopCommand(socketRef.current);
   }, []);
 
   const reset = useCallback(() => {
@@ -108,7 +132,7 @@ function useLiveTelemetry() {
     }
   }, []);
 
-  return { data, connected, esp32Connected, start, reset, reconnectEsp32, mode: 'live' };
+  return { data, connected, esp32Connected, start, stop, reset, reconnectEsp32, mode: 'live' };
 }
 
 function useMockTelemetry(mazeSize) {
@@ -175,16 +199,21 @@ function useMockTelemetry(mazeSize) {
     setStatus('waiting');
   }, []);
 
-  // No mock não existe robô de verdade pra checar; mantém o mesmo formato
-  // de retorno do modo live pra não exigir lógica condicional nos componentes.
+  // No mock não existe robô de verdade pra checar/parar; mantém o mesmo
+  // formato de retorno do modo live pra não exigir lógica condicional nos
+  // componentes.
   const reconnectEsp32 = useCallback(async () => {}, []);
+  const stop = useCallback(() => {
+    clearInterval(intervalRef.current);
+    setStatus('waiting');
+  }, []);
 
-  return { data, connected: true, esp32Connected: true, start, reset, reconnectEsp32, mode: 'mock' };
+  return { data, connected: true, esp32Connected: true, start, stop, reset, reconnectEsp32, mode: 'mock' };
 }
 
 export function useTelemetryData(mazeSize = 8) {
   if (TELEMETRY_MODE === 'live') {
-    return useLiveTelemetry();
+    return useLiveTelemetry(mazeSize);
   }
 
   return useMockTelemetry(mazeSize);

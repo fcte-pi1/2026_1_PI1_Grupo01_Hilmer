@@ -121,6 +121,10 @@ export function getEmptyTelemetry() {
     speedMps: null,
     correnteEletrica: null,
     tensaoEletrica: null,
+    mode: null,
+    attemptNumber: null,
+    awaitingRun: false,
+    stuckFlag: false,
   };
 }
 
@@ -159,6 +163,18 @@ function inferMazeSizeFromGrid(grid) {
   return grid.length % 2 === 1 ? (grid.length - 1) / 2 : grid.length;
 }
 
+// A ESP32 manda "waiting_start" (aguardando comando START) e "waiting_run"
+// (mapeamento concluído, aguardando START_RUN) — ambos viram 'waiting' pro
+// StatusBadge (só tem CSS pra 'waiting' genérico); a distinção entre os dois
+// fica no campo awaitingRun, usado pra habilitar a mensagem/botão certos.
+function mapRobotStatus(rawStatus) {
+  if (rawStatus === 'waiting_start' || rawStatus === 'waiting_run') {
+    return 'waiting';
+  }
+
+  return rawStatus ?? 'running';
+}
+
 export function normalizeTelemetry(raw) {
   const grid = raw.mapa ?? raw.grid ?? null;
   const position =
@@ -174,16 +190,28 @@ export function normalizeTelemetry(raw) {
     goal: raw.goal ?? null,
     start: raw.start ?? null,
     grid,
-    status: raw.status ?? 'running',
+    status: mapRobotStatus(raw.status),
     elapsedSeconds: raw.elapsedSeconds ?? 0,
     batteryPercent: raw.batteryPercent ?? raw.bateriaAtual ?? null,
     speedMps: raw.speedMps ?? raw.velocidadeAtual ?? null,
     correnteEletrica: raw.correnteEletrica ?? raw.correnteRecente ?? null,
     tensaoEletrica: raw.tensaoEletrica ?? raw.tensaoAtual ?? null,
+    mode: raw.modoOperacao ?? null,
+    attemptNumber: raw.numTentativa ?? null,
+    awaitingRun: raw.aguardandoCorrida ?? false,
+    stuckFlag: raw.travado ?? false,
   };
 }
 
-export function connectTelemetrySocket({ onOpen, onClose, onTelemetry }) {
+// Respostas de comando (type: "ACK"/"ERROR") não são telemetria — são só a
+// confirmação de que a ESP32 recebeu um START/START_RUN/STOP. Misturá-las
+// com normalizeTelemetry() geraria um snapshot falso (sem posição, mapa,
+// etc.) e piscaria o dashboard. onCommandAck é opcional; sem ele, só loga.
+function isCommandResponse(raw) {
+  return raw?.type === 'ACK' || raw?.type === 'ERROR';
+}
+
+export function connectTelemetrySocket({ onOpen, onClose, onTelemetry, onCommandAck }) {
   const socket = new WebSocket(getTelemetryWsUrl());
 
   socket.onopen = () => onOpen?.();
@@ -193,6 +221,15 @@ export function connectTelemetrySocket({ onOpen, onClose, onTelemetry }) {
   socket.onmessage = (event) => {
     try {
       const raw = JSON.parse(event.data);
+
+      if (isCommandResponse(raw)) {
+        if (raw.type === 'ERROR') {
+          console.error('[telemetria] ESP32 rejeitou comando:', raw.message ?? raw);
+        }
+        onCommandAck?.(raw);
+        return;
+      }
+
       onTelemetry?.(normalizeTelemetry(raw));
     } catch (error) {
       console.error('[telemetria] Payload inválido recebido da ESP32:', error);
@@ -202,13 +239,25 @@ export function connectTelemetrySocket({ onOpen, onClose, onTelemetry }) {
   return socket;
 }
 
-export function sendStartRaceCommand(socket) {
+function sendCommand(socket, payload) {
   if (socket && socket.readyState === WebSocket.OPEN) {
-    socket.send('INICIAR_CORRIDA');
+    socket.send(JSON.stringify(payload));
     return true;
   }
 
   return false;
+}
+
+export function sendStartMappingCommand(socket, mazeSize) {
+  return sendCommand(socket, { type: 'START', mazeSize });
+}
+
+export function sendStartRaceCommand(socket) {
+  return sendCommand(socket, { type: 'START_RUN' });
+}
+
+export function sendStopCommand(socket) {
+  return sendCommand(socket, { type: 'STOP' });
 }
 
 export function analysisToMazeViewProps(analysis, pathKey = 'outboundPath') {

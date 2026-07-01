@@ -22,7 +22,7 @@ function ConnectionBadge({ connected, onlineLabel = 'CONECTADO' }) {
   );
 }
 
-export function Sidebar({ data, connected, esp32Connected, onStart, onReset, onReconnectEsp32 }) {
+export function Sidebar({ data, connected, esp32Connected, onStart, onStop, onReset, onReconnectEsp32 }) {
   const navigate = useNavigate();
   const [reconnecting, setReconnecting] = useState(false);
 
@@ -46,6 +46,7 @@ export function Sidebar({ data, connected, esp32Connected, onStart, onReset, onR
         <h3 className={styles.sectionTitle}>Telemetria</h3>
         <InfoRow label="ESP32" value={<ConnectionBadge connected={esp32Connected} onlineLabel="CONECTADA" />} />
         <InfoRow label="Dimensão" value={data.mazeSize ? formatMazeDimension(data.mazeSize) : '---'} />
+        <InfoRow label="Tentativa nº" value={data.attemptNumber ?? '---'} />
         <InfoRow label="Bateria" value={data.batteryPercent != null ? formatBattery(data.batteryPercent) : '---'} />
         <InfoRow label="Velocidade" value={data.speedMps != null ? formatSpeed(data.speedMps) : '---'} />
         <InfoRow label="Tempo" value={formatTime(data.elapsedSeconds ?? 0)} />
@@ -59,6 +60,9 @@ export function Sidebar({ data, connected, esp32Connected, onStart, onReset, onR
       <section className={styles.controls}>
         <Button onClick={onStart} disabled={!connected || data.status === 'success'} fullWidth>
           Iniciar corrida
+        </Button>
+        <Button onClick={onStop} variant="ghost" disabled={!connected || !esp32Connected} fullWidth>
+          Parar robô
         </Button>
         <Button
           onClick={handleReconnectEsp32}

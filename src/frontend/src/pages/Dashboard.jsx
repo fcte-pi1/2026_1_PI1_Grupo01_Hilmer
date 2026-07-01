@@ -37,7 +37,7 @@ function buildTrajectoryPayload(numTentativa, visitedPath = []) {
 export function Dashboard() {
   const location = useLocation();
   const mazeSize = location.state?.mazeSize ?? 8;
-  const { data, connected, esp32Connected, start, reset, reconnectEsp32 } = useTelemetryData(mazeSize);
+  const { data, connected, esp32Connected, start, stop, reset, reconnectEsp32 } = useTelemetryData(mazeSize);
   const [saveError, setSaveError] = useState(null);
   const hasSavedRef = useRef(false);
 
@@ -89,6 +89,10 @@ export function Dashboard() {
     reset();
   }
 
+  function handleStop() {
+    stop();
+  }
+
   return (
     <div className={styles.layout}>
       <Sidebar
@@ -96,6 +100,7 @@ export function Dashboard() {
         connected={connected}
         esp32Connected={esp32Connected}
         onStart={handleStart}
+        onStop={handleStop}
         onReset={handleReset}
         onReconnectEsp32={reconnectEsp32}
       />
@@ -108,11 +113,16 @@ export function Dashboard() {
           {connected && !esp32Connected && (
             <span className={styles.warnMsg}>ESP32 não está conectada — verifique a rede WiFi do robô</span>
           )}
-          {connected && esp32Connected && data.status === 'waiting' && (
+          {connected && esp32Connected && data.status === 'waiting' && data.awaitingRun && (
+            <span className={styles.waitingMsg}>Mapeamento concluído — pronto para iniciar a corrida.</span>
+          )}
+          {connected && esp32Connected && data.status === 'waiting' && !data.awaitingRun && (
             <span className={styles.waitingMsg}>Aguardando comando de início...</span>
           )}
           {connected && esp32Connected && data.status === 'running' && (
-            <span className={styles.livePulse}>● AO VIVO</span>
+            <span className={styles.livePulse}>
+              ● AO VIVO {data.mode === 'MAPEAMENTO' ? '— mapeando' : data.mode === 'CORRIDA' ? '— corrida' : ''}
+            </span>
           )}
           {connected && data.status === 'stuck' && (
             <span className={styles.warnMsg}>Rato travado</span>
