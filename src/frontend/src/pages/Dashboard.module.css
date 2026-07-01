@@ -43,6 +43,18 @@
   color: var(--color-success);
 }
 
+.warnMsg {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-error);
+}
+
+.waiting {
+  padding: var(--space-6);
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.35; }

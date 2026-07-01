@@ -27,6 +27,12 @@
   border: 1px solid var(--color-error);
 }
 
+.stuck {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+  border: 1px solid var(--color-error);
+}
+
 .idle {
   background: var(--color-surface-alt);
   color: var(--color-text-muted);

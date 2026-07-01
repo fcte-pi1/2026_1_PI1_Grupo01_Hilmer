@@ -1,210 +1,75 @@
-// MOCK DATA — dados temporários para prototipação visual.
-// Este arquivo será substituído pela integração com o backend via WebSocket/HTTP.
+// Cliente de telemetria: conecta no backend (broker WebSocket em src/backend)
+// e normaliza o payload retransmitido da ESP32 para o formato usado pelos
+// componentes do dashboard (MazeView/Sidebar).
 
-const MOCK_MAZES = {
-  10: {
-    size: 10,
-    start: [1, 1],
-    goal: [8, 8],
-    grid: [
-      [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-      [1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
-      [1, 0, 1, 0, 1, 0, 1, 1, 0, 1],
-      [1, 0, 1, 0, 0, 0, 0, 1, 0, 1],
-      [1, 0, 1, 1, 1, 1, 0, 1, 0, 1],
-      [1, 0, 0, 0, 0, 1, 0, 0, 0, 1],
-      [1, 1, 1, 0, 1, 1, 1, 1, 0, 1],
-      [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-      [1, 0, 1, 1, 1, 0, 1, 1, 0, 1],
-      [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    ],
-    path: [
-      [1, 1], [1, 2], [1, 3],
-      [2, 3], [3, 3], [3, 4], [3, 5], [3, 6],
-      [4, 6], [5, 6], [5, 7], [5, 8],
-      [6, 8], [7, 8], [8, 8],
-    ],
-  },
+const DEFAULT_WS_URL = 'ws://localhost:3001';
 
-  // 12×12 — caminho em Z: desce esquerda → atravessa meio → desce direita
-  12: {
-    size: 12,
-    start: [1, 1],
-    goal: [10, 10],
-    grid: [
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1],
-    [1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1],
-    [1, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1],
-    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
-    [1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 1],
-    [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1],
-    [1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1],
-    [1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1],
-    [1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    ],
-    path: [
-    [1, 1], [2, 1], [3, 1], [4, 1],
-    [5, 1], [5, 2], [5, 3], [5, 4], [5, 5], [5, 6], [5, 7], [5, 8], [5, 9],
-    [6, 9], [7, 9], [8, 9], [9, 9], [10, 9], [10, 10],
-    ],
-  },
-
-  // 14×14 — caminho em escada: direita → desce → direita → desce → direita
-  14: {
-    size: 14,
-    start: [1, 1],
-    goal: [12, 12],
-    grid: [
-      [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-      [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1],
-      [1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1],
-      [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
-      [1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1],
-      [1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1],
-      [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1],
-      [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1],
-      [1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 1],
-      [1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1],
-      [1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1],
-      [1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1],
-      [1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1],
-      [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    ],
-    path: [
-      [1, 1], [1, 2], [1, 3], [1, 4], [1, 5],
-      [2, 5], [3, 5], [4, 5], [5, 5], [6, 5],
-      [7, 5], [7, 6], [7, 7], [7, 8], [7, 9], [7, 10],
-      [8, 10], [9, 10], [10, 10], [11, 10], [12, 10],
-      [12, 11], [12, 12],
-    ],
-  },
-
-  // 16×16 — caminho em Z invertido: desce esquerda → atravessa meio → desce direita
-  16: {
-    size: 16,
-    start: [1, 1],
-    goal: [14, 14],
-    grid: [
-      [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-      [1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
-      [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1],
-      [1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1],
-      [1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1],
-      [1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
-      [1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1],
-      [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-      [1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1],
-      [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1],
-      [1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1],
-      [1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1],
-      [1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1],
-      [1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
-      [1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-      [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    ],
-    path: [
-      [1, 1], [2, 1], [3, 1], [4, 1], [5, 1], [6, 1], [7, 1],
-      [7, 2], [7, 3], [7, 4], [7, 5], [7, 6], [7, 7],
-      [8, 7], [9, 7], [10, 7], [11, 7], [12, 7], [13, 7], [14, 7],
-      [14, 8], [14, 9], [14, 10], [14, 11], [14, 12], [14, 13], [14, 14],
-    ],
-  },
-
-  // 18×18 — caminho em S: direita → desce → direita → desce → direita
-  18: {
-    size: 18,
-    start: [1, 1],
-    goal: [16, 16],
-    grid: [
-      [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-      [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1],
-      [1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1],
-      [1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1],
-      [1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1],
-      [1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1],
-      [1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1],
-      [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 1],
-      [1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1],
-      [1, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1],
-      [1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1],
-      [1, 0, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1],
-      [1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1],
-      [1, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1],
-      [1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1],
-      [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1],
-      [1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 1],
-      [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    ],
-    path: [
-      [1, 1], [1, 2], [1, 3], [1, 4], [1, 5], [1, 6], [1, 7],
-      [2, 7], [3, 7], [4, 7], [5, 7], [6, 7], [7, 7], [8, 7],
-      [8, 8], [8, 9], [8, 10], [8, 11], [8, 12], [8, 13], [8, 14],
-      [9, 14], [10, 14], [11, 14], [12, 14], [13, 14], [14, 14], [15, 14], [16, 14],
-      [16, 15], [16, 16],
-    ],
-  },
-
-  // 20×20 — caminho em S largo: direita → desce → direita → desce → direita
-  20: {
-    size: 20,
-    start: [1, 1],
-    goal: [18, 18],
-    grid: [
-      [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-      [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1],
-      [1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1],
-      [1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1],
-      [1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1],
-      [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1, 1],
-      [1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 1],
-      [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 1],
-      [1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1],
-      [1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1],
-      [1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1],
-      [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1],
-      [1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1],
-      [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1],
-      [1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-      [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1],
-      [1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1],
-      [1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1],
-      [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1],
-      [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    ],
-    path: [
-      [1, 1], [1, 2], [1, 3], [1, 4], [1, 5], [1, 6], [1, 7], [1, 8], [1, 9],
-      [2, 9], [3, 9], [4, 9], [5, 9], [6, 9], [7, 9], [8, 9], [9, 9],
-      [9, 10], [9, 11], [9, 12], [9, 13], [9, 14], [9, 15], [9, 16],
-      [10, 16], [11, 16], [12, 16], [13, 16], [14, 16], [15, 16], [16, 16], [17, 16], [18, 16],
-      [18, 17], [18, 18],
-    ],
-  },
-};
-
-export function getMazeMockData(mazeSize) {
-  return MOCK_MAZES[mazeSize] ?? MOCK_MAZES[10];
+export function getTelemetryWsUrl() {
+  return import.meta.env.VITE_WS_URL || DEFAULT_WS_URL;
 }
 
-export function getMockTelemetrySnapshot(stepIndex, mazeSize = 10) {
-  const maze = getMazeMockData(mazeSize);
-  const step = Math.min(stepIndex, maze.path.length - 1);
-  const position = maze.path[step];
-  const visitedPath = maze.path.slice(0, step + 1);
-  const isFinished = step === maze.path.length - 1;
+export function getEmptyTelemetry() {
+  return {
+    mazeSize: null,
+    position: null,
+    visitedPath: [],
+    goal: null,
+    start: null,
+    grid: null,
+    status: 'idle',
+    elapsedSeconds: 0,
+    batteryPercent: null,
+    speedMps: null,
+  };
+}
+
+// A ESP32 manda o mapa no campo "mapa" (grid MAZE*2+1 x MAZE*2+1, células
+// ímpares = corredores/paredes, célula 0 = visitada, 1 = parede, 2 =
+// desconhecido). O tamanho real do labirinto é derivado da dimensão do grid.
+export function normalizeTelemetry(raw) {
+  const grid = raw.mapa ?? raw.grid ?? null;
+  const mazeSize = grid ? (grid.length - 1) / 2 : null;
 
   return {
-    mazeSize: maze.size,
-    position,
-    visitedPath,
-    goal: maze.goal,
-    start: maze.start,
-    grid: maze.grid,
-    status: isFinished ? 'success' : 'running',
-    elapsedSeconds: step,
-    batteryPercent: Math.max(85 - step * 2, 40),
-    speedMps: 0.45 + Math.random() * 0.1,
+    mazeSize,
+    position: raw.position ?? null,
+    visitedPath: raw.visitedPath ?? [],
+    goal: raw.goal ?? null,
+    start: raw.start ?? null,
+    grid,
+    status: raw.status ?? 'running',
+    elapsedSeconds: raw.elapsedSeconds ?? 0,
+    batteryPercent: raw.batteryPercent ?? null,
+    speedMps: raw.speedMps ?? null,
   };
+}
+
+// Abre a conexão com o backend e delega os eventos para os callbacks
+// informados. Retorna o socket cru, para permitir enviar comandos
+// (ex: iniciar corrida) e fechar a conexão no cleanup do hook.
+export function connectTelemetrySocket({ onOpen, onClose, onTelemetry }) {
+  const socket = new WebSocket(getTelemetryWsUrl());
+
+  socket.onopen = () => onOpen?.();
+  socket.onclose = () => onClose?.();
+  socket.onerror = () => {}; // erro de conexão é sempre seguido de onclose
+
+  socket.onmessage = (event) => {
+    try {
+      const raw = JSON.parse(event.data);
+      onTelemetry?.(normalizeTelemetry(raw));
+    } catch (error) {
+      console.error('[telemetria] Payload inválido recebido da ESP32:', error);
+    }
+  };
+
+  return socket;
+}
+
+export function sendStartRaceCommand(socket) {
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    socket.send('INICIAR_CORRIDA');
+    return true;
+  }
+  return false;
 }

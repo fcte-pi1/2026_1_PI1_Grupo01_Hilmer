@@ -1,47 +1,53 @@
-// MOCK HOOK — simula dados de telemetria em tempo real.
-// TODO: substituir por integração com WebSocket ou polling HTTP do backend.
+// Hook de telemetria ao vivo: conecta no backend (broker WebSocket) e
+// mantém o estado sincronizado com os dados retransmitidos da ESP32.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getMockTelemetrySnapshot, getMazeMockData } from '../services/telemetryService';
+import { connectTelemetrySocket, getEmptyTelemetry, sendStartRaceCommand } from '../services/telemetryService';
 
-const TICK_MS = 800; // intervalo entre movimentos do mouse (mock)
+const RECONNECT_DELAY_MS = 2000;
 
-export function useTelemetryData(mazeSize = 10) {
-  const [step, setStep] = useState(0);
-  const [running, setRunning] = useState(false);
-  const intervalRef = useRef(null);
-
-  const totalSteps = getMazeMockData(mazeSize).path.length;
-  const data = getMockTelemetrySnapshot(step, mazeSize);
-
-  const start = useCallback(() => {
-    if (running) return;
-    setStep(0);
-    setRunning(true);
-  }, [running]);
-
-  const reset = useCallback(() => {
-    clearInterval(intervalRef.current);
-    setRunning(false);
-    setStep(0);
-  }, []);
+export function useTelemetryData() {
+  const [data, setData] = useState(getEmptyTelemetry());
+  const [connected, setConnected] = useState(false);
+  const socketRef = useRef(null);
+  const reconnectTimeoutRef = useRef(null);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
-    if (!running) return;
+    mountedRef.current = true;
 
-    intervalRef.current = setInterval(() => {
-      setStep((prev) => {
-        if (prev >= totalSteps - 1) {
-          clearInterval(intervalRef.current);
-          setRunning(false);
-          return prev;
-        }
-        return prev + 1;
+    function connect() {
+      socketRef.current = connectTelemetrySocket({
+        onOpen: () => {
+          if (mountedRef.current) setConnected(true);
+        },
+        onClose: () => {
+          if (!mountedRef.current) return;
+          setConnected(false);
+          reconnectTimeoutRef.current = setTimeout(connect, RECONNECT_DELAY_MS);
+        },
+        onTelemetry: (telemetry) => {
+          if (mountedRef.current) setData(telemetry);
+        },
       });
-    }, TICK_MS);
+    }
 
-    return () => clearInterval(intervalRef.current);
-  }, [running, totalSteps]);
+    connect();
 
-  return { data, running, start, reset };
+    return () => {
+      mountedRef.current = false;
+      clearTimeout(reconnectTimeoutRef.current);
+      socketRef.current?.close();
+    };
+  }, []);
+
+  const start = useCallback(() => {
+    sendStartRaceCommand(socketRef.current);
+  }, []);
+
+  const reset = useCallback(() => {
+    setData(getEmptyTelemetry());
+  }, []);
+
+  return { data, connected, start, reset };
 }

@@ -129,8 +129,23 @@ const server = createServer(async (request, response) => {
 
 const wssReact = new WebSocketServer({ server });
 
+// Referência ao socket ativo da ESP32, usada para repassar comandos vindos
+// do site (ex: "INICIAR_CORRIDA") para o robô. Fica null enquanto o robô
+// não está conectado ao broker.
+let esp32Socket = null;
+
 wssReact.on("connection", (ws) => {
   console.log("[backend] Frontend React conectado ao WebSocket.");
+
+  // Repassa qualquer comando enviado pelo site diretamente para a ESP32.
+  ws.on("message", (data) => {
+    if (esp32Socket && esp32Socket.readyState === WebSocket.OPEN) {
+      esp32Socket.send(data.toString());
+    } else {
+      console.warn("[backend] Comando do site descartado: ESP32 não está conectada.");
+    }
+  });
+
   ws.on("close", () => console.log("[backend] Frontend React desconectado."));
 });
 
@@ -138,9 +153,10 @@ function connectToESP32() {
   const esp32Url = process.env.ESP32_WS_URL || "ws://192.168.4.1:81";
   console.log(`[backend] Tentando conectar na ESP32 em ${esp32Url}...`);
   const esp32Ws = new WebSocket(esp32Url);
+  esp32Socket = esp32Ws;
 
   esp32Ws.on("open", () => {
-    console.log("[backend] Conectado com sucesso à ESP32-C3!");
+    console.log("[backend] Conectado com sucesso à ESP32!");
   });
 
   esp32Ws.on("message", (data) => {
@@ -153,6 +169,7 @@ function connectToESP32() {
 
   esp32Ws.on("close", () => {
     console.log("[backend] Conexão com a ESP32 perdida. Tentando reconectar em 2 segundos...");
+    esp32Socket = null;
     setTimeout(connectToESP32, 2000);
   });
 
