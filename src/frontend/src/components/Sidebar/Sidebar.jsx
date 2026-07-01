@@ -1,6 +1,7 @@
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../Button/Button';
 import { StatusBadge } from '../StatusBadge/StatusBadge';
-import {formatBattery, formatMazeDimension, formatSpeed, formatTime} from '../../utils/helpers';
+import { formatBattery, formatMazeDimension, formatSpeed, formatTime } from '../../utils/helpers';
 import styles from './Sidebar.module.css';
 
 function InfoRow({ label, value }) {
@@ -13,6 +14,8 @@ function InfoRow({ label, value }) {
 }
 
 export function Sidebar({ data, connected, onStart, onReset }) {
+  const navigate = useNavigate();
+
   return (
     <aside className={styles.sidebar}>
       <div className={styles.header}>
@@ -41,6 +44,9 @@ export function Sidebar({ data, connected, onStart, onReset }) {
         </Button>
         <Button onClick={onReset} variant="ghost" fullWidth>
           Limpar tela
+        </Button>
+        <Button onClick={() => navigate('/new-attempt')} variant="ghost" fullWidth>
+          Novo labirinto
         </Button>
       </section>
     </aside>

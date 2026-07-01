@@ -223,7 +223,7 @@ check_required_commands() {
     local missing=0
     local cmd
 
-    for cmd in git curl; do
+    for cmd in git curl docker; do
         if has_command "$cmd"; then
             log "ok: comando '$cmd' encontrado"
         else
@@ -303,6 +303,12 @@ audit_repository() {
         warn "src/backend/.env.example ainda nao existe"
     fi
 
+    if [[ -f "$ROOT_DIR/src/backend/docker-compose.yml" ]]; then
+        log "docker-compose do backend detectado"
+    else
+        warn "src/backend/docker-compose.yml ainda nao existe"
+    fi
+
     if [[ -f "$ROOT_DIR/src/frontend/.env.example" ]]; then
         log ".env.example detectado no frontend"
     else
@@ -320,11 +326,11 @@ print_next_steps() {
     cat <<'EOF'
 [env-setup] proximos passos recomendados:
 [env-setup] 1. Instalar as dependencias com: bash scripts/setup_dev_env.sh install
-[env-setup] 2. Subir frontend e backend juntos com: bash scripts/start_dev.sh
-[env-setup] 3. Ou subir o backend com: cd src/backend && npm run dev
-[env-setup] 4. E o frontend com: cd src/frontend && npm run dev
-[env-setup] 5. Definir o banco de dados oficial do projeto.
-[env-setup] 6. Definir o hardware e o protocolo HTTP entre sensores e backend.
+[env-setup] 2. Subir o banco com: cd src/backend && docker compose up -d
+[env-setup] 3. Ou subir frontend, backend e banco juntos com: bash scripts/start_dev.sh
+[env-setup] 4. Ou subir o backend manualmente com: cd src/backend && npm run dev
+[env-setup] 5. E o frontend manualmente com: cd src/frontend && npm run dev
+[env-setup] 6. Definir o hardware e o protocolo HTTP/WebSocket entre sensores e backend.
 EOF
 }
 

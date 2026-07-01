@@ -112,10 +112,32 @@ O `-v` destrói o volume `pgdata`, forçando o PostgreSQL a re-executar o `schem
 
 ## Rodando os testes
 
+### Camadas (History / analise)
+
+Na raiz do repositório (no Windows, **não** coloque comentários na mesma linha do comando):
+
+```bash
+npm run test:unit
+npm run test:integration
+npm run test:e2e
+npm run test:all
+```
+
+| Comando | Precisa DB | Precisa servidor |
+|---------|------------|------------------|
+| `npm run test:unit` | Não | Não |
+| `npm run test:integration` | Sim | Sim (`npm run dev` na porta 3001) |
+| `npm run test:integration:all` | Sim | Sim (inclui WebSocket + server.test) |
+| `npm run test:e2e` | Sim | Sim (reutiliza servidores locais se já estiverem rodando) |
+
+Unitários cobrem `mouseService.analyzeAttempt`, rota `GET /historico/:id/analise` (mock), `History.jsx` e `analysisToMazeViewProps`. A fixture compartilhada fica em `tests/fixtures/analysisAttempt.js`.
+
+### Testes de banco
+
 Com o banco rodando, execute:
 
 ```bash
-node db.test.js
+npm run test:db
 ```
 
 Os testes verificam:
@@ -165,3 +187,117 @@ Saída esperada ao passar em tudo:
 
 **Porta 5432 já em uso**
 → Outro PostgreSQL pode estar rodando na máquina. Altere `DB_PORT` no `.env` e no `docker-compose.yml` para outra porta (ex: `5433`).
+
+
+---
+
+# Guia de Integração — Micromouse PI1
+
+Mapa do que foi alterado e como rodar tudo junto.
+
+---
+
+## O que mudou
+
+| Arquivo | Situação anterior | Agora |
+|---|---|---|
+| `backend/src/server.js` | node:http puro + array em memória | Express + PostgreSQL real |
+| `backend/src/services/mouseService.js` | Vazio | FloodFill BFS funcional |
+| `backend/src/services/simulationService.js` | Não existia | CRUD no banco |
+| `backend/src/routes/simulationRoutes.js` | Não existia | GET + POST /api/simulations |
+| `backend/src/database/schema.sql` | Sem tabela simulations | Tabela `simulations` criada |
+| `frontend/src/services/apiService.js` | Não existia | Todos os fetch centralizados |
+| `frontend/src/hooks/useTelemetryData.js` | Só mock | Mock + WebSocket real (por variável de ambiente) |
+| `frontend/src/pages/History.jsx` | Vazia/estática | Lê do banco via API |
+| `frontend/src/pages/NewAttempt.jsx` | Sem integração | Salva simulação no banco |
+
+---
+
+## Como rodar
+
+### 1. Banco de dados
+```bash
+# Na raiz do backend
+cp .env.example .env       # editar se necessário
+docker compose up -d       # sobe o PostgreSQL
+```
+O schema.sql é executado automaticamente pelo Docker na primeira vez.
+
+### 2. Backend
+```bash
+cd backend
+npm install
+npm run dev    # ou: node src/server.js
+```
+
+### 3. Frontend
+```bash
+cd frontend
+cp .env.example .env       # ajustar VITE_TELEMETRY_MODE=mock|live
+npm install
+npm run dev
+```
+
+---
+
+## Variáveis de ambiente importantes
+
+### Backend (`backend/.env`)
+```
+HOST=127.0.0.1
+PORT=3001
+FRONTEND_ORIGIN=http://localhost:5173
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=micromouse_db
+DB_USER=pi1_user2
+DB_PASSWORD=senhafalsa123
+ESP32_WS_URL=ws://192.168.4.1:81   # IP da ESP32 na rede local
+```
+
+### Frontend (`frontend/.env`)
+```
+VITE_API_URL=http://localhost:3001
+VITE_WS_URL=ws://localhost:3001
+VITE_TELEMETRY_MODE=mock   # trocar para 'live' com hardware
+```
+
+---
+
+## TODOs pendentes para integração completa
+
+- [ ] **NewAttempt**: adicionar inputs para `mouseName` e `algorithmUsed`
+- [ ] **Dashboard → NewAttempt**: implementar callback de conclusão para salvar simulação automaticamente ao terminar
+- [ ] **mouseService**: integrar com `FloodFill.cpp` via WebAssembly ou child_process
+- [ ] **ESP32**: validar schema do payload JSON recebido via WebSocket
+- [ ] **simulationService**: adicionar paginação no `getAllSimulations()`
+- [ ] **schema.sql**: adicionar tabelas `HISTORICO`, `TELEMETRIA`, `TRAJETO` do modelo SBD2
+- [ ] **Autenticação**: adicionar middleware de API key ou JWT antes do deploy
+
+---
+
+## Fluxo de dados completo
+
+```
+ESP32-C3
+   │ WebSocket (ws://192.168.4.1:81)
+   ▼
+backend/server.js
+   │ retransmite via WebSocket
+   ▼
+frontend/useTelemetryData.js  (modo 'live')
+   │ atualiza estado React
+   ▼
+Dashboard.jsx → MazeView.jsx
+
+── HTTP REST ──────────────────────────────
+NewAttempt.jsx
+   │ POST /api/simulations
+   ▼
+simulationRoutes.js → simulationService.js → PostgreSQL
+
+History.jsx
+   │ GET /api/simulations
+   ▼
+simulationRoutes.js → simulationService.js → PostgreSQL
+```

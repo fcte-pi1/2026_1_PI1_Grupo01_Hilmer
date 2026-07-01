@@ -1,17 +1,75 @@
-.page {
+.container {
   display: flex;
+  flex: 1;
   flex-direction: column;
-  height: 100%;
-  overflow: hidden;
-  padding: var(--space-6) var(--space-8);
-  gap: var(--space-6);
+  gap: var(--space-5);
+  width: 100%;
+  padding: var(--space-6);
+  overflow: auto;
+}
+
+.contentGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 680px);
+  gap: var(--space-5);
+  align-items: start;
 }
 
 .header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: var(--space-4);
-  flex-shrink: 0;
+}
+
+.filterField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: flex-end;
+}
+
+.filterLabel {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.filterGroup {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.filterChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--color-sidebar-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.filterChip:hover {
+  background: var(--color-surface-alt);
+  color: var(--color-text-primary);
+}
+
+.filterChipActive {
+  background: var(--color-surface-alt);
+  color: var(--color-text-primary);
+  border-color: var(--color-accent-blue);
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.2);
 }
 
 .filterButton {
@@ -30,84 +88,210 @@
   margin: 0;
 }
 
-.layout {
-  display: flex;
-  gap: var(--space-6);
-  flex: 1;
-  overflow: hidden;
+.subtitle {
+  margin-top: var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
 }
 
-.list {
+.feedback {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  flex: 1;
-  overflow-y: auto;
-  padding-right: var(--space-2);
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  padding: var(--space-6);
+  border: 1px dashed var(--color-sidebar-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+  text-align: center;
 }
 
-.detail {
-  width: 300px;
-  flex-shrink: 0;
+.tableWrapper {
+  min-width: 0;
+  border: 1px solid var(--color-sidebar-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  overflow-x: auto;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
+}
+
+.table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+
+.table thead {
+  background: var(--color-surface-alt);
+}
+
+.table th,
+.table td {
+  padding: 0.95rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-sidebar-border);
+}
+
+.table th {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.table td {
+  font-size: 0.92rem;
+  color: var(--color-text-primary);
+}
+
+.table tbody tr {
+  transition: background-color 0.15s ease;
+  cursor: pointer;
+}
+
+.table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.selectedRow {
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.emptyState {
+  padding: var(--space-6);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.detailPanel {
+  position: sticky;
+  top: 0;
+  border: 1px solid var(--color-sidebar-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  padding: var(--space-5);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
 }
 
 .detailHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--space-5);
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 
 .detailTitle {
-  font-size: 1rem;
-  font-weight: 700;
   margin: 0;
+  font-size: 1rem;
   color: var(--color-text-primary);
 }
 
-.detailGrid {
+.detailMeta {
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.detailBody {
+  width: 100%;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.02);
+  overflow: hidden;
+}
+
+.mazeComparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.mazeCard {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 
-.detailRow {
-  display: flex;
-  justify-content: space-between;
-  padding-bottom: var(--space-3);
-  border-bottom: 1px solid var(--color-sidebar-border);
+.mazeCardTitle {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--color-text-primary);
 }
 
-.detailRow dt {
-  font-size: 0.8rem;
+.mazeCardSubtitle {
+  margin: 0 0 var(--space-2);
+  font-size: 0.78rem;
   color: var(--color-text-secondary);
 }
 
-.detailRow dd {
-  font-size: 0.875rem;
-  font-weight: 600;
-  font-family: var(--font-mono);
-  color: var(--color-text-primary);
-}
-
-.failureNote {
-  margin-top: var(--space-4);
-  font-size: 0.8rem;
-  color: var(--color-error);
-  border-top: 1px solid var(--color-sidebar-border);
-  padding-top: var(--space-3);
-}
-
-.emptyDetail {
-  display: flex;
+.good,
+.warn {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 120px;
-  border: 1px dashed var(--color-sidebar-border);
-  border-radius: var(--radius-lg);
-  color: var(--color-text-muted);
-  font-size: 0.85rem;
-  text-align: center;
-  padding: var(--space-4);
+  min-width: 3.5rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--radius-full);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.good {
+  color: var(--color-success);
+  background: var(--color-success-bg);
+}
+
+.warn {
+  color: var(--color-running);
+  background: var(--color-running-bg);
+}
+
+@media (max-width: 768px) {
+  .contentGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .header {
+    flex-direction: column;
+  }
+
+  .filterField {
+    align-items: flex-start;
+  }
+
+  .filterGroup {
+    justify-content: flex-start;
+  }
+
+  .container {
+    padding: var(--space-4);
+  }
+
+  .title {
+    font-size: 1.05rem;
+  }
+
+  .table th,
+  .table td {
+    padding: 0.85rem 0.8rem;
+  }
+
+  .detailHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .mazeComparison {
+    grid-template-columns: 1fr;
+  }
 }
 

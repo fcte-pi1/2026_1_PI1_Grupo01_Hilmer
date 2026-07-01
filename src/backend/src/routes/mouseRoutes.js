@@ -1,8 +1,13 @@
-const express = require('express');
-const router = express.Router();
-const mouseController = require('../controllers/mouseController');
+/**
+ * mouseRoutes.js
+ */
 
-// Rota para calcular o próximo movimento do Micromouse
+import { Router } from 'express';
+import mouseController from '../controllers/mouseController.js';
+
+const router = Router();
+
+// POST /api/mouse/next-move — calcula próximo movimento via FloodFill
 router.post('/next-move', mouseController.calculateNextMove);
 
-module.exports = router;
+export default router;

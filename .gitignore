@@ -9,6 +9,9 @@ node_modules/
 dist/
 build/
 
+# Playwright / Vitest artifacts
+src/frontend/playwright-report/
+src/frontend/test-results/
 # Playwright
 test-results/
 playwright-report/

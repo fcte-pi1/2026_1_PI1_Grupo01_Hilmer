@@ -1,189 +1,161 @@
-import { createServer } from "node:http";
-import { WebSocketServer, WebSocket } from "ws";
+/**
+ * server.js — Servidor principal do Micromouse
+ *
+ * Express (HTTP + rotas) + WebSocket (ESP32 → Frontend)
+ */
+
+import express from 'express';
+import cors from 'cors';
+import { createServer } from 'node:http';
+import { WebSocketServer, WebSocket } from 'ws';
+import dotenv from 'dotenv';
+import mouseRoutes from './routes/mouseRoutes.js';
+import simulationRoutes from './routes/simulationRoutes.js';
+import simulationService from './services/simulationService.js';
+
+dotenv.config();
 
 const port = Number(process.env.PORT || 3001);
-const host = process.env.HOST || "127.0.0.1";
-const frontendOrigin = process.env.FRONTEND_ORIGIN || "http://localhost:5173";
+const host = process.env.HOST || '127.0.0.1';
+const frontendOrigin = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
 
-const simulationDatabase = [];
+const app = express();
 
-function sendJson(response, statusCode, payload) {
-  response.writeHead(statusCode, {
-    "Content-Type": "application/json; charset=utf-8",
-    "Access-Control-Allow-Origin": frontendOrigin,
-    "Access-Control-Allow-Methods": "GET,POST,OPTIONS", // Adicionado POST para permitir envios
-    "Access-Control-Allow-Headers": "Content-Type"
-  });
+app.use(cors({ origin: frontendOrigin, methods: ['GET', 'POST', 'OPTIONS'] }));
+app.use(express.json());
 
-  response.end(JSON.stringify(payload));
-}
-
-// MIDDLEWARE/AUXILIAR: Registro estruturado de logs (Atende CA-43.6)
-function logOperation(level, message, detail = "") {
-  const timestamp = new Date().toISOString();
-  console.log(`[${timestamp}] [${level}] ${message} ${detail ? `| Detalhes: ${JSON.stringify(detail)}` : ""}`);
-}
-
-// HELPER: Captura e processa o corpo da requisição de forma assíncrona
-function getRequestBody(request) {
-  return new Promise((resolve, reject) => {
-    let body = "";
-    request.on("data", (chunk) => { body += chunk; });
-    request.on("end", () => {
-      try {
-        resolve(body ? JSON.parse(body) : {});
-      } catch (err) {
-        reject(new Error("JSON inválido enviado no corpo da requisição."));
-      }
-    });
-  });
-}
-
-const server = createServer(async (request, response) => {
-  const url = new URL(request.url || "/", `http://${request.headers.host}`);
-  if (request.method === "OPTIONS") {
-    response.writeHead(204, {
-      "Access-Control-Allow-Origin": frontendOrigin,
-      "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type"
-    });
-    response.end();
-    return;
-  }
-
-  try {
-    if (request.method === "GET" && url.pathname === "/api/health") {
-      sendJson(response, 200, {
-        status: "online",
-        message: "API base do projeto disponível.",
-        runtime: "node-http",
-        pending: { database: "nao_definido", sensors: "nao_definido" },
-        timestamp: new Date().toISOString()
-      });
-      return;
-    }
-
-    if (request.method === "GET" && url.pathname === "/api/status") {
-      sendJson(response, 200, {
-        frontend: "esperado em React + Vite",
-        backend: "Node.js ativo (HTTP + WebSockets)",
-        database: "pendente de definicao",
-        sensors: "pendente de definicao"
-      });
-      return;
-    }
-
-    // CRITÉRIO CA-43.1: Endpoint POST para salvar dados e processar regras do Micromouse
-    if (request.method === "POST" && url.pathname === "/api/simulations") {
-      const body = await getRequestBody(request);
-      const { mouseName, algorithmUsed, mazeSize, executionTimeSeconds } = body;
-
-      // CRITÉRIO CA-43.5: Validação estrita dos dados recebidos antes do processamento
-      if (!mouseName || typeof mouseName !== "string" || mouseName.trim().length < 2) {
-        logOperation("WARN", "Tentativa de cadastro com nome inválido", body);
-        return sendJson(response, 400, { success: false, error: "Nome do mouse inválido." });
-      }
-      if (!executionTimeSeconds || typeof executionTimeSeconds !== "number" || executionTimeSeconds <= 0) {
-        return sendJson(response, 400, { success: false, error: "O tempo deve ser um número maior que zero." });
-      }
-
-      // CRITÉRIO CA-43.2: Implementação de Regra de Negócio (Cálculo de Eficiência do algoritmo)
-      const efficiencyScore = parseFloat(((mazeSize || 16) * (mazeSize || 16) / executionTimeSeconds).toFixed(2));
-      const performanceStatus = efficiencyScore > 5 ? "Alta Performance" : "Ajustes Necessários";
-
-      // CRITÉRIO CA-43.3 & CA-43.7: Operação CRUD (Create) sem inconsistência
-      const record = {
-        id: simulationDatabase.length + 1,
-        mouseName,
-        algorithmUsed: algorithmUsed || "Não Especificado",
-        mazeSize: mazeSize || 16,
-        executionTimeSeconds,
-        efficiencyScore,
-        performanceStatus,
-        createdAt: new Date().toISOString()
-      };
-
-      simulationDatabase.push(record);
-      
-      // CRITÉRIO CA-43.6: Registro de logs básicos de operação bem-sucedida
-      logOperation("INFO", `Nova simulação salva com sucesso. ID: ${record.id}`);
-
-      // CRITÉRIO CA-43.4: Resposta padronizada
-      return sendJson(response, 201, { success: true, message: "Simulação registrada.", data: record });
-    }
-
-    // CRITÉRIO CA-43.1 & CA-43.3: Endpoint GET (Read do CRUD) para listar o histórico
-    if (request.method === "GET" && url.pathname === "/api/simulations") {
-      logOperation("INFO", "Leitura do histórico de simulações requisitada.");
-      return sendJson(response, 200, { success: true, data: simulationDatabase });
-    }
-
-    sendJson(response, 404, { error: "Rota nao encontrada" });
-
-  } catch (error) {
-    // CRITÉRIO CA-43.6: Registro estrito de Logs de Erros inesperados
-    logOperation("ERROR", `Falha no processamento: ${error.message}`);
-    sendJson(response, 500, { success: false, error: "Erro interno no servidor do Micromouse." });
-  }
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'online', timestamp: new Date().toISOString() });
 });
 
-const wssReact = new WebSocketServer({ server });
+app.get('/api/status', (_req, res) => {
+  res.json({
+    frontend: frontendOrigin,
+    backend: `http://${host}:${port}`,
+    database: {
+      host: process.env.DB_HOST || 'localhost',
+      port: Number(process.env.DB_PORT || 5432),
+      name: process.env.DB_NAME || 'micromouse_db',
+    },
+  });
+});
 
-// Referência ao socket ativo da ESP32, usada para repassar comandos vindos
-// do site (ex: "INICIAR_CORRIDA") para o robô. Fica null enquanto o robô
-// não está conectado ao broker.
+app.use('/api/mouse', mouseRoutes);
+app.use('/api', simulationRoutes);
+
+app.use((err, _req, res, _next) => {
+  console.error(`[ERROR] ${err.message}`);
+  res.status(500).json({ success: false, error: 'Erro interno no servidor.' });
+});
+
+const httpServer = createServer(app);
+const wssReact = new WebSocketServer({ server: httpServer });
+
+wssReact.on('connection', (ws) => {
+  console.log('[backend] Frontend React conectado via WebSocket.');
+  ws.on('close', () => console.log('[backend] Frontend React desconectado.'));
+});
+
+wssReact.on('error', (err) => {
+  console.error('[backend] Erro no WebSocket server:', err.message);
+});
+
+function broadcastToFrontend(data) {
+  const payload = data.toString();
+  wssReact.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(payload);
+    }
+  });
+}
+
+let startPromise = null;
 let esp32Socket = null;
+let reconnectTimeout = null;
 
-wssReact.on("connection", (ws) => {
-  console.log("[backend] Frontend React conectado ao WebSocket.");
+export function ensureServerStarted() {
+  if (httpServer.listening) {
+    return Promise.resolve();
+  }
 
-  // Repassa qualquer comando enviado pelo site diretamente para a ESP32.
-  ws.on("message", (data) => {
-    if (esp32Socket && esp32Socket.readyState === WebSocket.OPEN) {
-      esp32Socket.send(data.toString());
-    } else {
-      console.warn("[backend] Comando do site descartado: ESP32 não está conectada.");
-    }
-  });
+  if (startPromise) {
+    return startPromise;
+  }
 
-  ws.on("close", () => console.log("[backend] Frontend React desconectado."));
-});
+  startPromise = new Promise((resolve, reject) => {
+    httpServer.listen(port, host, () => {
+      console.log(`[backend] Servidor rodando em http://${host}:${port}`);
+      resolve();
+    });
 
-function connectToESP32() {
-  const esp32Url = process.env.ESP32_WS_URL || "ws://192.168.4.1:81";
-  console.log(`[backend] Tentando conectar na ESP32 em ${esp32Url}...`);
-  const esp32Ws = new WebSocket(esp32Url);
-  esp32Socket = esp32Ws;
-
-  esp32Ws.on("open", () => {
-    console.log("[backend] Conectado com sucesso à ESP32!");
-  });
-
-  esp32Ws.on("message", (data) => {
-    wssReact.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(data.toString());
-      }
+    httpServer.once('error', (err) => {
+      startPromise = null;
+      reject(err);
     });
   });
 
-  esp32Ws.on("close", () => {
-    console.log("[backend] Conexão com a ESP32 perdida. Tentando reconectar em 2 segundos...");
-    esp32Socket = null;
-    setTimeout(connectToESP32, 2000);
+  return startPromise;
+}
+
+function scheduleReconnect() {
+  clearTimeout(reconnectTimeout);
+  reconnectTimeout = setTimeout(() => {
+    connectToESP32();
+  }, 2000);
+}
+
+export function connectToESP32() {
+  const esp32Url = process.env.ESP32_WS_URL || 'ws://192.168.4.1:81';
+
+  if (
+    esp32Socket &&
+    (esp32Socket.readyState === WebSocket.OPEN || esp32Socket.readyState === WebSocket.CONNECTING)
+  ) {
+    return esp32Socket;
+  }
+
+  console.log(`[backend] Tentando conectar à ESP32 em ${esp32Url}...`);
+  esp32Socket = new WebSocket(esp32Url);
+
+  esp32Socket.on('open', () => {
+    console.log('[backend] Conectado à ESP32-C3!');
   });
 
-  esp32Ws.on("error", (err) => {
-    console.error("[backend] Erro na conexão com a ESP32:", err.message);
+  esp32Socket.on('message', async (data) => {
+    try {
+      const payload = JSON.parse(data.toString());
+
+      if (payload?.numTentativa && payload?.tempoColeta) {
+        try {
+          await simulationService.inserirTelemetria(payload);
+        } catch (dbError) {
+          console.error('[backend] Falha ao persistir telemetria:', dbError.message);
+        }
+      }
+
+      broadcastToFrontend(data);
+    } catch (err) {
+      console.error('[backend] Erro ao processar mensagem da ESP32:', err.message);
+    }
   });
+
+  esp32Socket.on('close', () => {
+    console.log('[backend] ESP32 desconectada. Reconectando em 2s...');
+    esp32Socket = null;
+    scheduleReconnect();
+  });
+
+  esp32Socket.on('error', (err) => {
+    console.error('[backend] Erro ESP32:', err.message);
+  });
+
+  return esp32Socket;
 }
+
+await ensureServerStarted();
 
 if (process.env.NODE_ENV !== 'test') {
   connectToESP32();
 }
 
-server.listen(port, host, () => {
-  console.log(`[backend] API e WebSocket escutando em http://${host}:${port}`);
-});
-
-export { server, wssReact, connectToESP32 };
+export { app, httpServer, httpServer as server, wssReact };
