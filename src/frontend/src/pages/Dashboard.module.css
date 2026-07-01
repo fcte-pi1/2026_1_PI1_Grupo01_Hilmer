@@ -49,6 +49,12 @@
   color: var(--color-error);
 }
 
+.waitingMsg {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
 .waiting {
   padding: var(--space-6);
   color: var(--color-text-muted);

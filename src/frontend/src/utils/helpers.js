@@ -22,6 +22,7 @@ export function statusLabel(status) {
     success: 'SUCESSO',
     failure: 'FALHA',
     stuck: 'TRAVADO',
+    waiting: 'AGUARDANDO INÍCIO',
     idle: 'AGUARDANDO',
   };
   return labels[status] ?? status;

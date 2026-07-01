@@ -36,7 +36,10 @@ const caminho = gerarCaminho();
 wss.on('connection', (ws) => {
   console.log('[simulador] Backend conectado.');
 
+  // Igual ao firmware real: fica parado em "waiting" até receber
+  // INICIAR_CORRIDA pelo WebSocket, só então começa a se mover.
   let passo = 0;
+  let rodando = false;
   const mapa = Array.from({ length: MAP_SIZE }, (_, i) =>
     Array.from({ length: MAP_SIZE }, (_, j) =>
       (i === 0 || i === MAP_SIZE - 1 || j === 0 || j === MAP_SIZE - 1) ? 1 : 2
@@ -55,6 +58,23 @@ wss.on('connection', (ws) => {
   }
 
   const intervalo = setInterval(() => {
+    if (!rodando) {
+      const telemetria = {
+        position: celulaParaMapa(0, 0),
+        start: celulaParaMapa(0, 0),
+        goal: celulaParaMapa(CENTER, CENTER),
+        visitedPath: [celulaParaMapa(0, 0)],
+        status: 'waiting',
+        elapsedSeconds: 0,
+        batteryPercent: 100,
+        speedMps: 0,
+        mapa,
+      };
+
+      ws.send(JSON.stringify(telemetria));
+      return;
+    }
+
     const atual = caminho[passo];
     marcarVisitado(atual[0], atual[1]);
     if (passo > 0) marcarSegmento(caminho[passo - 1], atual);
@@ -76,14 +96,19 @@ wss.on('connection', (ws) => {
 
     ws.send(JSON.stringify(telemetria));
 
-    if (!chegouAoCentro) passo++;
+    if (chegouAoCentro) {
+      rodando = false; // volta a esperar um novo comando, igual ao robô real
+    } else {
+      passo++;
+    }
   }, 300);
 
   ws.on('message', (data) => {
     const mensagem = data.toString().toUpperCase();
     if (mensagem.includes('INICIAR_CORRIDA')) {
-      console.log('[simulador] Comando INICIAR_CORRIDA recebido, reiniciando corrida simulada.');
+      console.log('[simulador] Comando INICIAR_CORRIDA recebido, iniciando corrida simulada.');
       passo = 0;
+      rodando = true;
     }
   });
 

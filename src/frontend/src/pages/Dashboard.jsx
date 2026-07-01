@@ -20,6 +20,9 @@ export function Dashboard() {
           {!connected && (
             <span className={styles.warnMsg}>Conectando ao broker...</span>
           )}
+          {connected && data.status === 'waiting' && (
+            <span className={styles.waitingMsg}>Aguardando comando de início...</span>
+          )}
           {connected && data.status === 'running' && (
             <span className={styles.livePulse}>● AO VIVO</span>
           )}
