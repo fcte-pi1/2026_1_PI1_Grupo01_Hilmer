@@ -8,6 +8,18 @@ import { useEffect, useState } from 'react';
 import { MazeView } from '../components/MazeView/MazeView';
 import { analisarTentativa, listarHistorico } from '../services/apiService';
 import { analysisToMazeViewProps } from '../services/telemetryService';
+import { Card } from '../components/Card/Card';
+import { ExecutionCard } from '../components/ExecutionCard/ExecutionCard';
+import { StatusBadge } from '../components/StatusBadge/StatusBadge';
+import { getExecutionHistory } from '../services/dataService';
+import { Filter } from "../components/Filter/Filter";
+import {
+  formatBattery,
+  formatMazeDimension,
+  formatSpeed,
+  formatTime,
+  filterExecutions
+} from '../utils/helpers';
 import styles from './History.module.css';
 
 const TIPO_LABEL = { '4x4': '4×4', '8x8': '8×8', '16x16': '16×16' };
@@ -66,6 +78,16 @@ export function History() {
       setDetailLoading(false);
     }
   }
+  const [executions, setExecutions] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [filters, setFilters] = useState({
+    mazeSize: [],
+    totalTime: [],
+    avgSpeed: [],
+    totalBatteryUsed: [],
+    status: [],
+  });
 
   useEffect(() => {
     listarHistorico()
@@ -81,6 +103,8 @@ export function History() {
   if (loading) return renderFeedback('Carregando histórico...');
   if (error) return renderFeedback(`Erro: ${error}`);
   if (historico.length === 0) return renderFeedback('Nenhuma tentativa registrada ainda.');
+
+  const filteredExecutions = filterExecutions(executions, filters);
 
   return (
     <div className={styles.container}>
@@ -152,6 +176,29 @@ export function History() {
               Nenhuma tentativa encontrada para esse tamanho de labirinto.
             </div>
           )}
+    <div className={styles.page}>
+    <div className={styles.header}>
+      <h1 className={styles.title}>Histórico de Execuções</h1>
+      <span className="mock-banner">
+        DADOS MOCKADOS
+      </span>
+      <button
+        className={styles.filterButton}
+        onClick={() => setIsFilterOpen(true)}
+      >
+        Filtros
+      </button>
+    </div>
+      <div className={styles.layout}>
+        <div className={styles.list}>
+          {filteredExecutions.map((exec) => (
+            <ExecutionCard
+              key={exec.id}
+              execution={exec}
+              selected={selected?.id === exec.id}
+              onClick={() => handleSelect(exec)}
+            />
+          ))}
         </div>
 
         <section className={styles.detailPanel}>
@@ -209,6 +256,13 @@ export function History() {
             </div>
           )}
         </section>
+        </aside>
+        <Filter
+          isOpen={isFilterOpen}
+          onClose={() => setIsFilterOpen(false)}
+          filters={filters}
+          setFilters={setFilters}
+        />
       </div>
     </div>
   );

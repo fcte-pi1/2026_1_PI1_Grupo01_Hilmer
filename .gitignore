@@ -12,6 +12,14 @@ build/
 # Playwright / Vitest artifacts
 src/frontend/playwright-report/
 src/frontend/test-results/
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# Relatórios locais (não versionados)
+reports/resultados-testes-filtro-historico.md
 
 # Adicione outros arquivos a serem ignorados aqui
 # ...

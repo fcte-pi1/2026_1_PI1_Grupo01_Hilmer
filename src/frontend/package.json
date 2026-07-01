@@ -10,9 +10,10 @@
     "test": "vitest run",
     "test:unit": "node scripts/run-vitest.mjs",
     "test:watch": "vitest",
-    "test:e2e": "node scripts/run-playwright.mjs",
+    "coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "coverage": "vitest run --coverage"
+    "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
     "react": "^18.2.0",

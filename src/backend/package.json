@@ -12,6 +12,9 @@
     "test:integration:all": "vitest run --config vitest.config.js tests/simulationRoutes.integration.test.js tests/server.test.js tests/integration.test.js",
     "test:api": "vitest run tests",
     "test:db": "vitest run src/tests/db.test.js"
+    "test": "vitest run tests && node --test src/server.test.js",
+    "test:floodfill:mms": "node tests/mms_harness/run_all.js",
+    "test:floodfill:mms:quick": "node tests/mms_harness/run_all.js --scenario=CT01"
   },
   "engines": {
     "node": ">=18"
