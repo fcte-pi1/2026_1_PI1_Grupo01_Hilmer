@@ -11,7 +11,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import dotenv from 'dotenv';
 import mouseRoutes from './routes/mouseRoutes.js';
 import simulationRoutes from './routes/simulationRoutes.js';
-import simulationService from './services/simulationService.js';
+import liveTelemetryBuffer from './services/liveTelemetryBuffer.js';
 
 dotenv.config();
 
@@ -53,6 +53,18 @@ const wssReact = new WebSocketServer({ server: httpServer });
 
 wssReact.on('connection', (ws) => {
   console.log('[backend] Frontend React conectado via WebSocket.');
+
+  // Repassa comandos vindos do site (ex: "INICIAR_CORRIDA") direto para a
+  // ESP32 conectada. Sem isso, o botão "Iniciar corrida" do dashboard não
+  // tem nenhum efeito no robô.
+  ws.on('message', (data) => {
+    if (esp32Socket && esp32Socket.readyState === WebSocket.OPEN) {
+      esp32Socket.send(data.toString());
+    } else {
+      console.warn('[backend] Comando do site descartado: ESP32 não está conectada.');
+    }
+  });
+
   ws.on('close', () => console.log('[backend] Frontend React desconectado.'));
 });
 
@@ -121,16 +133,18 @@ export function connectToESP32() {
     console.log('[backend] Conectado à ESP32-C3!');
   });
 
-  esp32Socket.on('message', async (data) => {
+  esp32Socket.on('message', (data) => {
     try {
       const payload = JSON.parse(data.toString());
 
-      if (payload?.numTentativa && payload?.tempoColeta) {
-        try {
-          await simulationService.inserirTelemetria(payload);
-        } catch (dbError) {
-          console.error('[backend] Falha ao persistir telemetria:', dbError.message);
-        }
+      // A ESP32 não tem o numTentativa real do banco (só existe quando o
+      // site persiste o HISTORICO ao final da corrida), então os snapshots
+      // ficam num buffer em memória e só são gravados quando esse
+      // HISTORICO é criado (ver POST /api/historico em simulationRoutes.js).
+      if (payload?.status === 'waiting') {
+        liveTelemetryBuffer.limpar();
+      } else if (payload?.tempoColeta) {
+        liveTelemetryBuffer.registrar(payload);
       }
 
       broadcastToFrontend(data);

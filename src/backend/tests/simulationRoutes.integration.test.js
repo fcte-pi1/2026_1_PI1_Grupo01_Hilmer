@@ -1,10 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { server } from '../src/server.js';
 import pool from '../src/database/connection.js';
+import liveTelemetryBuffer from '../src/services/liveTelemetryBuffer.js';
 
 let createdHistoricoTentativa;
 let telemetriaTentativa;
 let trajetoTentativa;
+let bufferTentativa;
 
 describe.sequential('Integração das rotas de simulação', () => {
   beforeAll(async () => {
@@ -12,7 +14,9 @@ describe.sequential('Integração das rotas de simulação', () => {
   });
 
   afterAll(async () => {
-    await cleanupTentativas([createdHistoricoTentativa, telemetriaTentativa, trajetoTentativa].filter(Boolean));
+    await cleanupTentativas(
+      [createdHistoricoTentativa, telemetriaTentativa, trajetoTentativa, bufferTentativa].filter(Boolean),
+    );
     await new Promise((resolve) => server.close(resolve));
   });
 
@@ -125,6 +129,56 @@ describe.sequential('Integração das rotas de simulação', () => {
     const listData = await listResponse.json();
     expect(listData.data).toHaveLength(3);
     expect(listData.data.map((item) => item.passo)).toEqual([1, 2, 3]);
+  });
+
+  it('grava o buffer de telemetria ao vivo assim que o HISTORICO é criado', async () => {
+    liveTelemetryBuffer.limpar();
+    liveTelemetryBuffer.registrar({
+      tempoColeta: new Date(Date.now() - 2000).toISOString(),
+      tensaoRecente: 7.3,
+      correnteRecente: 1.1,
+      posHRecente: 1,
+      posVRecente: 1,
+      velocidadeAtual: 0.5,
+      bateriaAtual: 92,
+      tensaoAtual: 7.4,
+    });
+    liveTelemetryBuffer.registrar({
+      tempoColeta: new Date(Date.now() - 1000).toISOString(),
+      tensaoRecente: 7.2,
+      correnteRecente: 1.0,
+      posHRecente: 1,
+      posVRecente: 2,
+      velocidadeAtual: 0.55,
+      bateriaAtual: 90,
+      tensaoAtual: 7.3,
+    });
+
+    const postResponse = await fetch('http://127.0.0.1:3001/api/historico', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        percentualBateria: 90,
+        velocidadeMedia: 0.55,
+        tempoConclusao: new Date().toISOString(),
+        desafioCumprido: 'SIM',
+        correnteEletrica: 1.0,
+        tensaoEletrica: 7.3,
+        tipoLabirinto: '16x16',
+      }),
+    });
+
+    expect(postResponse.status).toBe(201);
+    const postData = await postResponse.json();
+    bufferTentativa = postData.data.numtentativa;
+
+    const listResponse = await fetch(`http://127.0.0.1:3001/api/telemetria/${bufferTentativa}`);
+    const listData = await listResponse.json();
+    expect(listData.data).toHaveLength(2);
+    expect(listData.data.every((row) => row.numtentativa === bufferTentativa)).toBe(true);
+
+    // O buffer já deve ter sido esvaziado ao ser gravado.
+    expect(liveTelemetryBuffer.drenar()).toEqual([]);
   });
 });
 

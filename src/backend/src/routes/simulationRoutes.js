@@ -7,6 +7,7 @@
 import { Router } from 'express';
 import simulationService from '../services/simulationService.js';
 import mouseService from '../services/mouseService.js';
+import liveTelemetryBuffer from '../services/liveTelemetryBuffer.js';
 
 const router = Router();
 
@@ -42,6 +43,25 @@ router.post('/historico', async (req, res, next) => {
     }
 
     const record = await simulationService.criarHistorico(req.body);
+
+    // Grava o lote de telemetria acumulado durante a corrida (via
+    // WebSocket) agora que existe um numTentativa real para referenciar.
+    // allSettled: uma leitura individual que falhar não deve derrubar a
+    // resposta de sucesso da criação do HISTORICO.
+    const telemetriaPendente = liveTelemetryBuffer.drenar();
+    if (telemetriaPendente.length > 0) {
+      const resultados = await Promise.allSettled(
+        telemetriaPendente.map((snapshot) => simulationService.inserirTelemetria({
+          ...snapshot,
+          numTentativa: record.numtentativa,
+        })),
+      );
+
+      resultados
+        .filter((r) => r.status === 'rejected')
+        .forEach((r) => console.error('[backend] Falha ao persistir telemetria em lote:', r.reason.message));
+    }
+
     return res.status(201).json({ success: true, data: record });
   } catch (err) {
     next(err);

@@ -38,9 +38,9 @@ describe('Helpers Utility Functions', () => {
   });
 
   it('mazeSizeToTipoLabirinto should map sizes to the expected schema values', () => {
-    expect(mazeSizeToTipoLabirinto(10)).toBe('4x4');
-    expect(mazeSizeToTipoLabirinto(14)).toBe('8x8');
-    expect(mazeSizeToTipoLabirinto(20)).toBe('16x16');
+    expect(mazeSizeToTipoLabirinto(4)).toBe('4x4');
+    expect(mazeSizeToTipoLabirinto(8)).toBe('8x8');
+    expect(mazeSizeToTipoLabirinto(16)).toBe('16x16');
   });
 });
 
