@@ -6,6 +6,12 @@
   "scripts": {
     "dev": "node --env-file=.env --watch src/server.js",
     "start": "node --env-file=.env src/server.js",
+    "test": "vitest run",
+    "test:unit": "node scripts/run-vitest.mjs unit",
+    "test:integration": "node scripts/run-vitest.mjs integration",
+    "test:integration:all": "vitest run --config vitest.config.js tests/simulationRoutes.integration.test.js tests/server.test.js tests/integration.test.js",
+    "test:api": "vitest run tests",
+    "test:db": "vitest run src/tests/db.test.js"
     "test": "vitest run tests && node --test src/server.test.js",
     "test:floodfill:mms": "node tests/mms_harness/run_all.js",
     "test:floodfill:mms:quick": "node tests/mms_harness/run_all.js --scenario=CT01"
@@ -14,7 +20,11 @@
     "node": ">=18"
   },
   "dependencies": {
+    "cors": "^2.8.6",
     "dotenv": "^17.4.2",
-    "pg": "^8.21.0"
+    "express": "^5.2.1",
+    "pg": "^8.21.0",
+    "vitest": "^4.1.8",
+    "ws": "^8.21.0"
   }
 }

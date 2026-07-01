@@ -1,10 +1,13 @@
 import styles from './MazeView.module.css';
 
+// grid: 0=caminho, 1=parede, 2=desconhecido (live via mapa WS; History via reconstrução TELEMETRIA+TRAJETO)
 function cellType(row, col, grid, position, goal, start, visitedPath) {
-  if (grid[row][col] === 1) return 'wall';
-  if (position[0] === row && position[1] === col) return 'mouse';
-  if (goal[0] === row && goal[1] === col) return 'goal';
-  if (start[0] === row && start[1] === col) return 'start';
+  const cell = grid[row][col];
+  if (cell === 1) return 'wall';
+  if (position && position[0] === row && position[1] === col) return 'mouse';
+  if (cell === 2) return 'unknown';
+  if (goal && goal[0] === row && goal[1] === col) return 'goal';
+  if (start && start[0] === row && start[1] === col) return 'start';
   const visited = visitedPath.some(([r, c]) => r === row && c === col);
   if (visited) return 'visited';
   return 'path';
@@ -41,6 +44,7 @@ export function MazeView({ grid, position, goal, start, visitedPath, status }) {
         <span className={`${styles.dot} ${styles.goalDot}`} /> Objetivo
         <span className={`${styles.dot} ${styles.visitedDot}`} /> Caminho
         <span className={`${styles.dot} ${styles.wallDot}`} /> Parede
+        <span className={`${styles.dot} ${styles.unknownDot}`} /> Desconhecido
       </div>
     </div>
   );

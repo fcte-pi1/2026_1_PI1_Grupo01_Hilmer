@@ -1,23 +1,35 @@
-const mouseService = require('../services/mouseService');
+/**
+ * mouseController.js
+ */
 
-exports.calculateNextMove = (req, res, next) => {
+import mouseService from '../services/mouseService.js';
+
+function calculateNextMove(req, res, next) {
   try {
     const { currentPosition, mazeMatrix } = req.body;
 
-    // Validação básica de entrada de dados
     if (!currentPosition || !mazeMatrix) {
-      return res.status(400).json({ error: "Posição atual e matriz do labirinto são obrigatórias." });
+      return res.status(400).json({
+        error: 'currentPosition e mazeMatrix são obrigatórios.',
+      });
     }
 
-    // Processa a lógica através da camada de serviço
+    if (typeof currentPosition.row !== 'number' || typeof currentPosition.col !== 'number') {
+      return res.status(400).json({
+        error: 'currentPosition deve ter campos { row: number, col: number }.',
+      });
+    }
+
     const decision = mouseService.processFloodFill(currentPosition, mazeMatrix);
 
     return res.status(200).json({
       success: true,
       nextPosition: decision.nextPosition,
-      action: decision.action
+      action: decision.action,
     });
   } catch (error) {
     next(error);
   }
 }
+
+export default { calculateNextMove };

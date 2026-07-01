@@ -8,6 +8,7 @@ BACKEND_DIR="$ROOT_DIR/src/backend"
 
 frontend_pid=""
 backend_pid=""
+docker_compose_cmd=()
 
 log() {
     printf '[dev-start] %s\n' "$1"
@@ -16,6 +17,24 @@ log() {
 die() {
     printf '[dev-start] erro: %s\n' "$1" >&2
     exit 1
+}
+
+has_command() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+detect_docker_compose() {
+    if has_command docker && docker compose version >/dev/null 2>&1; then
+        docker_compose_cmd=(docker compose)
+        return 0
+    fi
+
+    if has_command docker-compose; then
+        docker_compose_cmd=(docker-compose)
+        return 0
+    fi
+
+    return 1
 }
 
 project_has_external_dependencies() {
@@ -53,8 +72,18 @@ project_dependencies_ready() {
 ensure_project_ready() {
     [[ -f "$FRONTEND_DIR/package.json" ]] || die "src/frontend/package.json nao encontrado"
     [[ -f "$BACKEND_DIR/package.json" ]] || die "src/backend/package.json nao encontrado"
+    [[ -f "$BACKEND_DIR/docker-compose.yml" ]] || die "src/backend/docker-compose.yml nao encontrado"
     project_dependencies_ready "$FRONTEND_DIR" || die "dependencias do frontend nao instaladas; rode: bash scripts/setup_dev_env.sh install"
     project_dependencies_ready "$BACKEND_DIR" || die "dependencias do backend nao instaladas; rode: bash scripts/setup_dev_env.sh install"
+    detect_docker_compose || die "docker compose nao encontrado; instale/inicie o Docker para subir o banco do backend"
+}
+
+start_database() {
+    log "subindo postgres do backend via ${docker_compose_cmd[*]}"
+    (
+        cd "$BACKEND_DIR"
+        "${docker_compose_cmd[@]}" up -d
+    )
 }
 
 cleanup() {
@@ -89,11 +118,13 @@ main() {
     ensure_project_ready
     trap cleanup EXIT INT TERM
 
+    start_database
     start_backend
     start_frontend
 
     log "frontend esperado em http://localhost:5173"
     log "backend esperado em http://localhost:3001"
+    log "postgres iniciado via docker compose em src/backend"
     log "pressione Ctrl+C para encerrar os dois processos"
 
     wait -n "$backend_pid" "$frontend_pid"
