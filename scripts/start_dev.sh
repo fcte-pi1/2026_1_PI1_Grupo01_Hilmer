@@ -86,13 +86,28 @@ start_database() {
     )
 }
 
+kill_tree() {
+    local pid="$1"
+    local child
+
+    for child in $(pgrep -P "$pid" 2>/dev/null || true); do
+        kill_tree "$child"
+    done
+
+    kill "$pid" 2>/dev/null || true
+}
+
 cleanup() {
+    # `npm run dev` roda dentro de um subshell backgrounded; matar só o PID
+    # do subshell não mata o processo real (node --watch / vite) que ele
+    # inicia como filho, deixando-o órfão ocupando a porta. kill_tree mata
+    # a árvore inteira, dos filhos para o pai.
     if [[ -n "$backend_pid" ]] && kill -0 "$backend_pid" 2>/dev/null; then
-        kill "$backend_pid" 2>/dev/null || true
+        kill_tree "$backend_pid"
     fi
 
     if [[ -n "$frontend_pid" ]] && kill -0 "$frontend_pid" 2>/dev/null; then
-        kill "$frontend_pid" 2>/dev/null || true
+        kill_tree "$frontend_pid"
     fi
 }
 
