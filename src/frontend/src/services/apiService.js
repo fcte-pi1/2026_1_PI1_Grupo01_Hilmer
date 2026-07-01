@@ -64,6 +64,10 @@ export async function getHealth() {
   return request('/api/health');
 }
 
+export async function getStatusEsp32() {
+  return request('/api/esp32/status');
+}
+
 export async function reconectarEsp32() {
   return request('/api/esp32/reconnect', { method: 'POST' });
 }

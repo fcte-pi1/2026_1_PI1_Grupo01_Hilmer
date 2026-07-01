@@ -37,7 +37,7 @@ function buildTrajectoryPayload(numTentativa, visitedPath = []) {
 export function Dashboard() {
   const location = useLocation();
   const mazeSize = location.state?.mazeSize ?? 8;
-  const { data, connected, start, reset } = useTelemetryData(mazeSize);
+  const { data, connected, esp32Connected, start, reset, reconnectEsp32 } = useTelemetryData(mazeSize);
   const [saveError, setSaveError] = useState(null);
   const hasSavedRef = useRef(false);
 
@@ -94,8 +94,10 @@ export function Dashboard() {
       <Sidebar
         data={data}
         connected={connected}
+        esp32Connected={esp32Connected}
         onStart={handleStart}
         onReset={handleReset}
+        onReconnectEsp32={reconnectEsp32}
       />
       <div className={styles.main}>
         <div className={styles.statusBar}>
@@ -103,10 +105,13 @@ export function Dashboard() {
           {!connected && (
             <span className={styles.warnMsg}>Conectando ao broker...</span>
           )}
-          {connected && data.status === 'waiting' && (
+          {connected && !esp32Connected && (
+            <span className={styles.warnMsg}>ESP32 não está conectada — verifique a rede WiFi do robô</span>
+          )}
+          {connected && esp32Connected && data.status === 'waiting' && (
             <span className={styles.waitingMsg}>Aguardando comando de início...</span>
           )}
-          {connected && data.status === 'running' && (
+          {connected && esp32Connected && data.status === 'running' && (
             <span className={styles.livePulse}>● AO VIVO</span>
           )}
           {connected && data.status === 'stuck' && (

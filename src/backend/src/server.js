@@ -11,6 +11,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import dotenv from 'dotenv';
 import mouseRoutes from './routes/mouseRoutes.js';
 import simulationRoutes from './routes/simulationRoutes.js';
+import createEsp32Routes from './routes/esp32Routes.js';
 import liveTelemetryBuffer from './services/liveTelemetryBuffer.js';
 
 dotenv.config();
@@ -116,8 +117,14 @@ function scheduleReconnect() {
   }, 2000);
 }
 
+function getESP32Url() {
+  return process.env.ESP32_WS_URL || 'ws://192.168.4.1:81';
+}
+
+const READY_STATE_NAMES = ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'];
+
 export function connectToESP32() {
-  const esp32Url = process.env.ESP32_WS_URL || 'ws://192.168.4.1:81';
+  const esp32Url = getESP32Url();
 
   if (
     esp32Socket &&
@@ -165,6 +172,35 @@ export function connectToESP32() {
 
   return esp32Socket;
 }
+
+export function getESP32Status() {
+  return {
+    connected: !!esp32Socket && esp32Socket.readyState === WebSocket.OPEN,
+    url: getESP32Url(),
+    readyState: esp32Socket ? READY_STATE_NAMES[esp32Socket.readyState] : 'CLOSED',
+  };
+}
+
+// Fecha qualquer socket existente (aberto, conectando ou travado numa
+// leitura ruim) e tenta uma conexão nova imediatamente, ignorando o
+// cronômetro de reconexão automática — usado pelo botão manual do site.
+export function forceReconnectESP32() {
+  clearTimeout(reconnectTimeout);
+
+  if (esp32Socket) {
+    esp32Socket.removeAllListeners();
+    esp32Socket.terminate();
+    esp32Socket = null;
+  }
+
+  return connectToESP32();
+}
+
+// Montada aqui embaixo (não junto com as outras rotas, lá em cima) porque
+// depende de getESP32Status/forceReconnectESP32, definidas só agora — a
+// ordem de app.use() não importa pro Express, só precisa vir antes do
+// ensureServerStarted() logo abaixo.
+app.use('/api/esp32', createEsp32Routes({ getStatus: getESP32Status, reconnect: forceReconnectESP32 }));
 
 await ensureServerStarted();
 
