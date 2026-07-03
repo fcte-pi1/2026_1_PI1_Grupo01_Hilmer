@@ -50,9 +50,13 @@ export function Dashboard() {
 
     async function persistAttempt() {
       try {
+        // nova alt: percentualBateria/velocidadeMedia são NOT NULL no banco
+        // (schema.sql) — a ESP32 pode mandar batteryPercent null quando não
+        // há sensor de bateria instalado (ver ADC_BATTERY_PIN no firmware),
+        // então precisa do mesmo fallback ?? 0 já usado pra corrente/tensão.
         const historicoResponse = await criarHistorico({
-          percentualBateria: data.batteryPercent,
-          velocidadeMedia: data.speedMps,
+          percentualBateria: data.batteryPercent ?? 0,
+          velocidadeMedia: data.speedMps ?? 0,
           tempoConclusao: new Date().toISOString(),
           desafioCumprido: 'SIM',
           correnteEletrica: data.correnteEletrica ?? 0,

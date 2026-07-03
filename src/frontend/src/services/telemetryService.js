@@ -155,12 +155,17 @@ export function getMockTelemetrySnapshot(stepIndex, mazeSize = 8) {
   };
 }
 
+// nova alt: a matriz enviada pela ESP32 agora é mazeSize+2 (1 célula real
+// = 1 posição na matriz, com 1 camada de parede fixa ao redor) — antes
+// era mazeSize*2+1 (resolução dupla, célula e parede em posições
+// separadas). Isso só é usado como fallback quando o payload não traz
+// `mazeSize` diretamente (o que a ESP32 sempre manda hoje).
 function inferMazeSizeFromGrid(grid) {
   if (!grid) {
     return null;
   }
 
-  return grid.length % 2 === 1 ? (grid.length - 1) / 2 : grid.length;
+  return grid.length - 2;
 }
 
 // A ESP32 manda "waiting_start" (aguardando comando START) e "waiting_run"
