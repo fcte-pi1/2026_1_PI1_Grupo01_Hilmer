@@ -8,9 +8,9 @@
  * dela mesma, sem relação com o id gerado pelo banco.
  *
  * Por isso os snapshots ficam em memória aqui enquanto a corrida roda
- * (server.js chama registrar()) e só são gravados de fato quando
- * simulationRoutes.js cria o HISTORICO e chama drenar() para persistir
- * o lote inteiro com o numTentativa real.
+ * (attemptService chama registrar() via handleLiveTelemetry) e só são
+ * gravados de fato quando attemptService persiste success ou POST
+ * /api/historico chama drenar() com o numTentativa real do banco.
  *
  * Chave por tempoColeta: a ESP32 só tem resolução de segundo no
  * timestamp, e TELEMETRIA tem PK (numTentativa, tempoColeta) — usar um

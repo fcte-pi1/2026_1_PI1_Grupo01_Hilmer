@@ -20,16 +20,64 @@ function inferDirection(previousPosition, currentPosition, nextPosition) {
   return 'NORTE';
 }
 
-function buildTrajectoryPayload(numTentativa, visitedPath = []) {
-  return visitedPath.map((position, index) => ({
+/** Converte visitedPath do mapa (n+2 ou 2n+1 legado) para coordenadas de célula. */
+export function toCellPath(visitedPath = [], mazeSize = 16) {
+  if (!Array.isArray(visitedPath) || visitedPath.length === 0) {
+    return [];
+  }
+
+  const legacyExpanded = (() => {
+    const hasEvenCoord = visitedPath.some((point) => {
+      const row = Number(point?.[0]);
+      const col = Number(point?.[1]);
+      return row % 2 === 0 || col % 2 === 0;
+    });
+    if (hasEvenCoord) return false;
+
+    const hasLargeCoord = visitedPath.some((point) => {
+      const row = Number(point?.[0]);
+      const col = Number(point?.[1]);
+      return row > mazeSize + 1 || col > mazeSize + 1;
+    });
+    if (hasLargeCoord) return true;
+
+    for (let index = 1; index < visitedPath.length; index += 1) {
+      const rowDelta = Math.abs(Number(visitedPath[index][0]) - Number(visitedPath[index - 1][0]));
+      const colDelta = Math.abs(Number(visitedPath[index][1]) - Number(visitedPath[index - 1][1]));
+      if (rowDelta === 2 || colDelta === 2) return true;
+    }
+
+    return false;
+  })();
+
+  return visitedPath.map((point) => {
+    let row = Number(point[0]);
+    let col = Number(point[1]);
+
+    if (legacyExpanded) {
+      row = (row - 1) / 2;
+      col = (col - 1) / 2;
+    } else if (row >= 1 && col >= 1) {
+      row -= 1;
+      col -= 1;
+    }
+
+    return [row, col];
+  });
+}
+
+export function buildTrajectoryPayload(numTentativa, visitedPath = [], mazeSize = 16) {
+  const cellPath = toCellPath(visitedPath, mazeSize);
+
+  return cellPath.map((position, index) => ({
     numTentativa,
     passo: index + 1,
     pos_h: position[1],
     pos_v: position[0],
     direcao: inferDirection(
-      index > 0 ? visitedPath[index - 1] : null,
+      index > 0 ? cellPath[index - 1] : null,
       position,
-      visitedPath[index + 1] ?? null,
+      cellPath[index + 1] ?? null,
     ),
   }));
 }
@@ -50,10 +98,6 @@ export function Dashboard() {
 
     async function persistAttempt() {
       try {
-        // nova alt: percentualBateria/velocidadeMedia são NOT NULL no banco
-        // (schema.sql) — a ESP32 pode mandar batteryPercent null quando não
-        // há sensor de bateria instalado (ver ADC_BATTERY_PIN no firmware),
-        // então precisa do mesmo fallback ?? 0 já usado pra corrente/tensão.
         const historicoResponse = await criarHistorico({
           percentualBateria: data.batteryPercent ?? 0,
           velocidadeMedia: data.speedMps ?? 0,
@@ -62,13 +106,21 @@ export function Dashboard() {
           correnteEletrica: data.correnteEletrica ?? 0,
           tensaoEletrica: data.tensaoEletrica ?? 0,
           tipoLabirinto: mazeSizeToTipoLabirinto(mazeSize),
+          espNumTentativa: data.attemptNumber ?? undefined,
+          visitedPath: data.visitedPath,
         });
 
-        const numTentativa = historicoResponse?.data?.numtentativa;
-        const trajectoryPayload = buildTrajectoryPayload(numTentativa, data.visitedPath);
+        if (!historicoResponse?.alreadyPersisted) {
+          const numTentativa = historicoResponse?.data?.numtentativa;
+          const trajectoryPayload = buildTrajectoryPayload(
+            numTentativa,
+            data.visitedPath,
+            data.mazeSize ?? mazeSize,
+          );
 
-        if (numTentativa && trajectoryPayload.length > 0) {
-          await Promise.all(trajectoryPayload.map((step) => criarPassoTrajeto(step)));
+          if (numTentativa && trajectoryPayload.length > 0) {
+            await Promise.all(trajectoryPayload.map((step) => criarPassoTrajeto(step)));
+          }
         }
 
         setSaveError(null);

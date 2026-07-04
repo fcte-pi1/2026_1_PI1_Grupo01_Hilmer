@@ -4,7 +4,7 @@
  * Lista o histórico de tentativas da tabela HISTORICO.
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { MazeView } from '../components/MazeView/MazeView';
 import { analisarTentativa, listarHistorico } from '../services/apiService';
 import { analysisToMazeViewProps } from '../services/telemetryService';
@@ -42,6 +42,24 @@ export function History() {
     return Number.isFinite(numericValue) ? numericValue.toFixed(digits) : '--';
   }
 
+  const loadHistorico = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
+      setLoading(true);
+    }
+
+    try {
+      const res = await listarHistorico();
+      setHistorico(res.data);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      if (!silent) {
+        setLoading(false);
+      }
+    }
+  }, []);
+
   async function handleSelectAttempt(attempt) {
     setSelectedAttempt(attempt);
     setOutboundMaze(null);
@@ -68,19 +86,36 @@ export function History() {
   }
 
   useEffect(() => {
-    listarHistorico()
-      .then((res) => setHistorico(res.data))
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, []);
+    loadHistorico();
+
+    function handleFocus() {
+      loadHistorico({ silent: true });
+    }
+
+    window.addEventListener('focus', handleFocus);
+    const intervalId = setInterval(() => loadHistorico({ silent: true }), 10000);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(intervalId);
+    };
+  }, [loadHistorico]);
 
   const filteredHistorico = historico.filter((attempt) => (
     sizeFilter === 'ALL' || attempt.tipolabirinto === sizeFilter
   ));
 
   if (loading) return renderFeedback('Carregando histórico...');
-  if (error) return renderFeedback(`Erro: ${error}`);
-  if (historico.length === 0) return renderFeedback('Nenhuma tentativa registrada ainda.');
+  if (error) {
+    return (
+      <div className={styles.container}>
+        <p className={styles.feedback}>{`Erro: ${error}`}</p>
+        <button type="button" className={styles.refreshBtn} onClick={() => loadHistorico()}>
+          Tentar novamente
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
@@ -92,6 +127,15 @@ export function History() {
           </p>
         </div>
         <div className={styles.filterField}>
+          <div className={styles.headerActions}>
+            <button
+              type="button"
+              className={styles.refreshBtn}
+              onClick={() => loadHistorico({ silent: true })}
+            >
+              Atualizar
+            </button>
+          </div>
           <span className={styles.filterLabel}>Tamanho</span>
           <div className={styles.filterGroup}>
             {FILTER_OPTIONS.map((option) => (
@@ -108,108 +152,114 @@ export function History() {
         </div>
       </div>
 
-      <div className={styles.contentGrid}>
-        <div className={styles.tableWrapper}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Tentativa</th>
-                <th>Labirinto</th>
-                <th>Vel. Média (m/s)</th>
-                <th>Bateria (%)</th>
-                <th>Corrente (A)</th>
-                <th>Tensão (V)</th>
-                <th>Conclusão</th>
-                <th>Desafio</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredHistorico.map((h) => (
-                <tr
-                  key={h.numtentativa}
-                  data-testid={`history-row-${h.numtentativa}`}
-                  className={selectedAttempt?.numtentativa === h.numtentativa ? styles.selectedRow : ''}
-                  onClick={() => handleSelectAttempt(h)}
-                >
-                  <td>#{h.numtentativa}</td>
-                  <td>{TIPO_LABEL[h.tipolabirinto] ?? h.tipolabirinto}</td>
-                  <td>{formatNumber(h.velocidademedia, 2)}</td>
-                  <td>{formatNumber(h.percentualbateria, 1)}</td>
-                  <td>{formatNumber(h.correnteeletrica, 2)}</td>
-                  <td>{formatNumber(h.tensaoeletrica, 2)}</td>
-                  <td>{new Date(h.tempoconclusao).toLocaleString('pt-BR')}</td>
-                  <td>
-                    <span className={h.desafiocumprido === 'SIM' ? styles.good : styles.warn}>
-                      {h.desafiocumprido}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {filteredHistorico.length === 0 && (
-            <div className={styles.emptyState}>
-              Nenhuma tentativa encontrada para esse tamanho de labirinto.
-            </div>
-          )}
-        </div>
+      {historico.length === 0 && (
+        <p className={styles.feedback}>Nenhuma tentativa registrada ainda.</p>
+      )}
 
-        <section className={styles.detailPanel}>
-          <div className={styles.detailHeader}>
-            <h2 className={styles.detailTitle}>
-              {selectedAttempt ? `Tentativa #${selectedAttempt.numtentativa}` : 'Análise de Trajetos'}
-            </h2>
-            {selectedAttempt && (
-              <span className={styles.detailMeta}>
-                {TIPO_LABEL[selectedAttempt.tipolabirinto] ?? selectedAttempt.tipolabirinto}
-              </span>
+      {historico.length > 0 && (
+        <div className={styles.contentGrid}>
+          <div className={styles.tableWrapper}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Tentativa</th>
+                  <th>Labirinto</th>
+                  <th>Vel. Média (m/s)</th>
+                  <th>Bateria (%)</th>
+                  <th>Corrente (A)</th>
+                  <th>Tensão (V)</th>
+                  <th>Conclusão</th>
+                  <th>Desafio</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredHistorico.map((h) => (
+                  <tr
+                    key={h.numtentativa}
+                    data-testid={`history-row-${h.numtentativa}`}
+                    className={selectedAttempt?.numtentativa === h.numtentativa ? styles.selectedRow : ''}
+                    onClick={() => handleSelectAttempt(h)}
+                  >
+                    <td>#{h.numtentativa}</td>
+                    <td>{TIPO_LABEL[h.tipolabirinto] ?? h.tipolabirinto}</td>
+                    <td>{formatNumber(h.velocidademedia, 2)}</td>
+                    <td>{formatNumber(h.percentualbateria, 1)}</td>
+                    <td>{formatNumber(h.correnteeletrica, 2)}</td>
+                    <td>{formatNumber(h.tensaoeletrica, 2)}</td>
+                    <td>{new Date(h.tempoconclusao).toLocaleString('pt-BR')}</td>
+                    <td>
+                      <span className={h.desafiocumprido === 'SIM' ? styles.good : styles.warn}>
+                        {h.desafiocumprido}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filteredHistorico.length === 0 && (
+              <div className={styles.emptyState}>
+                Nenhuma tentativa encontrada para esse tamanho de labirinto.
+              </div>
             )}
           </div>
 
-          {!selectedAttempt && (
-            <p className={styles.feedback}>Selecione uma tentativa na tabela para ver os caminhos.</p>
-          )}
+          <section className={styles.detailPanel}>
+            <div className={styles.detailHeader}>
+              <h2 className={styles.detailTitle}>
+                {selectedAttempt ? `Tentativa #${selectedAttempt.numtentativa}` : 'Análise de Trajetos'}
+              </h2>
+              {selectedAttempt && (
+                <span className={styles.detailMeta}>
+                  {TIPO_LABEL[selectedAttempt.tipolabirinto] ?? selectedAttempt.tipolabirinto}
+                </span>
+              )}
+            </div>
 
-          {selectedAttempt && detailLoading && (
-            <p className={styles.feedback}>Carregando análise da tentativa...</p>
-          )}
+            {!selectedAttempt && (
+              <p className={styles.feedback}>Selecione uma tentativa na tabela para ver os caminhos.</p>
+            )}
 
-          {selectedAttempt && !detailLoading && detailError && (
-            <p className={styles.feedback}>{detailError}</p>
-          )}
+            {selectedAttempt && detailLoading && (
+              <p className={styles.feedback}>Carregando análise da tentativa...</p>
+            )}
 
-          {selectedAttempt && !detailLoading && !detailError && outboundMaze && optimalMaze && (
-            <div className={styles.detailBody}>
-              <div className={styles.mazeComparison}>
-                <div className={styles.mazeCard}>
-                  <h3 className={styles.mazeCardTitle}>Primeiro caminho</h3>
-                  <p className={styles.mazeCardSubtitle}>Start até o centro 2×2</p>
-                  <MazeView
-                    grid={outboundMaze.grid}
-                    position={outboundMaze.position}
-                    goal={outboundMaze.goal}
-                    start={outboundMaze.start}
-                    visitedPath={outboundMaze.visitedPath}
-                    status={outboundMaze.status}
-                  />
-                </div>
-                <div className={styles.mazeCard}>
-                  <h3 className={styles.mazeCardTitle}>Caminho ótimo</h3>
-                  <p className={styles.mazeCardSubtitle}>Menor entre ida e volta</p>
-                  <MazeView
-                    grid={optimalMaze.grid}
-                    position={optimalMaze.position}
-                    goal={optimalMaze.goal}
-                    start={optimalMaze.start}
-                    visitedPath={optimalMaze.visitedPath}
-                    status={optimalMaze.status}
-                  />
+            {selectedAttempt && !detailLoading && detailError && (
+              <p className={styles.feedback}>{detailError}</p>
+            )}
+
+            {selectedAttempt && !detailLoading && !detailError && outboundMaze && optimalMaze && (
+              <div className={styles.detailBody}>
+                <div className={styles.mazeComparison}>
+                  <div className={styles.mazeCard}>
+                    <h3 className={styles.mazeCardTitle}>Primeiro caminho</h3>
+                    <p className={styles.mazeCardSubtitle}>Start até o centro 2×2</p>
+                    <MazeView
+                      grid={outboundMaze.grid}
+                      position={outboundMaze.position}
+                      goal={outboundMaze.goal}
+                      start={outboundMaze.start}
+                      visitedPath={outboundMaze.visitedPath}
+                      status={outboundMaze.status}
+                    />
+                  </div>
+                  <div className={styles.mazeCard}>
+                    <h3 className={styles.mazeCardTitle}>Caminho ótimo</h3>
+                    <p className={styles.mazeCardSubtitle}>Menor entre ida e volta</p>
+                    <MazeView
+                      grid={optimalMaze.grid}
+                      position={optimalMaze.position}
+                      goal={optimalMaze.goal}
+                      start={optimalMaze.start}
+                      visitedPath={optimalMaze.visitedPath}
+                      status={optimalMaze.status}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </section>
-      </div>
+            )}
+          </section>
+        </div>
+      )}
     </div>
   );
 }

@@ -7,13 +7,14 @@
 import { Router } from 'express';
 import simulationService from '../services/simulationService.js';
 import mouseService from '../services/mouseService.js';
-import liveTelemetryBuffer from '../services/liveTelemetryBuffer.js';
+import attemptService from '../services/attemptService.js';
+import { clampBattery, toFiniteNumber } from '../utils/validation.js';
 
 const router = Router();
 
 // ─── HISTORICO ────────────────────────────────────────────────────────────────
 
-// POST /api/historico — registra uma tentativa concluída
+// POST /api/historico — registra uma tentativa concluída (idempotente por espNumTentativa)
 router.post('/historico', async (req, res, next) => {
   try {
     const {
@@ -22,8 +23,19 @@ router.post('/historico', async (req, res, next) => {
       tensaoEletrica, tipoLabirinto,
     } = req.body;
 
-    // Validações conforme constraints do schema
-    if (!['SIM', 'NAO'].includes(desafioCumprido)) {
+    const normalizedBody = {
+      ...req.body,
+      percentualBateria: clampBattery(percentualBateria),
+      velocidadeMedia: toFiniteNumber(velocidadeMedia, 0),
+      correnteEletrica: toFiniteNumber(correnteEletrica, 0),
+      tensaoEletrica: toFiniteNumber(tensaoEletrica, 0),
+      tempoConclusao: tempoConclusao && !Number.isNaN(Date.parse(tempoConclusao))
+        ? tempoConclusao
+        : new Date().toISOString(),
+      desafioCumprido: desafioCumprido === 'NAO' ? 'NAO' : 'SIM',
+    };
+
+    if (!['SIM', 'NAO'].includes(normalizedBody.desafioCumprido)) {
       return res.status(400).json({ success: false, error: "desafioCumprido deve ser 'SIM' ou 'NAO'." });
     }
     if ('numTentativa' in req.body && typeof req.body.numTentativa !== 'number') {
@@ -32,37 +44,18 @@ router.post('/historico', async (req, res, next) => {
     if (!['4x4', '8x8', '16x16'].includes(tipoLabirinto)) {
       return res.status(400).json({ success: false, error: "tipoLabirinto deve ser '4x4', '8x8' ou '16x16'." });
     }
-    if (percentualBateria < 0 || percentualBateria > 100) {
+    if (normalizedBody.percentualBateria < 0 || normalizedBody.percentualBateria > 100) {
       return res.status(400).json({ success: false, error: 'percentualBateria deve estar entre 0 e 100.' });
     }
-    if (typeof velocidadeMedia !== 'number' || typeof correnteEletrica !== 'number' || typeof tensaoEletrica !== 'number') {
-      return res.status(400).json({ success: false, error: 'velocidadeMedia, correnteEletrica e tensaoEletrica devem ser números.' });
-    }
-    if (!tempoConclusao || Number.isNaN(Date.parse(tempoConclusao))) {
-      return res.status(400).json({ success: false, error: 'tempoConclusao deve ser uma data ISO válida.' });
-    }
 
-    const record = await simulationService.criarHistorico(req.body);
+    const result = await attemptService.persistFromHttpRequest(normalizedBody);
+    const statusCode = result.alreadyPersisted ? 200 : 201;
 
-    // Grava o lote de telemetria acumulado durante a corrida (via
-    // WebSocket) agora que existe um numTentativa real para referenciar.
-    // allSettled: uma leitura individual que falhar não deve derrubar a
-    // resposta de sucesso da criação do HISTORICO.
-    const telemetriaPendente = liveTelemetryBuffer.drenar();
-    if (telemetriaPendente.length > 0) {
-      const resultados = await Promise.allSettled(
-        telemetriaPendente.map((snapshot) => simulationService.inserirTelemetria({
-          ...snapshot,
-          numTentativa: record.numtentativa,
-        })),
-      );
-
-      resultados
-        .filter((r) => r.status === 'rejected')
-        .forEach((r) => console.error('[backend] Falha ao persistir telemetria em lote:', r.reason.message));
-    }
-
-    return res.status(201).json({ success: true, data: record });
+    return res.status(statusCode).json({
+      success: true,
+      alreadyPersisted: result.alreadyPersisted,
+      data: result.record,
+    });
   } catch (err) {
     next(err);
   }
@@ -133,7 +126,6 @@ router.post('/telemetria', async (req, res, next) => {
     if (bateriaAtual < 0 || bateriaAtual > 100) {
       return res.status(400).json({ success: false, error: 'bateriaAtual deve estar entre 0 e 100.' });
     }
-    // TODO: validar formato de sensorCor (#RRGGBB) se vier preenchido
 
     const record = await simulationService.inserirTelemetria(req.body);
     return res.status(201).json({ success: true, data: record });

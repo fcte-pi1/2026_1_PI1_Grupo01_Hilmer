@@ -12,7 +12,7 @@ import dotenv from 'dotenv';
 import mouseRoutes from './routes/mouseRoutes.js';
 import simulationRoutes from './routes/simulationRoutes.js';
 import createEsp32Routes from './routes/esp32Routes.js';
-import liveTelemetryBuffer from './services/liveTelemetryBuffer.js';
+import attemptService from './services/attemptService.js';
 
 dotenv.config();
 
@@ -144,15 +144,9 @@ export function connectToESP32() {
     try {
       const payload = JSON.parse(data.toString());
 
-      // A ESP32 não tem o numTentativa real do banco (só existe quando o
-      // site persiste o HISTORICO ao final da corrida), então os snapshots
-      // ficam num buffer em memória e só são gravados quando esse
-      // HISTORICO é criado (ver POST /api/historico em simulationRoutes.js).
-      if (payload?.status === 'waiting') {
-        liveTelemetryBuffer.limpar();
-      } else if (payload?.tempoColeta) {
-        liveTelemetryBuffer.registrar(payload);
-      }
+      attemptService.handleLiveTelemetry(payload).catch((err) => {
+        console.error('[backend] Falha ao persistir tentativa ao vivo:', err.message);
+      });
 
       broadcastToFrontend(data);
     } catch (err) {

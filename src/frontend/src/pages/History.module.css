@@ -29,6 +29,26 @@
   align-items: flex-end;
 }
 
+.headerActions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.refreshBtn {
+  border: 1px solid var(--color-border, #d0d5dd);
+  background: var(--color-surface, #fff);
+  color: var(--color-text, #101828);
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.refreshBtn:hover {
+  background: var(--color-surface-hover, #f9fafb);
+}
+
 .filterLabel {
   font-size: 0.78rem;
   font-weight: 700;

@@ -650,8 +650,8 @@ void inicializarMapaWeb() {
 }
 
 void celulaParaMapa(int8_t linha, int8_t coluna, uint8_t &mapaLinha, uint8_t &mapaColuna) {
-    mapaLinha = (uint8_t)(linha * 2 + 1);
-    mapaColuna = (uint8_t)(coluna * 2 + 1);
+    mapaLinha = (uint8_t)(linha + 1);
+    mapaColuna = (uint8_t)(coluna + 1);
 }
 
 void marcarCelulaVisitada(int8_t linha, int8_t coluna) {
@@ -666,19 +666,11 @@ void marcarCelulaVisitada(int8_t linha, int8_t coluna) {
 }
 
 void marcarSegmentoVisitado(int8_t linhaAnterior, int8_t colunaAnterior, int8_t linhaAtualWeb, int8_t colunaAtualWeb) {
-    if (!dentroDoLabirinto(linhaAnterior, colunaAnterior) || !dentroDoLabirinto(linhaAtualWeb, colunaAtualWeb)) {
-        return;
-    }
-
-    uint8_t linhaA = 0;
-    uint8_t colunaA = 0;
-    uint8_t linhaB = 0;
-    uint8_t colunaB = 0;
-
-    celulaParaMapa(linhaAnterior, colunaAnterior, linhaA, colunaA);
-    celulaParaMapa(linhaAtualWeb, colunaAtualWeb, linhaB, colunaB);
-
-    mapaLabirinto[(linhaA + linhaB) / 2][(colunaA + colunaB) / 2] = 0;
+    // Mapa n+2: células adjacentes já são marcadas em marcarCelulaVisitada.
+    (void)linhaAnterior;
+    (void)colunaAnterior;
+    (void)linhaAtualWeb;
+    (void)colunaAtualWeb;
 }
 
 void registrarCaminho(int8_t linha, int8_t coluna) {

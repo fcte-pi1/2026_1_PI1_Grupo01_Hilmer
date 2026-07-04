@@ -165,12 +165,72 @@ async function listarTrajetoPorTentativa(numTentativa) {
   return result.rows;
 }
 
+const VALID_DIRECTIONS = new Set(['NORTE', 'SUL', 'LESTE', 'OESTE']);
+
+function normalizeDirection(direcao) {
+  const value = String(direcao ?? 'NORTE').toUpperCase();
+  return VALID_DIRECTIONS.has(value) ? value : 'NORTE';
+}
+
+/**
+ * Insere snapshots de telemetria acumulados durante a corrida.
+ * @param {object[]} snapshots
+ * @param {number} numTentativa
+ */
+async function inserirTelemetriaEmLote(snapshots, numTentativa) {
+  if (!snapshots.length) {
+    return;
+  }
+
+  const resultados = await Promise.allSettled(
+    snapshots.map((snapshot) => inserirTelemetria({
+      ...snapshot,
+      numTentativa,
+    })),
+  );
+
+  resultados
+    .filter((result) => result.status === 'rejected')
+    .forEach((result) => {
+      console.error('[backend] Falha ao persistir telemetria em lote:', result.reason.message);
+    });
+}
+
+/**
+ * Insere passos de trajeto acumulados durante a corrida.
+ * @param {{ passo: number, pos_h: number, pos_v: number, direcao: string }[]} steps
+ * @param {number} numTentativa
+ */
+async function inserirTrajetoEmLote(steps, numTentativa) {
+  if (!steps.length) {
+    return;
+  }
+
+  const resultados = await Promise.allSettled(
+    steps.map((step) => inserirPassoTrajeto({
+      numTentativa,
+      passo: step.passo,
+      pos_h: step.pos_h,
+      pos_v: step.pos_v,
+      direcao: normalizeDirection(step.direcao),
+    })),
+  );
+
+  resultados
+    .filter((result) => result.status === 'rejected')
+    .forEach((result) => {
+      console.error('[backend] Falha ao persistir passo de trajeto:', result.reason.message);
+    });
+}
+
 export default {
   criarHistorico,
   listarHistorico,
   buscarHistoricoPorTentativa,
   inserirTelemetria,
   listarTelemetriaPorTentativa,
+  inserirTelemetriaEmLote,
   inserirPassoTrajeto,
   listarTrajetoPorTentativa,
+  inserirTrajetoEmLote,
 };
