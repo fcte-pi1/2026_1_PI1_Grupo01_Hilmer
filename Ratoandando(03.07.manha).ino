@@ -1808,27 +1808,42 @@ void updateWalls() {
 // ATUALIZAÇÃO DE POSIÇÃO
 // =============================================================================
 void updatePosition(MoveCommand cmd, bool avancou) {
-    // Primeiro atualiza a direção, mesmo quando não avançou.
-    // Isso é importante porque agora o robô vira em um loop
-    // e só anda no próximo loop.
+    // ========
+    // nova alt (correcao "voltou de celula"): GIRO SO MUDA A DIRECAO,
+    // NUNCA A POSICAO. Antes, uma curva de 90 (esq/dir) mudava a direcao
+    // E, se avancou==true, ainda incrementava currentPos na nova direcao —
+    // como esse incremento e negativo em algumas direcoes (r-- / c--), o
+    // site mostrava a celula "voltando" mesmo em um giro que era pra ser
+    // no mesmo lugar. No fluxo atual o rato VIRA num loop e so ANDA no
+    // proximo, entao quem move a celula e SO o MOVE_FORWARD. O 180 tambem
+    // apenas inverte a direcao aqui; o recuo real acontece naturalmente
+    // quando ele andar pra frente na nova direcao (que passou a ser a
+    // oposta). Assim, "voltar de celula" so ocorre via um giro de 180
+    // seguido de avanco — nunca pela re nem por uma curva de 90.
+    // ========
     switch (cmd) {
         case TURN_LEFT_CMD:
             currentDir = (Direction)((currentDir + 3) & 0x03);
-            break;
+            return;   // giro: so direcao, nunca posicao
 
         case TURN_RIGHT_CMD:
             currentDir = (Direction)((currentDir + 1) & 0x03);
-            break;
+            return;   // giro: so direcao, nunca posicao
 
         case TURN_BACK_CMD:
             currentDir = (Direction)((currentDir + 2) & 0x03);
-            break;
+            return;   // 180: so inverte direcao; o recuo vem no proximo avanco
 
+        case STOP_CMD:
+            return;   // parado: nada muda
+
+        case MOVE_FORWARD:
         default:
-            break;
+            break;    // segue abaixo pra mover a celula, se avancou
     }
 
-    if (!avancou || cmd == STOP_CMD) {
+    // A partir daqui, so MOVE_FORWARD. So move a celula se realmente andou.
+    if (!avancou) {
         return;
     }
 
