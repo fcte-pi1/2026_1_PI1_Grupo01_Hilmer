@@ -36,14 +36,22 @@
 //   aí ele volta ao início (rápido, usando o mapa) e faz a corrida final
 //   de volta ao centro.
 //
-// >>> NOVA FEATURE NESTA VERSAO (curva de 45 graus pos-desempaque) <<<
-// Quando o robo trava numa quina e faz a mini-re de desempacar, muitas
-// vezes essa re ja realinha o chassi. Fazer um 90 cheio logo em seguida
-// "passa do ponto" e ele bate de novo. Entao, SO nessa situacao especifica
-// (logo apos a mini-re de desempaque E quando o giro seria um 90 pra
-// esquerda ou direita), o robo agora gira apenas 45 graus (TURN_TIME_45),
-// ajustavel por teste. Nada mais foi alterado: giros normais de 90/180 e
-// todo o resto seguem exatamente iguais.
+// >>> REVISAO DA MECANICA DE TRAVAMENTO NESTA VERSAO <<<
+// Toda a logica a partir da deteccao de travamento foi revisada pra
+// resolver 4 problemas reportados:
+//   #1 A re de desempaque curta nao vencia o atrito pra permitir a curva.
+//      -> Agora a re de desempaque e PROGRESSIVA: cresce a cada tentativa
+//         do mesmo travamento (base + step, ate um teto).
+//   #2 e #4 Ele fazia 45/re/desempaque fora de hora (em curvas normais e
+//      ate depois de ajuste manual), porque o contador de travamento
+//      contava QUALQUER giro. -> Agora o contador so conta quando o rato
+//      esta REALMENTE preso (giro COM a frente bloqueada). Frente livre ou
+//      avanco zeram o contador na hora.
+//   #3 Com a frente livre mas a traseira encostada, ele insistia em re em
+//      vez de andar. -> Agora, FRENTE LIVRE = VAI RETO: se da pra ir em
+//      frente, vai em frente, independente do que o flood fill preferia.
+// A curva de 45 graus (pos-desempaque) foi MANTIDA, mas so dispara em
+// travamento real. Giros normais de 90/180 e o resto do fluxo seguem iguais.
 // =============================================================================
 
 #include <Arduino.h>
@@ -112,16 +120,16 @@ class NavigationController;
 // -----------------------------------------------------------------------
 // PWM de movimento reto e curva
 // -----------------------------------------------------------------------
-#define PWM_LEFT             74     // PWM motor esquerdo andando reto
-#define PWM_RIGHT            76     // PWM motor direito andando reto
-#define TURN_PWM_LEFT         73    // PWM motor esquerdo nas curvas de 90/180
-#define TURN_PWM_RIGHT         75    // PWM motor direito nas curvas de 90/180
+#define PWM_LEFT             70     // PWM motor esquerdo andando reto
+#define PWM_RIGHT            72     // PWM motor direito andando reto
+#define TURN_PWM_LEFT         69    // PWM motor esquerdo nas curvas de 90/180
+#define TURN_PWM_RIGHT         69    // PWM motor direito nas curvas de 90/180
 
 // -----------------------------------------------------------------------
 // Tempos de curva (ainda baseados em tempo, não em encoder)
 // -----------------------------------------------------------------------
-#define TURN_TIME_90          400    // ms para girar 90 graus
-#define TURN_TIME_180         855    // ms para girar 180 graus
+#define TURN_TIME_90          445    // ms para girar 90 graus
+#define TURN_TIME_180         850    // ms para girar 180 graus
 
 // ========
 // nova alt (curva 45): tempo pra girar 45 graus, usado SOMENTE na curva
@@ -129,7 +137,7 @@ class NavigationController;
 // Comeca em ~metade do 90 (425/2 ≈ 210), mas o valor real depende de
 // atrito/bateria — calibre olhando o rato. NAO afeta os giros normais.
 // ========
-#define TURN_TIME_45          90    // ms para girar 45 graus (curva de desempaque)
+#define TURN_TIME_45          50   // ms para girar 45 graus (curva de desempaque)
 
 // -----------------------------------------------------------------------
 // ========
@@ -139,16 +147,16 @@ class NavigationController;
 #define REVERSE_PULSE_PWM       70    // PWM do pulso de ré (mesmo para os 2 motores) — AUMENTADO (10 era baixo demais pra vencer o atrito estático do motor, ré não movia de verdade)
 
 
-#define AUTO_INICIAR_SEM_SITE  true   // true = liga e já começa a mapear sozinho (teste standalone) / false = espera START do site
+#define AUTO_INICIAR_SEM_SITE  false   // true = liga e já começa a mapear sozinho (teste standalone) / false = espera START do site
 
 // ========
 // nova alt: a ré antes da curva agora é medida por encoder, como fração
 // da distância de andar 1 célula. Pedido: 1/5 da célula, em TODA curva
 // (90 OU 180), não só nas quinas — facilita a manobra de qualquer giro.
 // ========
-#define REVERSE_PULSE_FRACTION    3    // a ré é 1/(esse numero) da distancia de 1 celula. 5 = 1/5
+#define REVERSE_PULSE_FRACTION    4    // a ré é 1/(esse numero) da distancia de 1 celula. 5 = 1/5
 #define REVERSE_PULSE_TICKS      (TICKS_PER_CELL / REVERSE_PULSE_FRACTION)
-#define REVERSE_PULSE_TIMEOUT_MS 200   // tempo MAXIMO de seguranca da re, caso o encoder falhe
+#define REVERSE_PULSE_TIMEOUT_MS 180   // tempo MAXIMO de seguranca da re, caso o encoder falhe
 
 // ========
 // nova alt: ré BEM pequena de "desempacar" — usada quando o robô fica
@@ -157,9 +165,25 @@ class NavigationController;
 // pra tentar soltar o chassi de uma quina onde ficou preso fisicamente.
 // ========
 #define MICRO_RE_PWM              70    // PWM da re pequena de desempacar — AUMENTADO (40 podia nao ser suficiente pra vencer o atrito estatico)
-#define MICRO_RE_FRACTION         4    // fracao da celula pra re de desempacar (bem pequena: 1/15)
+#define MICRO_RE_FRACTION         8    // fracao da celula pra re de desempacar (bem pequena: 1/15)
 #define MICRO_RE_TICKS            (TICKS_PER_CELL / MICRO_RE_FRACTION)
 #define MICRO_RE_TIMEOUT_MS       280   // tempo MAXIMO de seguranca dessa re pequena — AUMENTADO (120 podia ser curto demais pra sair da inercia)
+
+// ========
+// nova alt (revisao travamento): RE PROGRESSIVA de desempaque. Problema
+// reportado (#1): quando ha parede na frente + bloqueio de um lado, a re
+// curta fixa nao e o bastante pra vencer o atrito e permitir a curva.
+// Solucao: a cada tentativa de desempaque no MESMO travamento, a re fica
+// um pouco maior (mais ticks), ate um teto. Assim a 1a tentativa e curta
+// (nao exagera quando nao precisa) e as seguintes crescem ate soltar.
+//   MICRO_RE_TICKS_BASE : ticks da 1a tentativa de desempaque
+//   MICRO_RE_TICKS_STEP : quanto cresce a cada tentativa seguinte
+//   MICRO_RE_TICKS_MAX  : teto (nao passa disso)
+// ========
+#define MICRO_RE_TICKS_BASE       (TICKS_PER_CELL / 8)    // 1a tentativa: ~1/8 de celula
+#define MICRO_RE_TICKS_STEP       (TICKS_PER_CELL / 12)   // cresce ~1/12 por tentativa
+#define MICRO_RE_TICKS_MAX        (TICKS_PER_CELL / 2)    // teto: metade de uma celula
+#define MICRO_RE_TIMEOUT_PROG_MS  450   // timeout de seguranca maior (a re pode ser maior agora)
 
 // ========
 // nova alt: ANÁLISE DE ARREDORES UNIFICADA. Antes, cada tipo de
@@ -188,7 +212,7 @@ class NavigationController;
 #define INA226_SHUNT_OHMS  0.1       // resistor shunt do modulo (tipico 0.1 ohm)
 #define INA226_CORRENTE_MAX_A  2.0   // corrente maxima esperada (para calibracao)
 #define BAT_TENSAO_MAX     8.4       // 2S Li-ion/LiPo carregada (~8.4V) = 100%
-#define BAT_TENSAO_MIN     6.0       // corte de descarga aproximado (~6.0V) = 0%
+#define BAT_TENSAO_MIN     6.6       // corte de descarga aproximado (~6.0V) = 0%
 #define BAT_UPDATE_MS      500       // intervalo de leitura da bateria (ms)
 
 // -----------------------------------------------------------------------
@@ -216,7 +240,7 @@ class NavigationController;
 // ========
 #define TICKS_PER_CELL 305
 
-#define CELL_FORWARD_TIMEOUT_MS 885  // tempo MÁXIMO de segurança por célula, caso o encoder falhe
+#define CELL_FORWARD_TIMEOUT_MS 910  // tempo MÁXIMO de segurança por célula, caso o encoder falhe
 
 // ========
 // nova alt: REMOVIDO — antes existia uma janela pra ignorar ruído do
@@ -650,6 +674,16 @@ void inicializarMapaWeb() {
 }
 
 void celulaParaMapa(int8_t linha, int8_t coluna, uint8_t &mapaLinha, uint8_t &mapaColuna) {
+    // ========
+    // nova alt (telemetria/mapeamento): esquema n+1 (igual a "Opcao B").
+    // A matriz enviada ao site tem tamanho mapSizeWeb() = mazeSize + 2, ou
+    // seja, as celulas logicas 0..N-1 caem nas posicoes 1..N e sobra uma
+    // moldura de espessura 1 (indices 0 e N+1) que representa as paredes
+    // externas. ANTES este arquivo usava "linha*2+1" (esquema n*2+1), que
+    // exigiria matriz 2N+1 e por isso estourava/deformava o mapa de N+2 que
+    // o site espera. Esta e a correcao do "mapeia errado" — a movimentacao
+    // NAO foi tocada.
+    // ========
     mapaLinha = (uint8_t)(linha + 1);
     mapaColuna = (uint8_t)(coluna + 1);
 }
@@ -666,7 +700,15 @@ void marcarCelulaVisitada(int8_t linha, int8_t coluna) {
 }
 
 void marcarSegmentoVisitado(int8_t linhaAnterior, int8_t colunaAnterior, int8_t linhaAtualWeb, int8_t colunaAtualWeb) {
-    // Mapa n+2: células adjacentes já são marcadas em marcarCelulaVisitada.
+    // ========
+    // nova alt (telemetria/mapeamento): esquema n+1 (igual a "Opcao B").
+    // Neste esquema NAO existe uma posicao "entre" duas celulas na matriz
+    // (nao ha indices pares reservados pra parede/corredor), entao nao ha
+    // segmento intermediario pra marcar — as celulas adjacentes ja sao
+    // marcadas por marcarCelulaVisitada. Antes (esquema n*2+1) esta funcao
+    // marcava o ponto do meio, o que so fazia sentido na matriz 2N+1 e
+    // contribuia pro mapa deformado. Agora e um no-op, como na Opcao B.
+    // ========
     (void)linhaAnterior;
     (void)colunaAnterior;
     (void)linhaAtualWeb;
@@ -1385,6 +1427,17 @@ public:
     }
 
     // ========
+    // nova alt (revisao travamento): versao PROGRESSIVA da re de
+    // desempaque. Recebe quantos ticks recuar nesta tentativa (calculado
+    // no loop, crescendo a cada tentativa do mesmo travamento). Usa timeout
+    // maior porque a re pode ser mais longa. Ataca o problema #1 (re curta
+    // nao vence o atrito pra permitir a curva).
+    // ========
+    void pulsoReDestravarProgressivo(long ticksAlvo) {
+        executarRe(MICRO_RE_PWM, ticksAlvo, MICRO_RE_TIMEOUT_PROG_MS);
+    }
+
+    // ========
     // nova alt: pausa mecânica simples antes de iniciar um giro (só
     // garante que o chassi está parado de vez). Não lê mais sensor aqui —
     // a leitura de verdade é toda concentrada em analisarArredores(), no
@@ -1454,6 +1507,7 @@ public:
     // — que agora é o ÚNICO lugar do código que processa os sensores.
     // ========
     void virarDireita90() {
+        Serial.println("[MICROMOUSE] EXECUTANDO CURVA 90");
         pararComLeitura(STOP_TIME_SETTLE);
 
         turnRight();
@@ -1463,6 +1517,7 @@ public:
     }
 
     void virarEsquerda90() {
+        Serial.println("[MICROMOUSE] EXECUTANDO CURVA 90");
         pararComLeitura(STOP_TIME_SETTLE);
 
         turnLeft();
@@ -1488,6 +1543,7 @@ public:
     // execute() padrao, entao NAO afetam nenhum giro normal.
     // ========
     void virarDireita45() {
+        Serial.println("[MICROMOUSE] EXECUTANDO CURVA 45");
         pararComLeitura(STOP_TIME_SETTLE);
 
         turnRight();
@@ -1497,6 +1553,7 @@ public:
     }
 
     void virarEsquerda45() {
+        Serial.println("[MICROMOUSE] EXECUTANDO CURVA 45");
         pararComLeitura(STOP_TIME_SETTLE);
 
         turnLeft();
@@ -2103,16 +2160,25 @@ void loop() {
         MoveCommand cmd = navigator.decide(currentPos, currentDir);
 
         // ========
-        // nova alt: a regra de quina agora manda sempre que o sensor da
-        // frente acusar parede AGORA — independente do que o flood fill
-        // (baseado no mapa acumulado) tinha decidido antes. Antes, isso só
-        // era checado quando cmd == MOVE_FORWARD, então se o mapa já
-        // tivesse decidido virar por outro motivo, a regra de "vira pro
-        // lado livre" nunca era aplicada e ele acabava sempre fazendo 180.
-        // Regra: parede na frente + só 1 lado livre -> 90 pro lado livre.
-        // Parede na frente + nos dois lados -> 180.
+        // nova alt (revisao travamento #3): FRENTE LIVRE = VAI RETO.
+        // Se o sensor da frente esta livre AGORA, o rato anda em frente,
+        // independente do que o flood fill preferiu. Isso resolve o caso
+        // em que ha espaco pra avancar mas o mapa mandava virar, e esse
+        // giro "eletivo" era contado como travamento e disparava re/45 a
+        // toa. Regra simples e robusta: se da pra ir reto, va reto — so
+        // depois disso se pensa em virar ou desempacar.
+        // (So sobrescreve pra frente; a decisao de curva do flood fill
+        // continua valendo quando a frente estiver bloqueada.)
         // ========
-        if (sensorFrente.wallDetected) {
+        if (!sensorFrente.wallDetected) {
+            cmd = MOVE_FORWARD;
+        } else {
+            // ========
+            // nova alt: parede na frente AGORA. Escolhe o giro pelo lado
+            // livre (mesma regra de quina de antes).
+            //   1 lado livre  -> 90 pro lado livre
+            //   os 2 laterais bloqueados -> 180
+            // ========
             if (!sensorDir.wallDetected) {
                 cmd = TURN_RIGHT_CMD;
             } else if (!sensorEsq.wallDetected) {
@@ -2123,60 +2189,79 @@ void loop() {
         }
 
         // ========
-        // nova alt: detecção de travamento em DUAS ETAPAS.
-        // Etapa 1 (TENTATIVAS_PARA_RE_DESTRAVAR): a partir dessa
-        // quantidade de giros seguidos sem avançar de célula, dá uma ré
-        // BEM pequena a CADA tentativa (não só uma vez) — muitas vezes o
-        // chassi só está preso fisicamente numa quina, e vai tentando
-        // desempacar em cada nova tentativa até ou avançar ou esgotar as
-        // tentativas.
-        // Etapa 2 (MIN_TENTATIVAS_GIRO): se mesmo assim continuar sem
-        // avançar até esse total de tentativas, aí sim declara
-        // travamento de verdade e para.
+        // nova alt (revisao travamento #2 e #4): O QUE CONTA COMO "PRESO".
+        // Antes, QUALQUER giro consecutivo incrementava o contador de
+        // travamento — mas girar e uma decisao normal (corredor que dobra),
+        // nao sinal de estar preso. Isso inflava o contador em situacoes
+        // saudaveis e disparava desempaque/45/re onde nao devia (inclusive
+        // logo depois de ajuste manual).
+        //
+        // Agora o contador SO conta quando o rato esta REALMENTE preso:
+        // - o comando e um giro E
+        // - a frente esta bloqueada (nao ha pra onde ir reto).
+        // Qualquer avanco (ou frente livre) ZERA o contador. Assim, se voce
+        // ajusta o rato na mao e a frente fica livre, ele anda e o contador
+        // reseta — nao fica repetindo micro-re (resolve o #4).
         // ========
         bool comandoEhGiro = (cmd == TURN_LEFT_CMD || cmd == TURN_RIGHT_CMD || cmd == TURN_BACK_CMD);
+        bool estaRealmentePreso = comandoEhGiro && sensorFrente.wallDetected;
         bool jaFezReDestravar = false;
 
-        if (comandoEhGiro) {
+        // ========
+        // nova alt: se NAO esta realmente preso (ex: frente livre, ou vai
+        // andar), zera o contador de travamento imediatamente. E a rede de
+        // seguranca que impede o desempaque de disparar fora de contexto.
+        // ========
+        if (!estaRealmentePreso) {
+            tentativasGiroAtual = 0;
+        }
+
+        if (estaRealmentePreso) {
             tentativasGiroAtual++;
 
-            Serial.print("[MICROMOUSE] Tentativa de giro sem avancar de celula: ");
+            Serial.print("[MICROMOUSE] Preso (frente bloqueada), tentativa: ");
             Serial.println(tentativasGiroAtual);
 
             if (tentativasGiroAtual >= TENTATIVAS_PARA_RE_DESTRAVAR) {
-                Serial.println("[MICROMOUSE] Tentando re pequena para desempacar...");
-                motors.pulsoReDestravar();
                 // ========
-                // nova alt: evita ré dobrada — se já fez a ré pequena de
-                // desempacar nesta tentativa, NÃO faz também a ré normal
-                // de curva logo em seguida (eram duas rés seguidas antes
-                // do giro, o que só confundia mais do que ajudava).
+                // nova alt (revisao travamento #1): RE PROGRESSIVA. A cada
+                // tentativa de desempaque no mesmo travamento, a re cresce
+                // (base + step * numero de tentativas de desempaque), ate um
+                // teto. Ataca o caso em que a re curta nao vence o atrito
+                // pra permitir a curva.
                 // ========
+                uint8_t tentDesempaque = tentativasGiroAtual - TENTATIVAS_PARA_RE_DESTRAVAR;
+                long ticksRe = MICRO_RE_TICKS_BASE + (long)tentDesempaque * MICRO_RE_TICKS_STEP;
+                if (ticksRe > MICRO_RE_TICKS_MAX) {
+                    ticksRe = MICRO_RE_TICKS_MAX;
+                }
+
+                Serial.print("[MICROMOUSE] Desempaque: re progressiva de ");
+                Serial.print(ticksRe);
+                Serial.println(" ticks...");
+
+                motors.pulsoReDestravarProgressivo(ticksRe);
                 jaFezReDestravar = true;
             }
 
             if (tentativasGiroAtual >= MIN_TENTATIVAS_GIRO) {
                 robotTravado = true;
                 motors.stop();
-                Serial.println("[MICROMOUSE] TRAVAMENTO DETECTADO - muitos giros seguidos sem avancar de celula.");
+                Serial.println("[MICROMOUSE] TRAVAMENTO DETECTADO - preso demais tempo no mesmo lugar.");
             }
         }
 
         if (!robotTravado) {
             // ========
-            // nova alt (curva 45): quando acabamos de fazer a mini-re de
-            // desempaque (jaFezReDestravar == true) E o giro decidido e um
-            // 90 (esquerda ou direita), fazemos SO 45 graus em vez do 90
-            // cheio. Motivo (pedido): a mini-re muitas vezes ja realinha o
-            // rato; um 90 completo passa do ponto e ele bate de novo. Um
-            // passo de 45 corrige mais fino. O 180 (beco sem saida) NAO
-            // entra aqui — continua 180 normal. E quando NAO houve
-            // desempaque, tudo segue exatamente como antes (ré normal +
-            // execute() de 90/180).
+            // nova alt (curva 45, revisao): so faz 45 graus quando esta em
+            // travamento REAL (jaFezReDestravar so liga em estaRealmentePreso
+            // agora) E o giro e um 90 (esq/dir). Como o gatilho de "preso"
+            // ficou mais rigoroso, o 45 nao aparece mais no meio de curvas
+            // normais (resolve o #2). O 180 continua 180 normal.
             // ========
             if (jaFezReDestravar && (cmd == TURN_RIGHT_CMD || cmd == TURN_LEFT_CMD)) {
-                // Curva reduzida de 45 graus logo apos o desempaque.
-                // Nao faz a re normal de curva aqui (a mini-re ja aconteceu).
+                // Curva reduzida de 45 graus logo apos a re de desempaque.
+                // (A re progressiva ja aconteceu; nao faz a re normal aqui.)
                 if (cmd == TURN_RIGHT_CMD) {
                     motors.virarDireita45();
                 } else {
@@ -2185,18 +2270,15 @@ void loop() {
 
                 // ========
                 // nova alt (curva 45): o giro de 45 NAO completa uma virada
-                // de 90, entao a orientacao logica (currentDir) do rato
-                // ainda NAO mudou de quadrante. Por isso NAO chamamos
-                // updatePosition aqui — deixamos currentDir intacto. Na
-                // proxima volta do loop o rato reavalia os sensores ja
-                // realinhado; se ainda precisar girar, completa o restante.
-                // Isso evita "contar" um 90 que nao aconteceu de fato.
+                // de 90, entao a orientacao logica (currentDir) NAO muda de
+                // quadrante — por isso NAO chamamos updatePosition aqui. Na
+                // proxima volta o rato reavalia ja realinhado.
                 // ========
             } else {
                 // ========
-                // Fluxo ORIGINAL, intocado: ré normal antes de toda curva
-                // (se nao fez a mini-re de desempaque nesta tentativa) e
-                // execute() do comando (90/180) como sempre foi.
+                // Fluxo normal de movimento: se for um giro (e nao houve
+                // desempaque nesta tentativa), da a re normal antes da curva;
+                // depois executa (andar 1 celula OU virar 90/180).
                 // ========
                 if (comandoEhGiro && !jaFezReDestravar) {
                     motors.pulsoReAntesDeCurva();
@@ -2211,8 +2293,9 @@ void loop() {
                     atualizarMapaMovimento(posicaoAnterior, currentPos);
 
                     // ========
-                    // nova alt: ao avançar de célula com sucesso, zera o contador
-                    // de tentativas de giro travado (a contagem é por célula)
+                    // nova alt: avancou de celula -> zera o contador de
+                    // travamento (ja zerado acima quando nao estava preso,
+                    // mas mantido aqui por clareza/robustez).
                     // ========
                     tentativasGiroAtual = 0;
                 }
