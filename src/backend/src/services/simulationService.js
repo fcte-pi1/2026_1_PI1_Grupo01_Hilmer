@@ -144,6 +144,10 @@ async function inserirPassoTrajeto(dados) {
   const result = await pool.query(
     `INSERT INTO TRAJETO (numTentativa, passo, pos_h, pos_v, direcao)
      VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (numTentativa, passo)
+     DO UPDATE SET pos_h = EXCLUDED.pos_h,
+                   pos_v = EXCLUDED.pos_v,
+                   direcao = EXCLUDED.direcao
      RETURNING *`,
     [numTentativa, passo, pos_h, pos_v, direcao]
   );

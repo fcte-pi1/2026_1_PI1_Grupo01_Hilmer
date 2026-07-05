@@ -66,6 +66,24 @@ describe('simulationService', () => {
     );
   });
 
+  it('inserirPassoTrajeto atualiza em vez de falhar quando o passo já existe', async () => {
+    queryMock.mockResolvedValueOnce({ rows: [{ numtentativa: 12, passo: 1, pos_h: 0, pos_v: 1, direcao: 'NORTE' }] });
+
+    const result = await simulationService.default.inserirPassoTrajeto({
+      numTentativa: 12,
+      passo: 1,
+      pos_h: 0,
+      pos_v: 1,
+      direcao: 'NORTE',
+    });
+
+    expect(queryMock).toHaveBeenCalledWith(
+      expect.stringContaining('ON CONFLICT (numTentativa, passo)'),
+      [12, 1, 0, 1, 'NORTE']
+    );
+    expect(result).toEqual({ numtentativa: 12, passo: 1, pos_h: 0, pos_v: 1, direcao: 'NORTE' });
+  });
+
   it('listarTrajetoPorTentativa consulta ordenando por passo', async () => {
     queryMock.mockResolvedValueOnce({ rows: [{ passo: 1 }, { passo: 2 }] });
 
