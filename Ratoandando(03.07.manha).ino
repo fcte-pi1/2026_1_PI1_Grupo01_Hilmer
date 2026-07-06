@@ -128,8 +128,8 @@ class NavigationController;
 // -----------------------------------------------------------------------
 // Tempos de curva (ainda baseados em tempo, não em encoder)
 // -----------------------------------------------------------------------
-#define TURN_TIME_90          445    // ms para girar 90 graus
-#define TURN_TIME_180         850    // ms para girar 180 graus
+#define TURN_TIME_90          460    // ms para girar 90 graus
+#define TURN_TIME_180         880    // ms para girar 180 graus
 
 // ========
 // nova alt (curva 45): tempo pra girar 45 graus, usado SOMENTE na curva
@@ -137,7 +137,7 @@ class NavigationController;
 // Comeca em ~metade do 90 (425/2 ≈ 210), mas o valor real depende de
 // atrito/bateria — calibre olhando o rato. NAO afeta os giros normais.
 // ========
-#define TURN_TIME_45          50   // ms para girar 45 graus (curva de desempaque)
+#define TURN_TIME_45          160   // ms para girar 45 graus (curva de desempaque)
 
 // -----------------------------------------------------------------------
 // ========
@@ -147,14 +147,14 @@ class NavigationController;
 #define REVERSE_PULSE_PWM       70    // PWM do pulso de ré (mesmo para os 2 motores) — AUMENTADO (10 era baixo demais pra vencer o atrito estático do motor, ré não movia de verdade)
 
 
-#define AUTO_INICIAR_SEM_SITE  false   // true = liga e já começa a mapear sozinho (teste standalone) / false = espera START do site
+#define AUTO_INICIAR_SEM_SITE  true   // true = liga e já começa a mapear sozinho (teste standalone) / false = espera START do site
 
 // ========
 // nova alt: a ré antes da curva agora é medida por encoder, como fração
 // da distância de andar 1 célula. Pedido: 1/5 da célula, em TODA curva
 // (90 OU 180), não só nas quinas — facilita a manobra de qualquer giro.
 // ========
-#define REVERSE_PULSE_FRACTION    4    // a ré é 1/(esse numero) da distancia de 1 celula. 5 = 1/5
+#define REVERSE_PULSE_FRACTION    2    // a ré é 1/(esse numero) da distancia de 1 celula. 5 = 1/5
 #define REVERSE_PULSE_TICKS      (TICKS_PER_CELL / REVERSE_PULSE_FRACTION)
 #define REVERSE_PULSE_TIMEOUT_MS 180   // tempo MAXIMO de seguranca da re, caso o encoder falhe
 
@@ -165,7 +165,7 @@ class NavigationController;
 // pra tentar soltar o chassi de uma quina onde ficou preso fisicamente.
 // ========
 #define MICRO_RE_PWM              70    // PWM da re pequena de desempacar — AUMENTADO (40 podia nao ser suficiente pra vencer o atrito estatico)
-#define MICRO_RE_FRACTION         8    // fracao da celula pra re de desempacar (bem pequena: 1/15)
+#define MICRO_RE_FRACTION         4    // fracao da celula pra re de desempacar (bem pequena: 1/15)
 #define MICRO_RE_TICKS            (TICKS_PER_CELL / MICRO_RE_FRACTION)
 #define MICRO_RE_TIMEOUT_MS       280   // tempo MAXIMO de seguranca dessa re pequena — AUMENTADO (120 podia ser curto demais pra sair da inercia)
 
@@ -196,7 +196,7 @@ class NavigationController;
 // decidir o próximo passo. No modo CORRIDA, como já se confia no mapa
 // conhecido, essa pausa é bem mais curta (usa STOP_TIME_SETTLE).
 // ========
-#define TEMPO_ANALISE_ARREDORES_MS   1500  // mapeamento: parado 1s lendo os sensores com calma (pedido)
+#define TEMPO_ANALISE_ARREDORES_MS   1600  // mapeamento: parado 1.5s lendo os sensores com calma (pedido)
 
 // -----------------------------------------------------------------------
 // ========
@@ -240,7 +240,7 @@ class NavigationController;
 // ========
 #define TICKS_PER_CELL 305
 
-#define CELL_FORWARD_TIMEOUT_MS 910  // tempo MÁXIMO de segurança por célula, caso o encoder falhe
+#define CELL_FORWARD_TIMEOUT_MS 880  // tempo MÁXIMO de segurança por célula, caso o encoder falhe
 
 // ========
 // nova alt: REMOVIDO — antes existia uma janela pra ignorar ruído do
@@ -263,7 +263,7 @@ class NavigationController;
 // GANHO_CORRECAO_RETA: quanto maior, mais agressiva a correção.
 // PWM_CORRECAO_MAX: trava o tamanho máximo do ajuste, pra não estourar o PWM.
 // -----------------------------------------------------------------------
-#define GANHO_CORRECAO_RETA       5    // ajuste de PWM por tick de diferença entre encoders
+#define GANHO_CORRECAO_RETA       3    // ajuste de PWM por tick de diferença entre encoders
 #define PWM_CORRECAO_MAX         40    // ajuste máximo permitido (pra cima ou pra baixo) por motor
 
 // -----------------------------------------------------------------------
@@ -286,7 +286,7 @@ class NavigationController;
 //   dar mais margem que isso permite tentar a ré de desempacar no meio
 //   do caminho antes de desistir de vez.
 // -----------------------------------------------------------------------
-#define TENTATIVAS_PARA_RE_DESTRAVAR   5    // tentativas antes de tentar a re pequena de desempacar
+#define TENTATIVAS_PARA_RE_DESTRAVAR   3    // tentativas antes de tentar a re pequena de desempacar
 #define MIN_TENTATIVAS_GIRO           10    // tentativas totais antes de avisar travamento (era 8)
 
 // -----------------------------------------------------------------------
@@ -354,9 +354,9 @@ bool mazeSizeValido(uint8_t value) {
 // fiação (confirmado em teste isolado com teste_sensores.ino — colocar a
 // mão na frente mudava a leitura do ESQ, e vice-versa). Corrigido aqui.
 // ========
-#define SENSOR_LEFT   36
+#define SENSOR_LEFT   39
 #define SENSOR_FRONT  34
-#define SENSOR_RIGHT  39
+#define SENSOR_RIGHT  36
 
 // Motores
 // MOTOR_IN1 = motor esquerdo para trás
@@ -1729,6 +1729,18 @@ bool atStart() {
 uint8_t tentativasGiroAtual = 0;
 bool robotTravado = false;
 
+// ========
+// nova alt (anti dois-90-na-quina): rastreia o ULTIMO comando de 90 feito
+// enquanto o rato esta preso na MESMA quina, pra impedir que ele complete
+// um SEGUNDO 90 pro mesmo lado (o que somaria 180 na direcao logica e faria
+// a telemetria achar que "voltou o caminho"). Quando isso seria o caso,
+// forcamos o desempaque (re + 45) no lugar do segundo 90. Zera quando ele
+// avanca de celula ou deixa de estar preso.
+//   ultimoGiro90Preso guarda TURN_LEFT_CMD ou TURN_RIGHT_CMD (ou STOP_CMD
+//   como "nenhum"). So e setado quando estaRealmentePreso.
+// ========
+MoveCommand ultimoGiro90Preso = STOP_CMD;
+
 Position centroGoals[4];
 
 void atualizarCentroGoals() {
@@ -1916,6 +1928,7 @@ void configurarNovaTentativa(uint8_t novoMazeSize) {
     tempoConclusaoISO = "";
     robotTravado = false;
     tentativasGiroAtual = 0;
+    ultimoGiro90Preso = STOP_CMD;   // ========  nova alt (anti dois-90): zera ao iniciar tentativa  ========
     comandoIniciarCorrida = false;
 
     numeroTentativa++;
@@ -2223,12 +2236,31 @@ void loop() {
         bool jaFezReDestravar = false;
 
         // ========
+        // nova alt (anti dois-90-na-quina): detecta se ESTE comando e um 90
+        // pro MESMO lado do 90 anterior feito enquanto preso. Se for, NAO
+        // deixa completar o segundo 90 (que fecharia 180 na direcao logica e
+        // pareceria "voltou o caminho"). Em vez disso, forca o caminho de
+        // desempaque (re + 45) mais abaixo. So vale quando estaRealmentePreso
+        // e o comando e um 90 (o 180 explicito TURN_BACK_CMD nao entra aqui —
+        // esse sim pode voltar o caminho, como voce pediu).
+        // ========
+        bool seriaSegundo90MesmoLado =
+            estaRealmentePreso &&
+            (cmd == TURN_LEFT_CMD || cmd == TURN_RIGHT_CMD) &&
+            (cmd == ultimoGiro90Preso);
+
+        if (seriaSegundo90MesmoLado) {
+            Serial.println("[MICROMOUSE] Bloqueado 2o 90 na quina (evita 'voltar'). Forcando desempaque 45.");
+        }
+
+        // ========
         // nova alt: se NAO esta realmente preso (ex: frente livre, ou vai
         // andar), zera o contador de travamento imediatamente. E a rede de
         // seguranca que impede o desempaque de disparar fora de contexto.
         // ========
         if (!estaRealmentePreso) {
             tentativasGiroAtual = 0;
+            ultimoGiro90Preso = STOP_CMD;   // ========  nova alt: fora de quina, esquece o ultimo 90  ========
         }
 
         if (estaRealmentePreso) {
@@ -2289,6 +2321,21 @@ void loop() {
                 // quadrante — por isso NAO chamamos updatePosition aqui. Na
                 // proxima volta o rato reavalia ja realinhado.
                 // ========
+            } else if (seriaSegundo90MesmoLado && (cmd == TURN_RIGHT_CMD || cmd == TURN_LEFT_CMD)) {
+                // ========
+                // nova alt (anti dois-90-na-quina): este seria o SEGUNDO 90 pro
+                // mesmo lado (fecharia 180 e pareceria "voltar"). Bloqueamos o
+                // 90 e fazemos re + 45 no lugar. NAO completa o 90, entao
+                // currentDir NAO fecha 180 por acumulo e a telemetria nao
+                // registra reversao de caminho. NAO atualiza ultimoGiro90Preso
+                // (nao houve 90 completo).
+                // ========
+                motors.pulsoReAntesDeCurva();
+                if (cmd == TURN_RIGHT_CMD) {
+                    motors.virarDireita45();
+                } else {
+                    motors.virarEsquerda45();
+                }
             } else {
                 // ========
                 // Fluxo normal de movimento: se for um giro (e nao houve
@@ -2304,15 +2351,28 @@ void loop() {
 
                 updatePosition(cmd, avancou);
 
+                // ========
+                // nova alt (anti dois-90): se ESTE comando foi um 90 completo
+                // (esq/dir) feito enquanto preso, registra o lado. Assim, se na
+                // proxima tentativa a decisao for o MESMO 90 e ele continuar
+                // preso, o bloco de cima bloqueia o segundo 90 e faz 45. Um 90
+                // pro lado oposto reconfigura naturalmente (oposto !=
+                // ultimoGiro90Preso, entao passa e vira normal).
+                // ========
+                if (estaRealmentePreso && (cmd == TURN_LEFT_CMD || cmd == TURN_RIGHT_CMD)) {
+                    ultimoGiro90Preso = cmd;
+                }
+
                 if (avancou) {
                     atualizarMapaMovimento(posicaoAnterior, currentPos);
 
                     // ========
                     // nova alt: avancou de celula -> zera o contador de
-                    // travamento (ja zerado acima quando nao estava preso,
-                    // mas mantido aqui por clareza/robustez).
+                    // travamento e o rastreador de 90 (celula nova, historia
+                    // de quina reiniciada).
                     // ========
                     tentativasGiroAtual = 0;
+                    ultimoGiro90Preso = STOP_CMD;
                 }
 
                 if (maze.valid(currentPos.r, currentPos.c)) {
