@@ -2385,3 +2385,5 @@ void loop() {
     publicarTelemetria();
     delay(20);
 }
+
+
