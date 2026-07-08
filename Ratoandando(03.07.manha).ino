@@ -1,96 +1,27 @@
-// =============================================================================
-// MICROMOUSE UNIFICADO — ESP32
-// Flood Fill + Sensores filtrados + PWM separado por motor + ENCODERS
-// + BATERIA REAL via INA226 (I2C) transmitida por WiFi/WebSocket
-//
-// >>> NESTA VERSAO <<<
-// A leitura de bateria deixou de ser fixa (100% / 7.4V hardcoded) e passou
-// a vir da INA226 (U12 no esquematico) via I2C. Os valores reais sao
-// enviados por WiFi/WebSocket usando EXATAMENTE os mesmos nomes de campo
-// que o site (Dashboard.jsx) ja le: batteryPercent, percentualBateria,
-// tensaoEletrica, correnteEletrica, tensaoAtual, bateriaAtual. O site NAO
-// precisa de nenhuma alteracao.
-//
-// Biblioteca usada: "INA226" do Rob Tillaart (instale pelo Gerenciador de
-// Bibliotecas do Arduino IDE: procure por "INA226 Tillaart").
-//
-// Versão com encoders, pulsos de andamento e 2 modos (mapeamento/corrida):
-// - Usa encoders esquerdo/direito para controlar a distância percorrida
-//   por célula (em vez de depender só de tempo).
-// - Parada IMEDIATA (sem delay) ao detectar parede na frente, evitando impacto.
-// - Pulso de ré (1/5 da célula) antes de TODA curva (90 ou 180), medido
-//   por encoder, pra facilitar a manobra.
-// - Confirmação de sensores pós-curva: espera até 1seg (sai mais cedo se
-//   estabilizar) verificando se a parede que motivou o giro ainda existe.
-// - Detecção de travamento em DUAS ETAPAS: depois de N tentativas de giro
-//   sem avançar, dá uma ré bem pequena pra tentar desempacar; se ainda
-//   assim não avançar até o total de tentativas, declara travamento e para.
-// - PULSO DE ANDAMENTO: anda 1 célula, PARA DE VEZ, lê os sensores com
-//   calma, só então decide o próximo passo.
-// - Tamanho do labirinto configurável pelo site via WebSocket (4x4 / 8x8 / 16x16).
-//   O firmware reserva memória para o máximo 16x16 e usa mazeSize em tempo de execução.
-// - Dois modos: MAPEAMENTO (devagar, descobrindo o labirinto) e CORRIDA
-//   (mais rápido, usando o mapa já descoberto). O robô MAPEIA até achar
-//   o centro e PARA DE VEZ — não troca de modo sozinho. A CORRIDA só
-//   começa quando o site manda o comando "INICIAR_CORRIDA" via WebSocket;
-//   aí ele volta ao início (rápido, usando o mapa) e faz a corrida final
-//   de volta ao centro.
-//
-// >>> REVISAO DA MECANICA DE TRAVAMENTO NESTA VERSAO <<<
-// Toda a logica a partir da deteccao de travamento foi revisada pra
-// resolver 4 problemas reportados:
-//   #1 A re de desempaque curta nao vencia o atrito pra permitir a curva.
-//      -> Agora a re de desempaque e PROGRESSIVA: cresce a cada tentativa
-//         do mesmo travamento (base + step, ate um teto).
-//   #2 e #4 Ele fazia 45/re/desempaque fora de hora (em curvas normais e
-//      ate depois de ajuste manual), porque o contador de travamento
-//      contava QUALQUER giro. -> Agora o contador so conta quando o rato
-//      esta REALMENTE preso (giro COM a frente bloqueada). Frente livre ou
-//      avanco zeram o contador na hora.
-//   #3 Com a frente livre mas a traseira encostada, ele insistia em re em
-//      vez de andar. -> Agora, FRENTE LIVRE = VAI RETO: se da pra ir em
-//      frente, vai em frente, independente do que o flood fill preferia.
-// A curva de 45 graus (pos-desempaque) foi MANTIDA, mas so dispara em
-// travamento real. Giros normais de 90/180 e o resto do fluxo seguem iguais.
-// =============================================================================
-
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <WiFi.h>
 #include <WebSocketsServer.h>
 #include <stdint.h>
 #include <math.h>
-
-// ========
-// nova alt (bateria): includes da INA226 (I2C)
-// ========
 #include <Wire.h>
 #include <INA226.h>
 
-// ========
-// nova alt: declaração antecipada (forward declaration) dos tipos
-// customizados (structs/enums). O Arduino IDE gera automaticamente os
-// prototypes de todas as funções do sketch e insere isso logo no topo do
-// arquivo, ANTES das structs serem definidas mais abaixo. Sem essas
-// declarações aqui, o compilador não reconhece tipos como "SensorParede"
-// nos prototypes automáticos e gera erro de "declared void" / "was not
-// declared in this scope". Isso não muda nenhum comportamento do robô,
-// só corrige a ordem de compilação.
-// ========
+#include <VL53L0X.h>
+#include <Adafruit_APDS9960.h>
+
 struct Position;
 struct Cell;
 struct TelemetryPoint;
-struct SensorParede;
+struct FiltroMediaMovel;
+struct SensorLateral;
+struct SensorFrontal;
+struct ClassificacaoLateralDecisao;
 enum Direction : uint8_t;
 enum MoveCommand : uint8_t;
 enum AbsoluteWall : uint8_t;
 enum RobotState : uint8_t;
 
-// ========
-// nova alt: enum completo aqui em cima (não só o tipo) porque
-// MotorController usa o VALOR "MODO_MAPEAMENTO" diretamente, não só o
-// tipo — então precisa estar definido antes da classe usar.
-// ========
 enum ModoOperacao : uint8_t { MODO_MAPEAMENTO, MODO_CORRIDA };
 class MazeMap;
 class PositionQueue;
@@ -98,114 +29,41 @@ class FloodFillNavigator;
 class MotorController;
 class NavigationController;
 
-// =============================================================================
-// ========================================================================
-// PARÂMETROS PARA AJUSTE DURANTE OS TESTES
-// (tudo que normalmente precisa ser calibrado está concentrado aqui)
-// ========================================================================
-//
-// NOTAS GERAIS DO PROJETO (não mexer, só referência física):
-//   a. Rato: ~269g, 2 rodas motrizes, controlado por ESP32 (Arduino IDE).
-//      Dimensões do chassi: 11.2 x 10 cm.
-//   b. Cada célula do labirinto: 18 x 18 cm.
-//   c. Alterações deste arquivo se limitam ao que afeta a movimentação
-//      básica (andar, parar, virar, detectar travamento). Telemetria/Wi-Fi/
-//      JSON para o computador não foram alteradas na lógica, só os pontos
-//      necessários para continuar funcionando com o novo fluxo.
-//   d. Pinos dos encoders confirmados em teste isolado (3 portas conhecidas
-//      + 1 encontrada): Encoder esquerdo = GPIO 16 e 17 (16 foi a porta
-//      "nova" encontrada). Encoder direito = GPIO 18 e 19 (já confirmados).
-//      Motores = 25, 26, 32, 33. Sensores de parede = 34, 36, 39.
-//
-// -----------------------------------------------------------------------
-// PWM de movimento reto e curva
-// -----------------------------------------------------------------------
 #define PWM_LEFT             70     // PWM motor esquerdo andando reto
 #define PWM_RIGHT            72     // PWM motor direito andando reto
 #define TURN_PWM_LEFT         69    // PWM motor esquerdo nas curvas de 90/180
 #define TURN_PWM_RIGHT         69    // PWM motor direito nas curvas de 90/180
 
-// -----------------------------------------------------------------------
-// Tempos de curva (ainda baseados em tempo, não em encoder)
-// -----------------------------------------------------------------------
-#define TURN_TIME_90          460    // ms para girar 90 graus
-#define TURN_TIME_180         880    // ms para girar 180 graus
+#define TURN_TIME_90          320    // ms para girar 90 graus
+#define TURN_TIME_180         810    // ms para girar 180 graus
 
-// ========
-// nova alt (curva 45): tempo pra girar 45 graus, usado SOMENTE na curva
-// de desempaque (logo apos a mini-re de destravamento). Ajuste por teste.
-// Comeca em ~metade do 90 (425/2 ≈ 210), mas o valor real depende de
-// atrito/bateria — calibre olhando o rato. NAO afeta os giros normais.
-// ========
 #define TURN_TIME_45          160   // ms para girar 45 graus (curva de desempaque)
 
-// -----------------------------------------------------------------------
-// ========
-// nova alt: parâmetros do pulso de ré antes de curvas em quina
-// ========
-// -----------------------------------------------------------------------
+
 #define REVERSE_PULSE_PWM       70    // PWM do pulso de ré (mesmo para os 2 motores) — AUMENTADO (10 era baixo demais pra vencer o atrito estático do motor, ré não movia de verdade)
 
 
 #define AUTO_INICIAR_SEM_SITE  true   // true = liga e já começa a mapear sozinho (teste standalone) / false = espera START do site
 
-// ========
-// nova alt: a ré antes da curva agora é medida por encoder, como fração
-// da distância de andar 1 célula. Pedido: 1/5 da célula, em TODA curva
-// (90 OU 180), não só nas quinas — facilita a manobra de qualquer giro.
-// ========
-#define REVERSE_PULSE_FRACTION    2    // a ré é 1/(esse numero) da distancia de 1 celula. 5 = 1/5
+#define REVERSE_PULSE_FRACTION    15   // re curta antes de curva: 1/10 de celula (antes era 1/2 e tirava o rato do centro)
 #define REVERSE_PULSE_TICKS      (TICKS_PER_CELL / REVERSE_PULSE_FRACTION)
-#define REVERSE_PULSE_TIMEOUT_MS 180   // tempo MAXIMO de seguranca da re, caso o encoder falhe
+#define REVERSE_PULSE_TIMEOUT_MS 220   // tempo MAXIMO de seguranca da re, caso o encoder falhe
 
-// ========
-// nova alt: ré BEM pequena de "desempacar" — usada quando o robô fica
-// girando repetidamente sem avançar (ver TENTATIVAS_PARA_RE_DESTRAVAR
-// mais abaixo). É bem menor que a ré normal de curva, só o suficiente
-// pra tentar soltar o chassi de uma quina onde ficou preso fisicamente.
-// ========
 #define MICRO_RE_PWM              70    // PWM da re pequena de desempacar — AUMENTADO (40 podia nao ser suficiente pra vencer o atrito estatico)
-#define MICRO_RE_FRACTION         4    // fracao da celula pra re de desempacar (bem pequena: 1/15)
+#define MICRO_RE_FRACTION         8    // re pequena de desempacar: 1/8 de celula
 #define MICRO_RE_TICKS            (TICKS_PER_CELL / MICRO_RE_FRACTION)
 #define MICRO_RE_TIMEOUT_MS       280   // tempo MAXIMO de seguranca dessa re pequena — AUMENTADO (120 podia ser curto demais pra sair da inercia)
 
-// ========
-// nova alt (revisao travamento): RE PROGRESSIVA de desempaque. Problema
-// reportado (#1): quando ha parede na frente + bloqueio de um lado, a re
-// curta fixa nao e o bastante pra vencer o atrito e permitir a curva.
-// Solucao: a cada tentativa de desempaque no MESMO travamento, a re fica
-// um pouco maior (mais ticks), ate um teto. Assim a 1a tentativa e curta
-// (nao exagera quando nao precisa) e as seguintes crescem ate soltar.
-//   MICRO_RE_TICKS_BASE : ticks da 1a tentativa de desempaque
-//   MICRO_RE_TICKS_STEP : quanto cresce a cada tentativa seguinte
-//   MICRO_RE_TICKS_MAX  : teto (nao passa disso)
-// ========
 #define MICRO_RE_TICKS_BASE       (TICKS_PER_CELL / 8)    // 1a tentativa: ~1/8 de celula
 #define MICRO_RE_TICKS_STEP       (TICKS_PER_CELL / 12)   // cresce ~1/12 por tentativa
 #define MICRO_RE_TICKS_MAX        (TICKS_PER_CELL / 2)    // teto: metade de uma celula
 #define MICRO_RE_TIMEOUT_PROG_MS  450   // timeout de seguranca maior (a re pode ser maior agora)
 
-// ========
-// nova alt: ANÁLISE DE ARREDORES UNIFICADA. Antes, cada tipo de
-// movimento (andar/virar) tinha sua própria pausa de leitura espalhada
-// pelo código (limparFiltrosSensores, pararComLeitura, confirmarSensores
-// AposGiro...). Agora existe um único momento de "parar e analisar",
-// chamado sempre no topo do loop principal, depois de qualquer movimento
-// (andar OU virar). No modo MAPEAMENTO isso demora 1 segundo inteiro,
-// bem devagar, pra dar tempo de entender os arredores com calma antes de
-// decidir o próximo passo. No modo CORRIDA, como já se confia no mapa
-// conhecido, essa pausa é bem mais curta (usa STOP_TIME_SETTLE).
-// ========
 #define TEMPO_ANALISE_ARREDORES_MS   1600  // mapeamento: parado 1.5s lendo os sensores com calma (pedido)
+#define TEMPO_RELEITURA_CURVA_MS      250  // releitura parada antes de decidir curva com parede frontal
+#define TEMPO_RELEITURA_APOS_GIRO_MS  180  // releitura curta depois de virar antes de tentar andar
+#define MAX_GIROS_SEM_AVANCO_MESMA_CELULA 2  // trava anti-loop: nao deixa ficar girando no mesmo quadrado
 
-// -----------------------------------------------------------------------
-// ========
-// nova alt (bateria): parametros da INA226 e da bateria 2S (~7.4V)
-// ========
-// A INA226 e um sensor DIGITAL I2C. GPIO21 = SDA, GPIO22 = SCL (confirme
-// o SCL na sua fiacao). A tensao de barramento (getBusVoltage) e o que
-// vira "% de bateria". Shunt/corrente dependem da calibracao abaixo.
-// -----------------------------------------------------------------------
 #define I2C_SDA_PIN        21        // SDA da INA226 (confirmado no esquematico)
 #define I2C_SCL_PIN        22        // SCL da INA226 — CONFIRME na sua fiacao
 #define INA226_ENDERECO    0x40      // endereco I2C padrao do modulo (mude se o scanner apontar outro)
@@ -215,106 +73,68 @@ class NavigationController;
 #define BAT_TENSAO_MIN     6.6       // corte de descarga aproximado (~6.0V) = 0%
 #define BAT_UPDATE_MS      500       // intervalo de leitura da bateria (ms)
 
-// -----------------------------------------------------------------------
-// ========
-// nova alt: parâmetros de movimentação por ENCODER
-// ========
-// Ajuste WHEEL_DIAMETER_CM e ENCODER_PPR conforme medição real da roda e
-// datasheet/teste do encoder. TICKS_PER_CELL é calculado a partir deles,
-// mas pode ser sobrescrito manualmente (fixando um valor numérico) caso a
-// calibração por fórmula não bata com o resultado prático.
-// -----------------------------------------------------------------------
 #define CELL_SIZE_CM            18.0   // tamanho de uma célula do labirinto (cm) — NÃO MEXER (fixo pela regra)
 #define WHEEL_DIAMETER_CM        4.2   // diâmetro da roda em cm — AJUSTAR conforme medição real
 #define ENCODER_PPR               15   // pulsos por volta do encoder — AJUSTAR conforme datasheet/teste
 
-// Calculado automaticamente a partir dos dois valores acima — mantido como
-// referência/comentário. O valor abaixo (TICKS_PER_CELL) foi SUBSTITUÍDO
-// pelo valor medido fisicamente com o teste_calibracao_encoders.ino, que é
-// muito mais confiável do que a fórmula com diâmetro/PPR chutados.
-// #define TICKS_PER_CELL  ((uint16_t)((CELL_SIZE_CM / (PI * WHEEL_DIAMETER_CM)) * ENCODER_PPR))
-
-// ========
-// nova alt: valor calibrado fisicamente (teste_calibracao_encoders.ino,
-// empurrando o robô 18 cm na mão, 3 repetições consistentes em 300 ticks)
-// ========
 #define TICKS_PER_CELL 305
 
-#define CELL_FORWARD_TIMEOUT_MS 880  // tempo MÁXIMO de segurança por célula, caso o encoder falhe
+#define CELL_FORWARD_TIMEOUT_MS 1100  // tempo MAXIMO de seguranca por celula no mapeamento/correcao
 
-// ========
-// nova alt: REMOVIDO — antes existia uma janela pra ignorar ruído do
-// motor logo no início do trajeto (IGNORAR_SENSOR_INICIO_MS). Como agora
-// o sensor da frente simplesmente NÃO é mais lido/processado durante o
-// trajeto reto (pedido explícito — "anda com o sensor desligado"), essa
-// janela ficou sem função: não existe mais leitura no meio do caminho
-// pra precisar ser ignorada.
-// ========
+#define GANHO_CORRECAO_RETA       1.4  // ajuste de PWM por tick de diferenca entre encoders
+#define PWM_CORRECAO_MAX         22    // limite da correcao por encoders
 
-// -----------------------------------------------------------------------
-// ========
-// nova alt: correção de reta em tempo real usando os encoders
-// ========
-// O motor esquerdo é fisicamente mais forte que o direito (confirmado em
-// teste físico — o rato inclinava pra direita andando reto). Em vez de só
-// "chutar" um PWM fixo diferente pros dois lados, agora comparamos os
-// ticks acumulados de cada encoder DURANTE o trajeto e ajustamos o PWM de
-// cada motor em tempo real pra manter os dois emparelhados.
-// GANHO_CORRECAO_RETA: quanto maior, mais agressiva a correção.
-// PWM_CORRECAO_MAX: trava o tamanho máximo do ajuste, pra não estourar o PWM.
-// -----------------------------------------------------------------------
-#define GANHO_CORRECAO_RETA       3    // ajuste de PWM por tick de diferença entre encoders
-#define PWM_CORRECAO_MAX         40    // ajuste máximo permitido (pra cima ou pra baixo) por motor
+#define KP_CENTRALIZACAO             0.25  // ganho proporcional da centralizacao (PWM por mm de erro)
+#define ZONA_MORTA_CENTRALIZACAO_MM  5     // erro (mm) abaixo disso e ignorado
+#define PWM_CORRECAO_LATERAL_MAX     22    // ajuste maximo da centralizacao lateral
+#define PWM_CORRECAO_TOTAL_MAX       32    // trava a SOMA (reta + lateral) por motor
 
-// -----------------------------------------------------------------------
-// ========
-// nova alt: assentamento mecânico rápido antes de iniciar um giro (não é
-// leitura de sensor — isso agora é só a análise unificada de arredores).
-// ========
-// STOP_TIME_SETTLE: pequena pausa mecânica antes de iniciar uma curva,
-//   só pra garantir que o chassi já está parado de vez antes de virar.
-// -----------------------------------------------------------------------
+#define PWM_MOTOR_MIN            40    // piso de PWM em movimento reto (não deixa motor "morrer")
+#define PWM_MOTOR_MAX           180    // teto de PWM em movimento reto
+#define RAMPA_PWM_MAX_PASSO       6    // variação máxima de PWM por ciclo (~10ms) — evita trancos
+
 #define STOP_TIME_SETTLE        100    // ms — assentamento mecânico antes de iniciar um giro
 
-// -----------------------------------------------------------------------
-// ========
-// nova alt: detecção de travamento em DUAS ETAPAS.
-// TENTATIVAS_PARA_RE_DESTRAVAR: depois de quantos giros seguidos sem
-//   avançar de célula ele tenta a ré pequena de desempacar (uma vez só).
-// MIN_TENTATIVAS_GIRO: total de tentativas até declarar travamento de
-//   vez e parar. Cada célula é um quadrado (4 lados possíveis), então
-//   dar mais margem que isso permite tentar a ré de desempacar no meio
-//   do caminho antes de desistir de vez.
-// -----------------------------------------------------------------------
 #define TENTATIVAS_PARA_RE_DESTRAVAR   3    // tentativas antes de tentar a re pequena de desempacar
 #define MIN_TENTATIVAS_GIRO           10    // tentativas totais antes de avisar travamento (era 8)
 
-// -----------------------------------------------------------------------
-// Sensores de parede (filtro por leituras)
-// -----------------------------------------------------------------------ticks>
-#define FILTER_SIZE             3    // tamanho do filtro de leitura dos sensores
-#define SENSOR_UPDATE_TIME      10   // ms entre leituras dos sensores
-#define PRINT_SENSOR_TIME       150   // ms entre prints de status (debug)
+#define FILTER_SIZE_DIST         5    // amostras na média móvel de cada sensor (maior = mais estável, porém mais lento p/ reagir)
+#define SENSOR_UPDATE_TIME      10    // ms entre leituras dos sensores
+#define PRINT_SENSOR_TIME      150    // ms entre prints de status (debug)
 
-// ========
-// nova alt: votos necessários por sensor. ESQ/DIR usam o critério normal
-// (maioria simples). FRENTE agora exige TODAS as leituras do filtro
-// (unânime) — fica mais "durão"/menos sensível, só confirma parede
-// quando está bem mais perto de verdade. Isso ataca o caso em que o
-// chassi ficava "travado" numa situação em que só seguir em frente
-// resolvia, mas o sensor da frente disparava cedo demais e não deixava.
-// ========
-#define VOTOS_NECESSARIOS_LATERAL   3    // ESQ/DIR: 3 de FILTER_SIZE (4) leituras
-#define VOTOS_NECESSARIOS_FRENTE    FILTER_SIZE   // FRENTE: TODAS as leituras (mais rigoroso, só dispara mais perto)
+#define DIST_LATERAL_MUITO_PROXIMA_MM   25    // abaixo disso: quase encostando na parede lateral (perigo)
+#define DIST_LATERAL_PAREDE_MM         90    // abaixo disso: considera que HÁ parede lateral naquele lado
+#define DIST_LATERAL_LIVRE_MM          110    // acima disso: considera o lado livre (sem parede)
+#define DIST_LATERAL_IDEAL_MM           75    // distância "ideal" de cada parede lateral quando bem centralizado
+#define DIST_SEM_LEITURA_MM           2000    // usado quando o VL53L0X "não vê nada" (timeout/sem init) = bem longe/livre
 
-// -----------------------------------------------------------------------
-// ========
-// nova alt: tamanho do labirinto configurável. O labirinto da competição
-// pode ser 4x4, 8x8 ou 16x16 — troque esse valor ANTES de compilar,
-// dependendo da prova. O resto do código já é genérico em cima desse
-// número (mapa, flood fill, telemetria, tudo se ajusta sozinho).
-// ========
-// -----------------------------------------------------------------------
+// V4: para decidir curva, o lado precisa estar livre de forma mais clara
+// do que o limiar usado apenas para imprimir LIVRE/PAREDE. Isso evita
+// virar para uma parede quando o VL53L0X da um pico alto por reflexao/angulo.
+#define DIST_LATERAL_LIVRE_CURVA_MM      175
+#define DIST_LATERAL_LIVRE_MAPA_MM       185
+#define AMOSTRAS_DECISAO_CURVA             9
+#define MIN_AMOSTRAS_VALIDAS_CURVA         6
+#define MIN_AMOSTRAS_PAREDE_CURVA          3
+#define MIN_AMOSTRAS_LIVRE_CURVA           6
+#define INTERVALO_AMOSTRA_DECISAO_MS      12
+#define MARGEM_MEDIA_ESCOLHA_DUVIDOSA_MM  45
+
+// Leituras laterais so entram na centralizacao quando parecem parede real.
+// Isso evita o rato puxar para dentro de uma abertura lateral ou corredor sem parede.
+#define DIST_LATERAL_MIN_CONFIAVEL_MM   22
+#define DIST_LATERAL_MAX_CORRECAO_MM   170
+#define DIST_LATERAL_PERIGO_MM          28
+#define TICKS_IGNORAR_CORR_INICIO      (TICKS_PER_CELL / 8)
+#define TICKS_IGNORAR_CORR_FIM         (TICKS_PER_CELL / 8)
+#define TICKS_CELULA_OK_MIN            (TICKS_PER_CELL - (TICKS_PER_CELL / 10))
+
+// ---- Limites do sensor FRONTAL (APDS9960, proximidade crua 0-255) ----
+// Atenção: aqui é o INVERSO dos laterais -> valor MAIOR = mais PERTO da parede.
+#define PROX_FRONTAL_PAREDE_DETECTADA   20   // acima disso: ha parede na frente
+#define PROX_FRONTAL_LIVRE              16    // histerese: abaixo disso libera a frente
+#define PROX_FRONTAL_MUITO_PROXIMA      45   // acima disso: parede frontal muito perto (risco de colisao)
+
 #define MAX_MAZE_SIZE 16  // memória máxima reservada; o tamanho real vem do site
 #define MAX_MAP_SIZE  (MAX_MAZE_SIZE * 2 + 1)
 #define MAX_PATH_CAPACITY (MAX_MAZE_SIZE * MAX_MAZE_SIZE)
@@ -333,51 +153,31 @@ bool mazeSizeValido(uint8_t value) {
     return value == 4 || value == 8 || value == 16;
 }
 
-// -----------------------------------------------------------------------
-// ========
-// nova alt: dois modos de operação — MAPEAMENTO (devagar, célula por
-// célula, parando e lendo os sensores com calma) e CORRIDA (mais rápido,
-// usando o que já foi mapeado). O robô começa em MAPEAMENTO e muda pra
-// CORRIDA sozinho na primeira vez que chega ao centro.
-// ========
-// -----------------------------------------------------------------------
 #define PWM_LEFT_MAPEAMENTO     70    // PWM mais lento pro modo mapeamento (cauteloso)
 #define PWM_RIGHT_MAPEAMENTO    70
 #define PWM_LEFT_CORRIDA        PWM_LEFT   // modo corrida usa os PWM normais (mais rápidos)
 #define PWM_RIGHT_CORRIDA       PWM_RIGHT
 
-// =============================================================================
-// PINOS
-// =============================================================================
-// ========
-// nova alt: pinos ESQUERDO e FRENTE estavam fisicamente trocados na
-// fiação (confirmado em teste isolado com teste_sensores.ino — colocar a
-// mão na frente mudava a leitura do ESQ, e vice-versa). Corrigido aqui.
-// ========
-#define SENSOR_LEFT   39
-#define SENSOR_FRONT  34
-#define SENSOR_RIGHT  36
+#define VL53L0X_DIR_XSHUT_PIN         27     // XSHUT do VL53L0X que FISICAMENTE tem XSHUT ligado
+#define VL53L0X_ENDERECO_SEM_XSHUT  0x30     // endereço novo do sensor que fica ligado desde o início (sem XSHUT)
+#define VL53L0X_ENDERECO_COM_XSHUT  0x29     // sensor com XSHUT fica no próprio endereço padrão (único sobrando)
+
+#define INVERTER_SENSORES_LATERAIS  false
 
 // Motores
 // MOTOR_IN1 = motor esquerdo para trás
 // MOTOR_IN2 = motor esquerdo para frente
 // MOTOR_IN3 = motor direito para trás
 // MOTOR_IN4 = motor direito para frente
-#define MOTOR_IN1 25
-#define MOTOR_IN2 26
-#define MOTOR_IN3 32
-#define MOTOR_IN4 33
+#define MOTOR_IN1 33   // esquerdo trás  (canal {32,33} agora está na esquerda física)
+#define MOTOR_IN2 32   // esquerdo frente
+#define MOTOR_IN3 26   // direito trás   (canal {25,26} agora está na direita física)
+#define MOTOR_IN4 25   // direito frente
 
-// ========
-// nova alt: pinos dos encoders esquerdo/direito
-// ========
-// Canal conhecido do encoder esquerdo: GPIO 16, 17 (16 foi a porta nova
-// encontrada em teste; 17 já era conhecida).
-// Encoder direito: GPIO 18, 19 (já confirmados em teste).
-#define ENCODER_LEFT_A   17
-#define ENCODER_LEFT_B   16
-#define ENCODER_RIGHT_A  19
-#define ENCODER_RIGHT_B  18
+#define ENCODER_LEFT_A   19   // encoder do motor que agora está na esquerda física
+#define ENCODER_LEFT_B   18
+#define ENCODER_RIGHT_A  17   // encoder do motor que agora está na direita física
+#define ENCODER_RIGHT_B  16
 
 // RGB desativado por enquanto
 #define USE_RGB 0
@@ -386,9 +186,6 @@ bool mazeSizeValido(uint8_t value) {
 // Botão não será usado para iniciar automaticamente
 #define BUTTON_PIN 0
 
-// =============================================================================
-// CONFIGURAÇÕES
-// =============================================================================
 #define INF          255
 
 // Cor de chegada no sensor RGB
@@ -403,29 +200,12 @@ const char *password = "12345678";
 WebSocketsServer webSocket = WebSocketsServer(81);
 unsigned long lastTelemetryMillis = 0;
 
-// ========
-// nova alt (bateria): objeto INA226 + estado de leitura da bateria
-// ========
-// inaOk fica true se a INA226 respondeu no I2C. Se ela nao estiver
-// conectada, o firmware NAO trava — mantem os ultimos valores padrao e o
-// site aplica o fallback ?? 0. As variaveis "Atual" guardam a ultima
-// leitura boa pra telemetria nunca mandar lixo.
 INA226 ina(INA226_ENDERECO);
 bool inaOk = false;
 float batTensaoAtual   = 7.4;    // V   (bus voltage)
 float batPercentAtual  = 100.0;  // %   (derivado da tensao)
 float batCorrenteAtual = 0.0;    // mA
 unsigned long ultimoUpdateBateria = 0;
-
-// ========
-// nova alt: o mapa de telemetria agora usa memória máxima 16x16, mas o
-// tamanho real enviado ao site é calculado por mapSizeWeb(), com base no
-// mazeSize recebido via WebSocket.
-// ========
-
-// =============================================================================
-// ENUMS
-// =============================================================================
 enum RobotState : uint8_t {
     DESLIGADO,
     AGUARDANDO_INICIO,
@@ -436,12 +216,6 @@ enum RobotState : uint8_t {
     GIRO_180,
     FINALIZADO,
     TRAVADO, // ========  nova alt: novo estado de travamento  ========
-    // ========
-    // nova alt: novo estado — mapeamento terminou (chegou ao centro pela
-    // primeira vez) e o robô está PARADO DE VEZ, esperando o comando de
-    // "iniciar corrida" vindo do site via WiFi. Continua mandando
-    // telemetria normalmente nesse estado.
-    // ========
     MAPEAMENTO_CONCLUIDO
 };
 
@@ -467,9 +241,6 @@ enum AbsoluteWall : uint8_t {
     WALL_WEST  = 3
 };
 
-// =============================================================================
-// STRUCTS
-// =============================================================================
 struct Cell {
     uint8_t dist;
     uint8_t visited   : 1;
@@ -501,11 +272,6 @@ const int8_t deltaLinha[4] = {1, 0, -1, 0};
 const int8_t deltaColuna[4] = {0, 1, 0, -1};
 const char *nomesDirecao[4] = {"NORTE", "LESTE", "SUL", "OESTE"};
 
-// =============================================================================
-// ========
-// nova alt: ENCODERS — contadores globais e ISRs
-// ========
-// =============================================================================
 volatile long encoderLeftCount = 0;
 volatile long encoderRightCount = 0;
 
@@ -554,26 +320,15 @@ long lerMediaEncoders() {
     return (labs(left) + labs(right)) / 2;
 }
 
-// =============================================================================
-// ========
-// nova alt (bateria): INICIALIZACAO E LEITURA DA INA226
-// ========
-// =============================================================================
+
 float tensaoParaPercentualBateria(float tensao) {
-    // Conversao linear tensao->%. E uma aproximacao: a curva real de
-    // descarga de LiPo/Li-ion nao e linear, entao a % "cai rapido" perto
-    // do fim. Pra competicao costuma bastar; se quiser mais fiel, use uma
-    // tabela de pontos (tensao->%) da sua bateria especifica.
+
     float pct = (tensao - BAT_TENSAO_MIN) / (BAT_TENSAO_MAX - BAT_TENSAO_MIN) * 100.0;
     return constrain(pct, 0.0, 100.0);
 }
 
 void initBateriaINA226() {
-    Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
-
     if (ina.begin()) {
-        // Calibra o shunt: necessario para corrente/potencia. A tensao de
-        // barramento (usada pra % de bateria) funciona independente disso.
         ina.setMaxCurrentShunt(INA226_CORRENTE_MAX_A, INA226_SHUNT_OHMS);
         inaOk = true;
         Serial.println("[MICROMOUSE] INA226 (bateria) inicializada com sucesso.");
@@ -585,9 +340,6 @@ void initBateriaINA226() {
     }
 }
 
-// Le a INA226 e atualiza as variaveis globais de bateria. Nao bloqueia:
-// respeita BAT_UPDATE_MS entre leituras. Se a INA226 nao inicializou,
-// simplesmente mantem os ultimos valores.
 void atualizarBateria() {
     if (!inaOk) {
         return;
@@ -599,11 +351,8 @@ void atualizarBateria() {
     }
     ultimoUpdateBateria = agora;
 
-    float tensao = ina.getBusVoltage();   // V
+    float tensao = ina.getBusVoltage();
 
-    // Descarta leitura claramente invalida (ex: ~0 = sem barramento).
-    // Alimentando so por USB voce ve ~4.3V aqui (residuo do USB), o que
-    // e esperado — so com a bateria 2S ligada e que aparece ~6.5-8.4V.
     if (tensao > 1.0) {
         batTensaoAtual   = tensao;
         batPercentAtual  = tensaoParaPercentualBateria(tensao);
@@ -611,48 +360,72 @@ void atualizarBateria() {
     }
 }
 
-// =============================================================================
-// SENSOR DE PAREDE COM FILTRO
-// =============================================================================
-struct SensorParede {
-    int  pin;
-    int  readings[FILTER_SIZE];
-    int  index;
-    bool wallDetected;
+
+struct FiltroMediaMovel {
+    uint16_t leituras[FILTER_SIZE_DIST];
+    uint8_t  indice;
+    uint32_t soma;
 };
 
-void initSensorParede(SensorParede &s) {
-    s.index = 0;
-    s.wallDetected = false;
+void iniciarFiltro(FiltroMediaMovel &f, uint16_t valorInicial) {
+    f.indice = 0;
+    f.soma = (uint32_t)valorInicial * FILTER_SIZE_DIST;
 
-    for (int i = 0; i < FILTER_SIZE; i++) {
-        s.readings[i] = HIGH;
+    for (uint8_t i = 0; i < FILTER_SIZE_DIST; i++) {
+        f.leituras[i] = valorInicial;
     }
-
-    // GPIO 34, 35 e 36 são somente entrada.
-    // Use INPUT, não INPUT_PULLUP.
-    pinMode(s.pin, INPUT);
 }
 
-// ========
-// nova alt: agora recebe quantos votos (leituras LOW) são necessários
-// pra confirmar "parede". Permite que o sensor da frente exija um
-// critério mais rigoroso (unânime) do que os laterais (maioria simples).
-// LOW = parede
-// ========
-bool lerSensorFiltrado(SensorParede &s, uint8_t votosNecessarios) {
-    s.readings[s.index] = digitalRead(s.pin);
-    s.index = (s.index + 1) % FILTER_SIZE;
+uint16_t atualizarFiltro(FiltroMediaMovel &f, uint16_t novaLeitura) {
+    f.soma -= f.leituras[f.indice];
+    f.leituras[f.indice] = novaLeitura;
+    f.soma += novaLeitura;
+    f.indice = (f.indice + 1) % FILTER_SIZE_DIST;
 
-    int leiturasLow = 0;
+    return (uint16_t)(f.soma / FILTER_SIZE_DIST);
+}
 
-    for (int i = 0; i < FILTER_SIZE; i++) {
-        if (s.readings[i] == LOW) {
-            leiturasLow++;
-        }
+
+struct SensorLateral {
+    VL53L0X  vl;
+    bool     ok;              // true se o sensor respondeu no I2C na inicialização
+    FiltroMediaMovel filtro;
+    uint16_t distanciaMM;      // última média filtrada
+    bool     paredeDetectada;  // distanciaMM < DIST_LATERAL_PAREDE_MM
+    bool     muitoProxima;     // distanciaMM < DIST_LATERAL_MUITO_PROXIMA_MM
+};
+
+
+struct SensorFrontal {
+    Adafruit_APDS9960 apds;
+    bool     ok;
+    FiltroMediaMovel filtro;
+    uint16_t proximidade;      // última média filtrada (0-255)
+    bool     paredeDetectada;  // proximidade > PROX_FRONTAL_PAREDE_DETECTADA
+    bool     muitoProxima;     // proximidade > PROX_FRONTAL_MUITO_PROXIMA
+};
+
+
+uint16_t lerDistanciaLateralMM(VL53L0X &vl, bool ok) {
+    if (!ok) {
+        return DIST_SEM_LEITURA_MM;
     }
 
-    return leiturasLow >= votosNecessarios;
+    uint16_t mm = vl.readRangeContinuousMillimeters();
+
+    if (vl.timeoutOccurred() || mm == 0 || mm > 1200) {
+        return DIST_SEM_LEITURA_MM;
+    }
+
+    return mm;
+}
+
+uint16_t lerProximidadeFrontal(Adafruit_APDS9960 &apds, bool ok) {
+    if (!ok) {
+        return 0;
+    }
+
+    return apds.readProximity();
 }
 
 bool dentroDoLabirinto(int8_t linha, int8_t coluna) {
@@ -674,16 +447,6 @@ void inicializarMapaWeb() {
 }
 
 void celulaParaMapa(int8_t linha, int8_t coluna, uint8_t &mapaLinha, uint8_t &mapaColuna) {
-    // ========
-    // nova alt (telemetria/mapeamento): esquema n+1 (igual a "Opcao B").
-    // A matriz enviada ao site tem tamanho mapSizeWeb() = mazeSize + 2, ou
-    // seja, as celulas logicas 0..N-1 caem nas posicoes 1..N e sobra uma
-    // moldura de espessura 1 (indices 0 e N+1) que representa as paredes
-    // externas. ANTES este arquivo usava "linha*2+1" (esquema n*2+1), que
-    // exigiria matriz 2N+1 e por isso estourava/deformava o mapa de N+2 que
-    // o site espera. Esta e a correcao do "mapeia errado" — a movimentacao
-    // NAO foi tocada.
-    // ========
     mapaLinha = (uint8_t)(linha + 1);
     mapaColuna = (uint8_t)(coluna + 1);
 }
@@ -700,15 +463,6 @@ void marcarCelulaVisitada(int8_t linha, int8_t coluna) {
 }
 
 void marcarSegmentoVisitado(int8_t linhaAnterior, int8_t colunaAnterior, int8_t linhaAtualWeb, int8_t colunaAtualWeb) {
-    // ========
-    // nova alt (telemetria/mapeamento): esquema n+1 (igual a "Opcao B").
-    // Neste esquema NAO existe uma posicao "entre" duas celulas na matriz
-    // (nao ha indices pares reservados pra parede/corredor), entao nao ha
-    // segmento intermediario pra marcar — as celulas adjacentes ja sao
-    // marcadas por marcarCelulaVisitada. Antes (esquema n*2+1) esta funcao
-    // marcava o ponto do meio, o que so fazia sentido na matriz 2N+1 e
-    // contribuia pro mapa deformado. Agora e um no-op, como na Opcao B.
-    // ========
     (void)linhaAnterior;
     (void)colunaAnterior;
     (void)linhaAtualWeb;
@@ -783,9 +537,9 @@ void preencherMatriz(JsonDocument &doc, const char *chave) {
 }
 
 // Forward declarations for globals used by telemetry
-extern struct SensorParede sensorEsq;
-extern struct SensorParede sensorFrente;
-extern struct SensorParede sensorDir;
+extern struct SensorLateral sensorEsq;
+extern struct SensorLateral sensorDir;
+extern struct SensorFrontal sensorFrente;
 extern Position currentPos;
 extern Direction currentDir;
 extern RobotState estadoAtual;
@@ -804,10 +558,6 @@ void preencherPayloadWeb(JsonDocument &doc) {
     celulaParaMapa(0, 0, startMapaLinha, startMapaColuna);
     celulaParaMapa((int8_t)(mazeSize / 2 - 1), (int8_t)(mazeSize / 2 - 1), goalMapaLinha, goalMapaColuna);
 
-    // ========
-    // nova alt (bateria): corrente em Ampere (a INA226 le em mA) pra
-    // manter a mesma unidade que o payload ja usava (1.0 A fixo antes).
-    // ========
     float correnteA = batCorrenteAtual / 1000.0;
 
     doc["numTentativa"] = numeroTentativa;
@@ -821,9 +571,13 @@ void preencherPayloadWeb(JsonDocument &doc) {
     doc["bateriaAtual"] = batPercentAtual;   // ========  nova alt (bateria)  ========
     doc["tensaoAtual"] = batTensaoAtual;     // ========  nova alt (bateria)  ========
     doc["sensorCor"] = "#000000";
-    doc["sensorEsquerda"] = sensorEsq.wallDetected ? 1 : 0;
-    doc["sensorDireita"] = sensorDir.wallDetected ? 1 : 0;
-    doc["sensorFrontal"] = sensorFrente.wallDetected ? 1 : 0;
+    doc["sensorEsquerda"] = sensorEsq.paredeDetectada ? 1 : 0;
+    doc["sensorDireita"] = sensorDir.paredeDetectada ? 1 : 0;
+    doc["sensorFrontal"] = sensorFrente.paredeDetectada ? 1 : 0;
+    // ========  nova alt (sensores de distância): valores crus, úteis para debug/calibração  ========
+    doc["sensorEsquerdaMM"] = sensorEsq.distanciaMM;
+    doc["sensorDireitaMM"] = sensorDir.distanciaMM;
+    doc["sensorFrontalProx"] = sensorFrente.proximidade;
 
     String tipoLabirinto = String(mazeSize) + "x" + String(mazeSize);
     doc["mazeSize"] = mazeSize;
@@ -835,9 +589,6 @@ void preencherPayloadWeb(JsonDocument &doc) {
     doc["aguardandoCorrida"] = estadoAtual == MAPEAMENTO_CONCLUIDO;
     doc["travado"] = robotTravado;
     doc["desafioCumprido"] = desafioCumprido ? "SIM" : "NAO";
-    // ========
-    // nova alt: status agora também reflete o estado de travamento
-    // ========
     if (desafioCumprido) {
         doc["status"] = "success";
     } else if (robotTravado) {
@@ -850,17 +601,8 @@ void preencherPayloadWeb(JsonDocument &doc) {
         doc["status"] = "running";
     }
     doc["elapsedSeconds"] = millis() / 1000.0;
-    // ========
-    // nova alt (bateria): batteryPercent e o campo que o Dashboard.jsx le
-    // como data.batteryPercent -> percentualBateria no banco. Agora e real.
-    // ========
     doc["batteryPercent"] = batPercentAtual;
     doc["speedMps"] = 0.55;
-
-    // ========
-    // nova alt (bateria): tensaoEletrica tambem no nivel raiz, caso o site
-    // leia data.tensaoEletrica direto (alem do bloco historico abaixo).
-    // ========
     doc["tensaoEletrica"] = batTensaoAtual;
     doc["correnteEletrica"] = correnteA;
 
@@ -912,11 +654,6 @@ void preencherPayloadWeb(JsonDocument &doc) {
     historico["mazeSize"] = mazeSize;
 }
 
-// ========
-// nova alt: flag setada quando o site manda o comando de iniciar a
-// corrida via WebSocket. É só verificada no loop() — quem decide o que
-// fazer com ela é o loop principal, não essa função de evento.
-// ========
 bool comandoIniciarCorrida = false;
 bool comandoIniciarMapeamento = false;
 bool comandoPararRato = false;
@@ -1011,91 +748,136 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
     }
 }
 
-// Sensores globais
-SensorParede sensorEsq    = {SENSOR_LEFT};
-SensorParede sensorFrente = {SENSOR_FRONT};
-SensorParede sensorDir    = {SENSOR_RIGHT};
+SensorLateral  sensorEsq;
+SensorLateral  sensorDir;
+SensorFrontal  sensorFrente;
+
+void iniciarSensoresDistancia() {
+    SensorLateral &sensorSemXshut = INVERTER_SENSORES_LATERAIS ? sensorDir : sensorEsq;
+    SensorLateral &sensorComXshut = INVERTER_SENSORES_LATERAIS ? sensorEsq : sensorDir;
+
+    pinMode(VL53L0X_DIR_XSHUT_PIN, OUTPUT);
+    digitalWrite(VL53L0X_DIR_XSHUT_PIN, LOW);
+    delay(10);
+
+    sensorSemXshut.vl.setTimeout(50);
+    sensorSemXshut.ok = sensorSemXshut.vl.init();
+
+    if (sensorSemXshut.ok) {
+        sensorSemXshut.vl.setAddress(VL53L0X_ENDERECO_SEM_XSHUT);
+        sensorSemXshut.vl.setMeasurementTimingBudget(20000);
+        sensorSemXshut.vl.startContinuous(20);
+        Serial.println("[MICROMOUSE] VL53L0X (sem XSHUT) inicializado.");
+    } else {
+        Serial.println("[MICROMOUSE] AVISO: VL53L0X (sem XSHUT) nao respondeu no I2C!");
+    }
+
+    digitalWrite(VL53L0X_DIR_XSHUT_PIN, HIGH);
+    delay(10);
+
+    sensorComXshut.vl.setTimeout(50);
+    sensorComXshut.ok = sensorComXshut.vl.init();
+
+    if (sensorComXshut.ok) {
+        sensorComXshut.vl.setAddress(VL53L0X_ENDERECO_COM_XSHUT);
+        sensorComXshut.vl.setMeasurementTimingBudget(20000);
+        sensorComXshut.vl.startContinuous(20);
+        Serial.println("[MICROMOUSE] VL53L0X (com XSHUT) inicializado.");
+    } else {
+        Serial.println("[MICROMOUSE] AVISO: VL53L0X (com XSHUT) nao respondeu no I2C!");
+    }
+
+    sensorFrente.ok = sensorFrente.apds.begin();
+
+    if (sensorFrente.ok) {
+        sensorFrente.apds.enableProximity(true);
+        Serial.println("[MICROMOUSE] APDS9960 FRONTAL inicializado.");
+    } else {
+        Serial.println("[MICROMOUSE] AVISO: APDS9960 FRONTAL nao respondeu no I2C!");
+    }
+
+    iniciarFiltro(sensorEsq.filtro,    lerDistanciaLateralMM(sensorEsq.vl, sensorEsq.ok));
+    iniciarFiltro(sensorDir.filtro,    lerDistanciaLateralMM(sensorDir.vl, sensorDir.ok));
+    iniciarFiltro(sensorFrente.filtro, lerProximidadeFrontal(sensorFrente.apds, sensorFrente.ok));
+}
 
 void atualizarSensores() {
-    // ========
-    // nova alt: FRENTE agora usa VOTOS_NECESSARIOS_FRENTE (mais rigoroso,
-    // exige leitura unânime) — ESQ/DIR continuam com o critério normal.
-    // ========
-    sensorEsq.wallDetected    = lerSensorFiltrado(sensorEsq, VOTOS_NECESSARIOS_LATERAL);
-    sensorFrente.wallDetected = lerSensorFiltrado(sensorFrente, VOTOS_NECESSARIOS_FRENTE);
-    sensorDir.wallDetected    = lerSensorFiltrado(sensorDir, VOTOS_NECESSARIOS_LATERAL);
+    uint16_t bruteEsq    = lerDistanciaLateralMM(sensorEsq.vl, sensorEsq.ok);
+    uint16_t bruteDir    = lerDistanciaLateralMM(sensorDir.vl, sensorDir.ok);
+    uint16_t bruteFrente = lerProximidadeFrontal(sensorFrente.apds, sensorFrente.ok);
+
+    sensorEsq.distanciaMM    = atualizarFiltro(sensorEsq.filtro, bruteEsq);
+    sensorDir.distanciaMM    = atualizarFiltro(sensorDir.filtro, bruteDir);
+    sensorFrente.proximidade = atualizarFiltro(sensorFrente.filtro, bruteFrente);
+
+    sensorEsq.paredeDetectada = sensorEsq.paredeDetectada
+        ? (sensorEsq.distanciaMM < DIST_LATERAL_LIVRE_MM)
+        : (sensorEsq.distanciaMM < DIST_LATERAL_PAREDE_MM);
+
+    sensorDir.paredeDetectada = sensorDir.paredeDetectada
+        ? (sensorDir.distanciaMM < DIST_LATERAL_LIVRE_MM)
+        : (sensorDir.distanciaMM < DIST_LATERAL_PAREDE_MM);
+
+    sensorFrente.paredeDetectada = sensorFrente.paredeDetectada
+        ? (sensorFrente.proximidade > PROX_FRONTAL_LIVRE)
+        : (sensorFrente.proximidade > PROX_FRONTAL_PAREDE_DETECTADA);
+
+    sensorEsq.muitoProxima    = sensorEsq.distanciaMM < DIST_LATERAL_MUITO_PROXIMA_MM;
+    sensorDir.muitoProxima    = sensorDir.distanciaMM < DIST_LATERAL_MUITO_PROXIMA_MM;
+    sensorFrente.muitoProxima = sensorFrente.proximidade > PROX_FRONTAL_MUITO_PROXIMA;
 }
 
-// Limpa um sensor individual
-void limparFiltroSensor(SensorParede &s) {
-    s.index = 0;
-    s.wallDetected = false;
+// Limpa (reinicia) o filtro de um sensor lateral/frontal com uma leitura nova.
+void limparFiltroSensorLateral(SensorLateral &s) {
+    uint16_t leitura = lerDistanciaLateralMM(s.vl, s.ok);
+    iniciarFiltro(s.filtro, leitura);
 
-    for (int i = 0; i < FILTER_SIZE; i++) {
-        s.readings[i] = HIGH;
-    }
+    // Quando o robo esta parado para decidir curva, nao deixe a histerese antiga prender o estado.
+    s.distanciaMM = leitura;
+    s.paredeDetectada = leitura < DIST_LATERAL_PAREDE_MM;
+    s.muitoProxima = leitura < DIST_LATERAL_MUITO_PROXIMA_MM;
 }
 
-// Limpa todos os filtros e força novas leituras
-// ========
-// nova alt: não é mais chamada em lugar nenhum do fluxo principal —
-// substituída por analisarArredores(), que já limpa o filtro e lê por
-// mais tempo (1s no mapeamento). Mantida aqui como utilitário, útil pra
-// testes manuais/debug se precisar limpar os sensores rapidinho.
-// ========
+void limparFiltroSensorFrontal(SensorFrontal &s) {
+    uint16_t leitura = lerProximidadeFrontal(s.apds, s.ok);
+    iniciarFiltro(s.filtro, leitura);
+
+    // Reset sem memoria: depois de uma curva, a frente nova nao pode herdar "parede" da direcao antiga.
+    s.proximidade = leitura;
+    s.paredeDetectada = leitura > PROX_FRONTAL_PAREDE_DETECTADA;
+    s.muitoProxima = leitura > PROX_FRONTAL_MUITO_PROXIMA;
+}
+
 void limparFiltrosSensores() {
-    limparFiltroSensor(sensorEsq);
-    limparFiltroSensor(sensorFrente);
-    limparFiltroSensor(sensorDir);
+    limparFiltroSensorLateral(sensorEsq);
+    limparFiltroSensorLateral(sensorDir);
+    limparFiltroSensorFrontal(sensorFrente);
 
-    for (int i = 0; i < FILTER_SIZE; i++) {
+    for (int i = 0; i < FILTER_SIZE_DIST; i++) {
         atualizarSensores();
         delay(SENSOR_UPDATE_TIME);
     }
 }
 
-// ========
-// nova alt: estado de modo (MAPEAMENTO/CORRIDA) e PWM base usados dentro
-// de MotorController, que é definida mais abaixo no arquivo. Precisa do
-// "extern" aqui porque a classe é compilada antes da definição real
-// dessas variáveis (mesmo motivo do forward declaration dos structs).
-// ========
 extern ModoOperacao modoAtual;
 extern int pwmBaseEsq;
 extern int pwmBaseDir;
 
-// ========
-// nova alt: ANÁLISE DE ARREDORES — o "parar e ler com calma" pedido.
-// Chamada UMA VEZ no topo de cada ciclo do loop principal, sempre com o
-// robô 100% parado (depois de qualquer andar ou virar anterior). Limpa o
-// filtro e faz leituras contínuas por TEMPO_ANALISE_ARREDORES_MS (1s no
-// modo mapeamento, bem devagar — pedido explícito, pra dar tempo de
-// entender os arredores direito antes de decidir o próximo passo). No
-// modo corrida, usa STOP_TIME_SETTLE (bem mais rápido), já que ali se
-// confia no mapa e a prioridade é velocidade.
-// ========
 void analisarArredores() {
-    limparFiltroSensor(sensorEsq);
-    limparFiltroSensor(sensorFrente);
-    limparFiltroSensor(sensorDir);
+    limparFiltroSensorLateral(sensorEsq);
+    limparFiltroSensorLateral(sensorDir);
+    limparFiltroSensorFrontal(sensorFrente);
 
     unsigned long duracao = (modoAtual == MODO_MAPEAMENTO) ? TEMPO_ANALISE_ARREDORES_MS : STOP_TIME_SETTLE;
     unsigned long inicio = millis();
 
     while (millis() - inicio < duracao) {
         atualizarSensores();
-        // ========
-        // nova alt (bateria): aproveita a pausa de analise pra tambem
-        // atualizar a bateria (respeitando BAT_UPDATE_MS internamente).
-        // ========
         atualizarBateria();
         delay(SENSOR_UPDATE_TIME);
     }
 }
 
-// =============================================================================
-// SENSOR RGB
-// =============================================================================
 uint32_t lerRGB() {
 #if USE_RGB
     // TODO: implementar leitura real do sensor RGB
@@ -1105,9 +887,6 @@ uint32_t lerRGB() {
 #endif
 }
 
-// =============================================================================
-// FILA ESTÁTICA PARA FLOOD FILL
-// =============================================================================
 class PositionQueue {
 private:
     Position data[MAX_PATH_CAPACITY];
@@ -1135,9 +914,6 @@ public:
     }
 };
 
-// =============================================================================
-// MAPA DO LABIRINTO
-// =============================================================================
 class MazeMap {
 private:
     Cell cells[MAX_MAZE_SIZE][MAX_MAZE_SIZE];
@@ -1206,9 +982,6 @@ public:
     }
 };
 
-// =============================================================================
-// FLOOD FILL
-// =============================================================================
 class FloodFillNavigator {
 private:
     MazeMap *maze;
@@ -1263,10 +1036,58 @@ public:
     }
 };
 
-// =============================================================================
-// CONTROLADOR DE MOTORES
-// =============================================================================
 class MotorController {
+private:
+    int pwmAtualEsq = 0;
+    int pwmAtualDir = 0;
+
+    bool leituraLateralUtil(const SensorLateral &s) const {
+        return s.ok &&
+               s.paredeDetectada &&
+               s.distanciaMM >= DIST_LATERAL_MIN_CONFIAVEL_MM &&
+               s.distanciaMM <= DIST_LATERAL_MAX_CORRECAO_MM;
+    }
+
+    int calcularCorrecaoLateral(long ticksAtual) {
+        // Protecao imediata: se estiver quase raspando em uma parede, corrige mesmo perto da borda da celula.
+        if (sensorEsq.ok && sensorEsq.distanciaMM < DIST_LATERAL_PERIGO_MM &&
+            !(sensorDir.ok && sensorDir.distanciaMM < DIST_LATERAL_PERIGO_MM)) {
+            return -PWM_CORRECAO_LATERAL_MAX; // muito perto da esquerda -> aponta para a direita
+        }
+
+        if (sensorDir.ok && sensorDir.distanciaMM < DIST_LATERAL_PERIGO_MM &&
+            !(sensorEsq.ok && sensorEsq.distanciaMM < DIST_LATERAL_PERIGO_MM)) {
+            return PWM_CORRECAO_LATERAL_MAX; // muito perto da direita -> aponta para a esquerda
+        }
+
+        // Evita corrigir em cima de intersecoes/aberturas, onde o VL53 pode enxergar o vazio lateral.
+        if (ticksAtual < TICKS_IGNORAR_CORR_INICIO ||
+            ticksAtual > (TICKS_PER_CELL - TICKS_IGNORAR_CORR_FIM)) {
+            return 0;
+        }
+
+        bool esqValida = leituraLateralUtil(sensorEsq);
+        bool dirValida = leituraLateralUtil(sensorDir);
+        int erro;
+
+        if (esqValida && dirValida) {
+            erro = (int)sensorEsq.distanciaMM - (int)sensorDir.distanciaMM;
+        } else if (esqValida && !dirValida) {
+            erro = (int)sensorEsq.distanciaMM - (int)DIST_LATERAL_IDEAL_MM;
+        } else if (!esqValida && dirValida) {
+            erro = (int)DIST_LATERAL_IDEAL_MM - (int)sensorDir.distanciaMM;
+        } else {
+            return 0;
+        }
+
+        if (abs(erro) < ZONA_MORTA_CENTRALIZACAO_MM) {
+            return 0;
+        }
+
+        int correcao = (int)((float)erro * KP_CENTRALIZACAO);
+        return constrain(correcao, -PWM_CORRECAO_LATERAL_MAX, PWM_CORRECAO_LATERAL_MAX);
+    }
+
 public:
     void begin() {
         pinMode(MOTOR_IN1, OUTPUT);
@@ -1287,6 +1108,9 @@ public:
         digitalWrite(MOTOR_IN2, LOW);
         digitalWrite(MOTOR_IN3, LOW);
         digitalWrite(MOTOR_IN4, LOW);
+
+        pwmAtualEsq = 0;
+        pwmAtualDir = 0;
     }
 
     // Motor esquerdo
@@ -1316,14 +1140,7 @@ public:
         motorDireitoFrente(PWM_RIGHT);
     }
 
-    // ========
-    // nova alt: anda pra frente corrigindo o PWM em tempo real, comparando
-    // quantos ticks cada encoder acumulou. Se a esquerda andou mais
-    // (motor mais forte), reduz o PWM dela e aumenta o da direita, e
-    // vice-versa. Substitui o uso de forward() fixo dentro de
-    // andarUmaCelula().
-    // ========
-    void forwardComCorrecao() {
+    void forwardComCorrecao(long ticksAtual) {
         long left;
         long right;
 
@@ -1332,19 +1149,22 @@ public:
         right = encoderRightCount;
         interrupts();
 
-        long diff = labs(left) - labs(right); // positivo = esquerda andou mais (puxa pra direita)
+        long diffReta = labs(left) - labs(right); // positivo = esquerda andou mais (puxa pra direita)
+        int ajusteReta = (int)constrain((float)diffReta * GANHO_CORRECAO_RETA, -PWM_CORRECAO_MAX, PWM_CORRECAO_MAX);
 
-        int ajuste = (int)constrain(diff * GANHO_CORRECAO_RETA, -PWM_CORRECAO_MAX, PWM_CORRECAO_MAX);
+        int ajusteLateral = calcularCorrecaoLateral(ticksAtual);
 
-        // ========
-        // nova alt: usa o PWM base do modo atual (mapeamento = mais lento,
-        // corrida = mais rápido) em vez do PWM fixo
-        // ========
-        int pwmEsq = constrain(pwmBaseEsq - ajuste, 0, 255);
-        int pwmDir = constrain(pwmBaseDir + ajuste, 0, 255);
+        int ajusteTotal = constrain(ajusteReta + ajusteLateral, -PWM_CORRECAO_TOTAL_MAX, PWM_CORRECAO_TOTAL_MAX);
 
-        motorEsquerdoFrente(pwmEsq);
-        motorDireitoFrente(pwmDir);
+        int pwmAlvoEsq = constrain(pwmBaseEsq - ajusteTotal, PWM_MOTOR_MIN, PWM_MOTOR_MAX);
+        int pwmAlvoDir = constrain(pwmBaseDir + ajusteTotal, PWM_MOTOR_MIN, PWM_MOTOR_MAX);
+
+        // Rampa: nunca deixa o PWM pular mais que RAMPA_PWM_MAX_PASSO por ciclo
+        pwmAtualEsq += constrain(pwmAlvoEsq - pwmAtualEsq, -RAMPA_PWM_MAX_PASSO, RAMPA_PWM_MAX_PASSO);
+        pwmAtualDir += constrain(pwmAlvoDir - pwmAtualDir, -RAMPA_PWM_MAX_PASSO, RAMPA_PWM_MAX_PASSO);
+
+        motorEsquerdoFrente(pwmAtualEsq);
+        motorDireitoFrente(pwmAtualDir);
     }
 
     void turnRight() {
@@ -1365,13 +1185,6 @@ public:
         motorDireitoFrente(TURN_PWM_RIGHT);
     }
 
-    // ========
-    // nova alt: pulso de ré antes de curvas em quina, agora medido por
-    // encoder em vez de tempo fixo — mais consistente independente da
-    // velocidade real do motor. Refatorado pra uma função genérica
-    // (executarRe) reaproveitada tanto pela ré normal de curva quanto
-    // pela ré pequena de desempacar (ver mais abaixo).
-    // ========
     void executarRe(int pwm, long ticksAlvo, unsigned long timeoutMs) {
         resetEncoders();
 
@@ -1396,13 +1209,6 @@ public:
 
         stop();
 
-        // ========
-        // nova alt: print de diagnóstico — mostra quantos ticks a ré
-        // realmente conseguiu fazer o robô andar. Se esse número ficar
-        // sempre em 0 (ou muito baixo/igual em toda tentativa), é sinal
-        // de que o PWM usado não está vencendo o atrito estático do
-        // motor — ou seja, a ré não está movendo o robô de verdade.
-        // ========
         Serial.print("[MICROMOUSE] Re executada. PWM=");
         Serial.print(pwm);
         Serial.print(" alvo=");
@@ -1413,99 +1219,85 @@ public:
     }
 
     void pulsoReAntesDeCurva() {
-        executarRe(REVERSE_PULSE_PWM, REVERSE_PULSE_TICKS, REVERSE_PULSE_TIMEOUT_MS);
+        atualizarSensores();
+        // Nao de re em toda curva. Recuar fora do centro da celula foi uma das maiores fontes de erro.
+        // A re curta so acontece se o sensor frontal indicar risco real de bater na parede antes do giro.
+        if (sensorFrente.muitoProxima) {
+            executarRe(REVERSE_PULSE_PWM, REVERSE_PULSE_TICKS, REVERSE_PULSE_TIMEOUT_MS);
+        }
     }
 
-    // ========
-    // nova alt: ré BEM pequena de "desempacar", usada quando o robô fica
-    // repetindo o mesmo padrão de parede (quina) várias vezes seguidas
-    // sem avançar — às vezes só uma ré minúscula já libera o chassi de
-    // uma quina onde ele ficou meio preso fisicamente.
-    // ========
     void pulsoReDestravar() {
         executarRe(MICRO_RE_PWM, MICRO_RE_TICKS, MICRO_RE_TIMEOUT_MS);
     }
 
-    // ========
-    // nova alt (revisao travamento): versao PROGRESSIVA da re de
-    // desempaque. Recebe quantos ticks recuar nesta tentativa (calculado
-    // no loop, crescendo a cada tentativa do mesmo travamento). Usa timeout
-    // maior porque a re pode ser mais longa. Ataca o problema #1 (re curta
-    // nao vence o atrito pra permitir a curva).
-    // ========
     void pulsoReDestravarProgressivo(long ticksAlvo) {
         executarRe(MICRO_RE_PWM, ticksAlvo, MICRO_RE_TIMEOUT_PROG_MS);
     }
 
-    // ========
-    // nova alt: pausa mecânica simples antes de iniciar um giro (só
-    // garante que o chassi está parado de vez). Não lê mais sensor aqui —
-    // a leitura de verdade é toda concentrada em analisarArredores(), no
-    // topo do loop principal, depois que o movimento termina.
-    // ========
     void pararComLeitura(int tempoMs) {
         stop();
         delay(tempoMs);
     }
 
     bool andarUmaCelula() {
-        // ========
-        // nova alt: checagem rápida usando a ÚLTIMA leitura já feita pela
-        // análise de arredores (não faz uma leitura nova aqui) — isso é
-        // só uma rede de segurança, já que a decisão de mandar
-        // MOVE_FORWARD só acontece quando o sensor da frente já estava
-        // livre na última análise.
-        // ========
-        if (sensorFrente.wallDetected) {
+        limparFiltrosSensores();
+
+        if (sensorFrente.paredeDetectada) {
             stop();
             return false;
         }
 
-        // ========
-        // nova alt: PULSO DE ANDAMENTO SEM SENSOR. Pedido explícito: andar
-        // a célula inteira "com o sensor desligado" — ou seja, sem ler
-        // nem processar o sensor da frente durante o trajeto. A distância
-        // é controlada só pelo encoder (TICKS_PER_CELL). Isso reduz a
-        // quantidade de decisões tomadas no meio do movimento; a leitura
-        // de verdade só acontece DEPOIS, parado, na análise de arredores
-        // (analisarArredores(), chamada no topo do loop principal).
-        // Trade-off: se o encoder estiver mal calibrado ou a roda
-        // escorregar, não há mais parada de emergência por sensor durante
-        // o trajeto — por isso manter TICKS_PER_CELL bem calibrado é
-        // importante.
-        // ========
         resetEncoders();
 
+        bool chegouNaCelula = false;
+        long ticksAtual = 0;
         unsigned long inicio = millis();
-        unsigned long limiteSeguranca = inicio + CELL_FORWARD_TIMEOUT_MS;
+        unsigned long timeout = (modoAtual == MODO_MAPEAMENTO) ? CELL_FORWARD_TIMEOUT_MS : (CELL_FORWARD_TIMEOUT_MS - 250);
+        unsigned long limiteSeguranca = inicio + timeout;
 
         while (true) {
-            forwardComCorrecao();
+            atualizarSensores();
+            ticksAtual = lerMediaEncoders();
 
-            if (lerMediaEncoders() >= TICKS_PER_CELL) {
+            if (ticksAtual >= TICKS_PER_CELL) {
+                chegouNaCelula = true;
+                break;
+            }
+
+            if (sensorFrente.muitoProxima) {
+                // Se a parede frontal apareceu so no final da celula, considera que chegou ao centro da nova celula.
+                chegouNaCelula = ticksAtual >= TICKS_CELULA_OK_MIN;
                 break;
             }
 
             if (millis() > limiteSeguranca) {
-                // Segurança: encoder pode ter falhado/escorregado a roda.
-                // Para por tempo máximo em vez de travar o loop.
+                // Se quase completou a celula, aceita; caso contrario nao atualiza a posicao logica.
+                chegouNaCelula = ticksAtual >= TICKS_CELULA_OK_MIN;
                 break;
             }
 
+            forwardComCorrecao(ticksAtual);
             delay(SENSOR_UPDATE_TIME);
         }
 
         stop();
-        return true;
+
+        long ticksFinais = lerMediaEncoders();
+        if (!chegouNaCelula && ticksFinais >= TICKS_CELULA_OK_MIN) {
+            chegouNaCelula = true;
+        }
+
+        if (!chegouNaCelula) {
+            Serial.print("[MICROMOUSE] Avanco abortado antes de completar celula. ticks=");
+            Serial.print(ticksFinais);
+            Serial.print(" proxFrente=");
+            Serial.println(sensorFrente.proximidade);
+        }
+
+        return chegouNaCelula;
     }
 
-    // ========
-    // nova alt: as 3 curvas agora são bem mais simples — giram por tempo
-    // (TURN_TIME_90/180) sem ler sensor durante o giro, e sem nenhuma
-    // leitura pós-curva própria. A leitura de verdade é sempre feita
-    // depois, parada, por analisarArredores() no topo do loop principal
-    // — que agora é o ÚNICO lugar do código que processa os sensores.
-    // ========
     void virarDireita90() {
         Serial.println("[MICROMOUSE] EXECUTANDO CURVA 90");
         pararComLeitura(STOP_TIME_SETTLE);
@@ -1535,13 +1327,7 @@ public:
         stop();
     }
 
-    // ========
-    // nova alt (curva 45): giros de 45 graus, usados SOMENTE na curva de
-    // desempaque (logo apos a mini-re de destravamento). Sao copias diretas
-    // das versoes de 90, so trocando TURN_TIME_90 por TURN_TIME_45 — mesma
-    // mecanica, mesmo PWM de curva, so o tempo (angulo) muda. Nao entram no
-    // execute() padrao, entao NAO afetam nenhum giro normal.
-    // ========
+
     void virarDireita45() {
         Serial.println("[MICROMOUSE] EXECUTANDO CURVA 45");
         pararComLeitura(STOP_TIME_SETTLE);
@@ -1588,9 +1374,6 @@ public:
     }
 };
 
-// =============================================================================
-// CONTROLADOR DE NAVEGAÇÃO
-// =============================================================================
 class NavigationController {
 private:
     MazeMap *maze;
@@ -1678,9 +1461,7 @@ public:
     }
 };
 
-// =============================================================================
 // OBJETOS GLOBAIS
-// =============================================================================
 MazeMap maze;
 FloodFillNavigator floodFill(&maze);
 NavigationController navigator(&maze);
@@ -1688,28 +1469,13 @@ MotorController motors;
 
 RobotState estadoAtual = DESLIGADO;
 Position currentPos = {0, 0};
+Position ultimaPosicaoAntesDaAtual = {-1, -1};
 Direction currentDir = NORTH;
 
-// ========
-// nova alt: dois modos de operação.
-// MAPEAMENTO: anda devagar, célula por célula, parando e lendo os
-//   sensores com calma — usado pra descobrir o labirinto até o centro.
-// CORRIDA: usa o mapa já descoberto pra andar mais rápido (PWM normal),
-//   com leitura de sensores mais rápida entre as células.
-// O robô começa em MAPEAMENTO e muda pra CORRIDA sozinho quando chega ao
-// centro pela primeira vez. (enum definido no topo do arquivo)
-// ========
 ModoOperacao modoAtual = MODO_MAPEAMENTO;
 int pwmBaseEsq = PWM_LEFT_MAPEAMENTO;
 int pwmBaseDir = PWM_RIGHT_MAPEAMENTO;
 
-// ========
-// nova alt: objetivo atual da navegação. Depois que o mapeamento chega ao
-// centro, o robô passa a perseguir o INICIO (célula 0,0) em modo corrida,
-// usando o mapa recém-descoberto — e, ao chegar lá, faz uma última corrida
-// de volta ao centro (agora rápida) antes de finalizar de vez. Isso imita
-// o formato clássico de competição de micromouse: mapear, depois correr.
-// ========
 enum ObjetivoAtual : uint8_t { OBJETIVO_CENTRO, OBJETIVO_INICIO };
 ObjetivoAtual objetivoAtual = OBJETIVO_CENTRO;
 Position startGoal[1] = { {0, 0} };
@@ -1718,28 +1484,12 @@ bool atStart() {
     return currentPos.r == 0 && currentPos.c == 0;
 }
 
-// ========
-// nova alt: variável de controle do travamento — agora é só uma contagem
-// de comandos de giro consecutivos sem o robô avançar de célula. A versão
-// anterior comparava se os sensores "mudavam" antes/depois do giro, mas
-// isso sempre muda só por causa da reorientação (o sensor da frente passa
-// a olhar pra onde antes era lateral), então o contador nunca disparava de
-// verdade. Esse contador zera sempre que o robô avança com sucesso.
-// ========
 uint8_t tentativasGiroAtual = 0;
 bool robotTravado = false;
 
-// ========
-// nova alt (anti dois-90-na-quina): rastreia o ULTIMO comando de 90 feito
-// enquanto o rato esta preso na MESMA quina, pra impedir que ele complete
-// um SEGUNDO 90 pro mesmo lado (o que somaria 180 na direcao logica e faria
-// a telemetria achar que "voltou o caminho"). Quando isso seria o caso,
-// forcamos o desempaque (re + 45) no lugar do segundo 90. Zera quando ele
-// avanca de celula ou deixa de estar preso.
-//   ultimoGiro90Preso guarda TURN_LEFT_CMD ou TURN_RIGHT_CMD (ou STOP_CMD
-//   como "nenhum"). So e setado quando estaRealmentePreso.
-// ========
 MoveCommand ultimoGiro90Preso = STOP_CMD;
+uint8_t girosSemAvancoNaMesmaCelula = 0;
+Position posUltimoGiroSemAvanco = {-1, -1};
 
 Position centroGoals[4];
 
@@ -1752,9 +1502,6 @@ void atualizarCentroGoals() {
     centroGoals[3] = {(int8_t)mid,       (int8_t)mid};
 }
 
-// =============================================================================
-// FUNÇÕES AUXILIARES
-// =============================================================================
 void imprimirStatus() {
     Serial.print("POS: ");
     Serial.print(currentPos.r);
@@ -1765,13 +1512,22 @@ void imprimirStatus() {
     Serial.print(currentDir);
 
     Serial.print(" | ESQ: ");
-    Serial.print(sensorEsq.wallDetected ? "PAREDE" : "LIVRE");
+    Serial.print(sensorEsq.distanciaMM);
+    Serial.print("mm(");
+    Serial.print(sensorEsq.paredeDetectada ? "PAREDE" : "LIVRE");
+    Serial.print(")");
 
     Serial.print(" | FRENTE: ");
-    Serial.print(sensorFrente.wallDetected ? "PAREDE" : "LIVRE");
+    Serial.print(sensorFrente.proximidade);
+    Serial.print("prox(");
+    Serial.print(sensorFrente.paredeDetectada ? "PAREDE" : "LIVRE");
+    Serial.print(")");
 
     Serial.print(" | DIR_SENSOR: ");
-    Serial.print(sensorDir.wallDetected ? "PAREDE" : "LIVRE");
+    Serial.print(sensorDir.distanciaMM);
+    Serial.print("mm(");
+    Serial.print(sensorDir.paredeDetectada ? "PAREDE" : "LIVRE");
+    Serial.print(")");
 
     // ========  nova alt (bateria): mostra bateria no status de debug  ========
     Serial.print(" | BAT: ");
@@ -1781,58 +1537,551 @@ void imprimirStatus() {
     Serial.println("%)");
 }
 
-// =============================================================================
-// ATUALIZAÇÃO DE PAREDES
-// =============================================================================
+void aplicarLeituraParede(Position pos, AbsoluteWall parede, bool claramenteParede, bool claramenteLivre) {
+    // V3: nao deixa uma leitura ruim criar uma parede eterna.
+    // - Se esta claramente perto, marca parede.
+    // - Se esta claramente longe/livre, apaga a parede.
+    // - Se esta na faixa duvidosa, mantem o que o mapa ja sabia.
+    if (claramenteParede) {
+        maze.setWall(pos, parede, true);
+    } else if (claramenteLivre) {
+        maze.setWall(pos, parede, false);
+    }
+}
+
+bool lateralClaramenteParede(const SensorLateral &sensor) {
+    return sensor.ok && sensor.distanciaMM < DIST_LATERAL_PAREDE_MM;
+}
+
+bool lateralClaramenteLivre(const SensorLateral &sensor) {
+    // V4: para APAGAR parede do mapa, exige uma leitura mais aberta que o
+    // simples limiar de LIVRE. Um pico de 150..180 mm pode acontecer quando
+    // o sensor esta torto em relacao a parede e nao deve apagar uma parede.
+    return sensor.ok &&
+           sensor.distanciaMM >= DIST_LATERAL_LIVRE_MAPA_MM &&
+           sensor.distanciaMM < DIST_SEM_LEITURA_MM;
+}
+
+bool frenteClaramenteParede() {
+    return sensorFrente.ok && sensorFrente.proximidade > PROX_FRONTAL_PAREDE_DETECTADA;
+}
+
+bool frenteClaramenteLivre() {
+    return sensorFrente.ok && sensorFrente.proximidade < PROX_FRONTAL_LIVRE;
+}
+
 void updateWalls() {
-    bool front = sensorFrente.wallDetected;
-    bool right = sensorDir.wallDetected;
-    bool left  = sensorEsq.wallDetected;
+    bool frontParede = frenteClaramenteParede();
+    bool frontLivre  = frenteClaramenteLivre();
+    bool rightParede = lateralClaramenteParede(sensorDir);
+    bool rightLivre  = lateralClaramenteLivre(sensorDir);
+    bool leftParede  = lateralClaramenteParede(sensorEsq);
+    bool leftLivre   = lateralClaramenteLivre(sensorEsq);
 
     switch (currentDir) {
         case NORTH:
-            maze.setWall(currentPos, WALL_NORTH, front);
-            maze.setWall(currentPos, WALL_EAST, right);
-            maze.setWall(currentPos, WALL_WEST, left);
+            aplicarLeituraParede(currentPos, WALL_NORTH, frontParede, frontLivre);
+            aplicarLeituraParede(currentPos, WALL_EAST, rightParede, rightLivre);
+            aplicarLeituraParede(currentPos, WALL_WEST, leftParede, leftLivre);
             break;
 
         case EAST:
-            maze.setWall(currentPos, WALL_EAST, front);
-            maze.setWall(currentPos, WALL_SOUTH, right);
-            maze.setWall(currentPos, WALL_NORTH, left);
+            aplicarLeituraParede(currentPos, WALL_EAST, frontParede, frontLivre);
+            aplicarLeituraParede(currentPos, WALL_SOUTH, rightParede, rightLivre);
+            aplicarLeituraParede(currentPos, WALL_NORTH, leftParede, leftLivre);
             break;
 
         case SOUTH:
-            maze.setWall(currentPos, WALL_SOUTH, front);
-            maze.setWall(currentPos, WALL_WEST, right);
-            maze.setWall(currentPos, WALL_EAST, left);
+            aplicarLeituraParede(currentPos, WALL_SOUTH, frontParede, frontLivre);
+            aplicarLeituraParede(currentPos, WALL_WEST, rightParede, rightLivre);
+            aplicarLeituraParede(currentPos, WALL_EAST, leftParede, leftLivre);
             break;
 
         case WEST:
-            maze.setWall(currentPos, WALL_WEST, front);
-            maze.setWall(currentPos, WALL_NORTH, right);
-            maze.setWall(currentPos, WALL_SOUTH, left);
+            aplicarLeituraParede(currentPos, WALL_WEST, frontParede, frontLivre);
+            aplicarLeituraParede(currentPos, WALL_NORTH, rightParede, rightLivre);
+            aplicarLeituraParede(currentPos, WALL_SOUTH, leftParede, leftLivre);
             break;
     }
 }
 
-// =============================================================================
-// ATUALIZAÇÃO DE POSIÇÃO
-// =============================================================================
+void registrarPassagemLivreEntre(Position anterior, Position atual) {
+    if (!maze.valid(anterior.r, anterior.c) || !maze.valid(atual.r, atual.c)) {
+        return;
+    }
+
+    if (atual.r == anterior.r + 1 && atual.c == anterior.c) {
+        maze.setWall(anterior, WALL_NORTH, false);
+    } else if (atual.r == anterior.r - 1 && atual.c == anterior.c) {
+        maze.setWall(anterior, WALL_SOUTH, false);
+    } else if (atual.r == anterior.r && atual.c == anterior.c + 1) {
+        maze.setWall(anterior, WALL_EAST, false);
+    } else if (atual.r == anterior.r && atual.c == anterior.c - 1) {
+        maze.setWall(anterior, WALL_WEST, false);
+    }
+}
+
+void recomputarFloodFillObjetivo() {
+    if (objetivoAtual == OBJETIVO_CENTRO) {
+        floodFill.computeMulti(centroGoals, 4);
+    } else {
+        floodFill.computeMulti(startGoal, 1);
+    }
+}
+
+Direction direcaoResultanteDoComando(Direction dir, MoveCommand cmd) {
+    if (cmd == TURN_RIGHT_CMD) {
+        return (Direction)((dir + 1) & 0x03);
+    }
+
+    if (cmd == TURN_LEFT_CMD) {
+        return (Direction)((dir + 3) & 0x03);
+    }
+
+    if (cmd == TURN_BACK_CMD) {
+        return (Direction)((dir + 2) & 0x03);
+    }
+
+    return dir;
+}
+
+Position vizinhoRelativo(Position pos, Direction dir, MoveCommand cmd) {
+    Position destino = pos;
+    Direction destinoDir = direcaoResultanteDoComando(dir, cmd);
+
+    switch (destinoDir) {
+        case NORTH: destino.r++; break;
+        case EAST:  destino.c++; break;
+        case SOUTH: destino.r--; break;
+        case WEST:  destino.c--; break;
+    }
+
+    return destino;
+}
+
+bool mapaBloqueiaComando(MoveCommand cmd) {
+    if (!maze.valid(currentPos.r, currentPos.c)) {
+        return true;
+    }
+
+    Position destino = vizinhoRelativo(currentPos, currentDir, cmd);
+    if (!maze.valid(destino.r, destino.c)) {
+        return true;
+    }
+
+    Cell &cur = maze.get(currentPos.r, currentPos.c);
+    Direction destinoDir = direcaoResultanteDoComando(currentDir, cmd);
+
+    switch (destinoDir) {
+        case NORTH: return cur.northWall;
+        case EAST:  return cur.eastWall;
+        case SOUTH: return cur.southWall;
+        case WEST:  return cur.westWall;
+    }
+
+    return true;
+}
+
+uint8_t distFloodDoComando(MoveCommand cmd) {
+    if (mapaBloqueiaComando(cmd)) {
+        return INF;
+    }
+
+    Position destino = vizinhoRelativo(currentPos, currentDir, cmd);
+    return maze.get(destino.r, destino.c).dist;
+}
+
+bool destinoDoComandoVisitado(MoveCommand cmd) {
+    if (mapaBloqueiaComando(cmd)) {
+        return true;
+    }
+
+    Position destino = vizinhoRelativo(currentPos, currentDir, cmd);
+    return maze.get(destino.r, destino.c).visited;
+}
+
+bool lateralLivreParaCurva(const SensorLateral &sensor) {
+    // Em curva, so chama de livre quando a leitura esta bem acima do limiar.
+    // A faixa entre PAREDE e LIVRE fica como duvidosa, nao como parede.
+    // Timeout/sem leitura nao e usado como prova de livre para nao virar em parede por falha de I2C.
+    return lateralClaramenteLivre(sensor);
+}
+
+bool lateralBloqueadaParaCurva(const SensorLateral &sensor) {
+    // V3: antes a faixa 120..150 mm era tratada como bloqueada e podia gerar 180/giro em loop.
+    // Agora so bloqueia curva se realmente parecer parede.
+    return lateralClaramenteParede(sensor);
+}
+
+struct ClassificacaoLateralDecisao {
+    bool parede;
+    bool livre;
+    uint8_t validas;
+    uint8_t amostrasParede;
+    uint8_t amostrasLivre;
+    uint16_t minimo;
+    uint16_t maximo;
+    uint16_t media;
+};
+
+struct ClassificacaoLateralDecisao classificarLateralParaDecisao(struct SensorLateral &sensor);
+void imprimirClassificacaoLateral(const char *nome, const struct ClassificacaoLateralDecisao &cls);
+
+struct ClassificacaoLateralDecisao classificarLateralParaDecisao(struct SensorLateral &sensor) {
+    ClassificacaoLateralDecisao cls;
+    cls.parede = false;
+    cls.livre = false;
+    cls.validas = 0;
+    cls.amostrasParede = 0;
+    cls.amostrasLivre = 0;
+    cls.minimo = DIST_SEM_LEITURA_MM;
+    cls.maximo = 0;
+    cls.media = DIST_SEM_LEITURA_MM;
+
+    if (!sensor.ok) {
+        return cls;
+    }
+
+    uint32_t soma = 0;
+
+    for (uint8_t i = 0; i < AMOSTRAS_DECISAO_CURVA; i++) {
+        uint16_t mm = lerDistanciaLateralMM(sensor.vl, sensor.ok);
+
+        if (mm < DIST_SEM_LEITURA_MM) {
+            cls.validas++;
+            soma += mm;
+
+            if (mm < cls.minimo) cls.minimo = mm;
+            if (mm > cls.maximo) cls.maximo = mm;
+
+            if (mm < DIST_LATERAL_PAREDE_MM) {
+                cls.amostrasParede++;
+            }
+            if (mm >= DIST_LATERAL_LIVRE_CURVA_MM) {
+                cls.amostrasLivre++;
+            }
+        }
+
+        delay(INTERVALO_AMOSTRA_DECISAO_MS);
+    }
+
+    if (cls.validas > 0) {
+        cls.media = (uint16_t)(soma / cls.validas);
+    }
+
+    // Para bloquear curva, uma parede aparecendo repetidamente vale mais do
+    // que um pico alto isolado. Para liberar curva, exige maioria bem livre.
+    cls.parede = cls.validas >= MIN_AMOSTRAS_VALIDAS_CURVA &&
+                 cls.amostrasParede >= MIN_AMOSTRAS_PAREDE_CURVA;
+
+    cls.livre = cls.validas >= MIN_AMOSTRAS_VALIDAS_CURVA &&
+                !cls.parede &&
+                cls.amostrasLivre >= MIN_AMOSTRAS_LIVRE_CURVA &&
+                cls.media >= DIST_LATERAL_LIVRE_CURVA_MM;
+
+    return cls;
+}
+
+void imprimirClassificacaoLateral(const char *nome, const struct ClassificacaoLateralDecisao &cls) {
+    Serial.print("[MICROMOUSE] Decisao ");
+    Serial.print(nome);
+    Serial.print(": media=");
+    Serial.print(cls.media);
+    Serial.print(" min=");
+    Serial.print(cls.minimo);
+    Serial.print(" max=");
+    Serial.print(cls.maximo);
+    Serial.print(" validas=");
+    Serial.print(cls.validas);
+    Serial.print(" parede=");
+    Serial.print(cls.amostrasParede);
+    Serial.print(" livre=");
+    Serial.print(cls.amostrasLivre);
+    Serial.print(" => ");
+    Serial.println(cls.livre ? "LIVRE_ESTAVEL" : (cls.parede ? "PAREDE_ESTAVEL" : "DUVIDOSO"));
+}
+
+bool posicoesIguais(Position a, Position b) {
+    return a.r == b.r && a.c == b.c;
+}
+
+bool destinoComandoDentro(MoveCommand cmd) {
+    Position destino = vizinhoRelativo(currentPos, currentDir, cmd);
+    return maze.valid(destino.r, destino.c);
+}
+
+AbsoluteWall paredeAbsolutaDoComando(MoveCommand cmd) {
+    Direction destinoDir = direcaoResultanteDoComando(currentDir, cmd);
+
+    switch (destinoDir) {
+        case NORTH: return WALL_NORTH;
+        case EAST:  return WALL_EAST;
+        case SOUTH: return WALL_SOUTH;
+        case WEST:  return WALL_WEST;
+    }
+
+    return WALL_NORTH;
+}
+
+void limparParedeDoComandoSeDestinoValido(MoveCommand cmd) {
+    if (!destinoComandoDentro(cmd)) {
+        return;
+    }
+
+    maze.setWall(currentPos, paredeAbsolutaDoComando(cmd), false);
+}
+
+bool comandoVoltaParaCelulaAnterior(MoveCommand cmd) {
+    if (!maze.valid(ultimaPosicaoAntesDaAtual.r, ultimaPosicaoAntesDaAtual.c)) {
+        return false;
+    }
+
+    Position destino = vizinhoRelativo(currentPos, currentDir, cmd);
+    return posicoesIguais(destino, ultimaPosicaoAntesDaAtual);
+}
+
+MoveCommand escolherEntreLateraisLivres(MoveCommand cmdFlood, bool direitaLivre, bool esquerdaLivre) {
+    if (direitaLivre && !esquerdaLivre) {
+        return TURN_RIGHT_CMD;
+    }
+
+    if (esquerdaLivre && !direitaLivre) {
+        return TURN_LEFT_CMD;
+    }
+
+    if (direitaLivre && esquerdaLivre) {
+        if (modoAtual == MODO_MAPEAMENTO) {
+            bool direitaVolta = comandoVoltaParaCelulaAnterior(TURN_RIGHT_CMD);
+            bool esquerdaVolta = comandoVoltaParaCelulaAnterior(TURN_LEFT_CMD);
+
+            // Se os dois lados parecem livres, nao escolha a celula de onde acabou de vir
+            // a menos que o outro lado tambem volte. Isso reduz o comportamento de
+            // "voltar, virar de novo e depois acertar".
+            if (direitaVolta && !esquerdaVolta) {
+                return TURN_LEFT_CMD;
+            }
+            if (esquerdaVolta && !direitaVolta) {
+                return TURN_RIGHT_CMD;
+            }
+
+            bool direitaVisitada = destinoDoComandoVisitado(TURN_RIGHT_CMD);
+            bool esquerdaVisitada = destinoDoComandoVisitado(TURN_LEFT_CMD);
+
+            if (!direitaVisitada && esquerdaVisitada) {
+                return TURN_RIGHT_CMD;
+            }
+            if (!esquerdaVisitada && direitaVisitada) {
+                return TURN_LEFT_CMD;
+            }
+        }
+
+        if (cmdFlood == TURN_RIGHT_CMD || cmdFlood == TURN_LEFT_CMD) {
+            return cmdFlood;
+        }
+
+        uint8_t distDir = distFloodDoComando(TURN_RIGHT_CMD);
+        uint8_t distEsq = distFloodDoComando(TURN_LEFT_CMD);
+        return (distDir <= distEsq) ? TURN_RIGHT_CMD : TURN_LEFT_CMD;
+    }
+
+    return TURN_BACK_CMD;
+}
+
+MoveCommand escolherGiroSeguroPorSensores(MoveCommand cmdFlood) {
+    ClassificacaoLateralDecisao clsDir = classificarLateralParaDecisao(sensorDir);
+    ClassificacaoLateralDecisao clsEsq = classificarLateralParaDecisao(sensorEsq);
+
+    imprimirClassificacaoLateral("DIR", clsDir);
+    imprimirClassificacaoLateral("ESQ", clsEsq);
+
+    bool direitaLivre = clsDir.livre;
+    bool esquerdaLivre = clsEsq.livre;
+    bool direitaBloqueada = clsDir.parede;
+    bool esquerdaBloqueada = clsEsq.parede;
+
+    // Se o sensor esta ESTAVELMENTE livre, ele pode corrigir uma parede falsa
+    // que ficou gravada no mapa. Nao faz isso em borda externa do labirinto.
+    if (direitaLivre && mapaBloqueiaComando(TURN_RIGHT_CMD) && destinoComandoDentro(TURN_RIGHT_CMD)) {
+        Serial.println("[MICROMOUSE] Sensor direito livre estavel; apagando parede falsa do mapa.");
+        limparParedeDoComandoSeDestinoValido(TURN_RIGHT_CMD);
+    }
+    if (esquerdaLivre && mapaBloqueiaComando(TURN_LEFT_CMD) && destinoComandoDentro(TURN_LEFT_CMD)) {
+        Serial.println("[MICROMOUSE] Sensor esquerdo livre estavel; apagando parede falsa do mapa.");
+        limparParedeDoComandoSeDestinoValido(TURN_LEFT_CMD);
+    }
+
+    if (mapaBloqueiaComando(TURN_RIGHT_CMD)) {
+        direitaLivre = false;
+        direitaBloqueada = true;
+    }
+
+    if (mapaBloqueiaComando(TURN_LEFT_CMD)) {
+        esquerdaLivre = false;
+        esquerdaBloqueada = true;
+    }
+
+    MoveCommand lateral = escolherEntreLateraisLivres(cmdFlood, direitaLivre, esquerdaLivre);
+    if (lateral != TURN_BACK_CMD) {
+        return lateral;
+    }
+
+    // V4: se nenhum lado ficou LIVRE_ESTAVEL, nao vira para uma parede por
+    // chute. So usa um lado duvidoso quando o outro esta estavelmente bloqueado.
+    if (direitaBloqueada && !esquerdaBloqueada && !mapaBloqueiaComando(TURN_LEFT_CMD)) {
+        return TURN_LEFT_CMD;
+    }
+
+    if (esquerdaBloqueada && !direitaBloqueada && !mapaBloqueiaComando(TURN_RIGHT_CMD)) {
+        return TURN_RIGHT_CMD;
+    }
+
+    // Se os dois lados ficaram duvidosos, ainda podemos escolher o lado que
+    // esta muito mais aberto em media. Isso evita 180 desnecessario quando a
+    // abertura real nao passou por pouco no criterio LIVRE_ESTAVEL.
+    if (!direitaBloqueada && !esquerdaBloqueada) {
+        if (clsDir.validas >= MIN_AMOSTRAS_VALIDAS_CURVA &&
+            clsEsq.validas >= MIN_AMOSTRAS_VALIDAS_CURVA) {
+            int diffMedia = (int)clsDir.media - (int)clsEsq.media;
+
+            if (diffMedia >= MARGEM_MEDIA_ESCOLHA_DUVIDOSA_MM && !mapaBloqueiaComando(TURN_RIGHT_CMD)) {
+                Serial.println("[MICROMOUSE] Laterais duvidosas; escolhendo DIREITA por media bem maior.");
+                return TURN_RIGHT_CMD;
+            }
+            if (diffMedia <= -MARGEM_MEDIA_ESCOLHA_DUVIDOSA_MM && !mapaBloqueiaComando(TURN_LEFT_CMD)) {
+                Serial.println("[MICROMOUSE] Laterais duvidosas; escolhendo ESQUERDA por media bem maior.");
+                return TURN_LEFT_CMD;
+            }
+        }
+    }
+
+    // Se a frente estiver livre, e mais seguro seguir reto do que dar 180 por
+    // uma incerteza lateral. O flood fill recalcula na proxima celula.
+    if (!sensorFrente.paredeDetectada && !sensorFrente.muitoProxima && !mapaBloqueiaComando(MOVE_FORWARD)) {
+        return MOVE_FORWARD;
+    }
+
+    return TURN_BACK_CMD;
+}
+
+bool comandoBateEmParedePelosSensores(MoveCommand cmd) {
+    if (cmd == MOVE_FORWARD) {
+        return sensorFrente.paredeDetectada || sensorFrente.muitoProxima || mapaBloqueiaComando(cmd);
+    }
+
+    if (cmd == TURN_RIGHT_CMD) {
+        return lateralBloqueadaParaCurva(sensorDir) || mapaBloqueiaComando(cmd);
+    }
+
+    if (cmd == TURN_LEFT_CMD) {
+        return lateralBloqueadaParaCurva(sensorEsq) || mapaBloqueiaComando(cmd);
+    }
+
+    return false;
+}
+
+void revalidarSensoresPorTempo(unsigned long duracaoMs) {
+    motors.stop();
+    limparFiltrosSensores();
+
+    unsigned long inicio = millis();
+    while (millis() - inicio < duracaoMs) {
+        atualizarSensores();
+        atualizarBateria();
+        delay(SENSOR_UPDATE_TIME);
+    }
+}
+
+void revalidarSensoresParaCurva() {
+    revalidarSensoresPorTempo(TEMPO_RELEITURA_CURVA_MS);
+}
+
+void revalidarSensoresAposGiro() {
+    revalidarSensoresPorTempo(TEMPO_RELEITURA_APOS_GIRO_MS);
+}
+
+bool mesmaPosicao(Position a, Position b) {
+    return a.r == b.r && a.c == b.c;
+}
+
+void registrarGiroSemAvanco() {
+    if (mesmaPosicao(posUltimoGiroSemAvanco, currentPos)) {
+        girosSemAvancoNaMesmaCelula++;
+    } else {
+        posUltimoGiroSemAvanco = currentPos;
+        girosSemAvancoNaMesmaCelula = 1;
+    }
+
+    Serial.print("[MICROMOUSE] Giro sem avanco na mesma celula: ");
+    Serial.println(girosSemAvancoNaMesmaCelula);
+}
+
+void limparControleGiroSemAvanco() {
+    girosSemAvancoNaMesmaCelula = 0;
+    posUltimoGiroSemAvanco = {-1, -1};
+}
+
+MoveCommand corrigirComandoPorSensores(MoveCommand cmdFlood) {
+    bool frenteBloqueada = sensorFrente.paredeDetectada || sensorFrente.muitoProxima;
+
+    // Em mapeamento, evita dar meia-volta se ainda existe uma frente fisicamente livre.
+    // Isso reduz retornos prematuros causados por uma parede falsa gravada no mapa.
+    if (modoAtual == MODO_MAPEAMENTO && cmdFlood == TURN_BACK_CMD &&
+        !frenteBloqueada && !mapaBloqueiaComando(MOVE_FORWARD)) {
+        Serial.println("[MICROMOUSE] Flood queria 180, mas frente esta livre. Explorando frente.");
+        return MOVE_FORWARD;
+    }
+
+    // Se o flood quer virar, a lateral precisa estar livre de forma estavel.
+    // Caso contrario, preferimos seguir reto se for seguro, ou escolher outro giro seguro.
+    if (cmdFlood == TURN_RIGHT_CMD || cmdFlood == TURN_LEFT_CMD) {
+        SensorLateral &sensorAlvo = (cmdFlood == TURN_RIGHT_CMD) ? sensorDir : sensorEsq;
+        ClassificacaoLateralDecisao clsAlvo = classificarLateralParaDecisao(sensorAlvo);
+        imprimirClassificacaoLateral(cmdFlood == TURN_RIGHT_CMD ? "ALVO_DIR" : "ALVO_ESQ", clsAlvo);
+
+        if (clsAlvo.livre && mapaBloqueiaComando(cmdFlood) && destinoComandoDentro(cmdFlood)) {
+            limparParedeDoComandoSeDestinoValido(cmdFlood);
+        }
+
+        bool curvaSegura = clsAlvo.livre && !mapaBloqueiaComando(cmdFlood);
+        bool curvaBloqueada = clsAlvo.parede || mapaBloqueiaComando(cmdFlood);
+
+        if (!curvaSegura || curvaBloqueada) {
+            if (!frenteBloqueada && !mapaBloqueiaComando(MOVE_FORWARD)) {
+                Serial.println("[MICROMOUSE] Curva lateral nao ficou livre estavel. Seguindo frente por seguranca.");
+                return MOVE_FORWARD;
+            }
+
+            return escolherGiroSeguroPorSensores(cmdFlood);
+        }
+    }
+
+    if (frenteBloqueada) {
+        // Regra principal: com parede na frente, a escolha da curva vem da
+        // classificacao estavel dos VL53L0X, nao de uma unica leitura.
+        if (cmdFlood == MOVE_FORWARD || cmdFlood == TURN_BACK_CMD || comandoBateEmParedePelosSensores(cmdFlood)) {
+            return escolherGiroSeguroPorSensores(cmdFlood);
+        }
+    }
+
+    if (comandoBateEmParedePelosSensores(cmdFlood)) {
+        return escolherGiroSeguroPorSensores(cmdFlood);
+    }
+
+    return cmdFlood;
+}
+
+const char *nomeComando(MoveCommand cmd) {
+    switch (cmd) {
+        case MOVE_FORWARD:   return "FRENTE";
+        case TURN_LEFT_CMD:  return "ESQUERDA";
+        case TURN_RIGHT_CMD: return "DIREITA";
+        case TURN_BACK_CMD:  return "180";
+        case STOP_CMD:       return "PARAR";
+    }
+    return "?";
+}
+
 void updatePosition(MoveCommand cmd, bool avancou) {
-    // ========
-    // nova alt (correcao "voltou de celula"): GIRO SO MUDA A DIRECAO,
-    // NUNCA A POSICAO. Antes, uma curva de 90 (esq/dir) mudava a direcao
-    // E, se avancou==true, ainda incrementava currentPos na nova direcao —
-    // como esse incremento e negativo em algumas direcoes (r-- / c--), o
-    // site mostrava a celula "voltando" mesmo em um giro que era pra ser
-    // no mesmo lugar. No fluxo atual o rato VIRA num loop e so ANDA no
-    // proximo, entao quem move a celula e SO o MOVE_FORWARD. O 180 tambem
-    // apenas inverte a direcao aqui; o recuo real acontece naturalmente
-    // quando ele andar pra frente na nova direcao (que passou a ser a
-    // oposta). Assim, "voltar de celula" so ocorre via um giro de 180
-    // seguido de avanco — nunca pela re nem por uma curva de 90.
-    // ========
     switch (cmd) {
         case TURN_LEFT_CMD:
             currentDir = (Direction)((currentDir + 3) & 0x03);
@@ -1891,9 +2140,7 @@ void publicarTelemetria() {
     webSocket.broadcastTXT(jsonPayload);
 }
 
-// =============================================================================
 // VERIFICAÇÃO DE CHEGADA
-// =============================================================================
 bool atCenter() {
     uint8_t mid = mazeSize / 2;
 
@@ -1901,9 +2148,7 @@ bool atCenter() {
            (currentPos.c == mid - 1 || currentPos.c == mid);
 }
 
-// =============================================================================
 // COMANDOS RECEBIDOS DO SITE
-// =============================================================================
 void configurarNovaTentativa(uint8_t novoMazeSize) {
     if (!mazeSizeValido(novoMazeSize)) {
         Serial.println("[MICROMOUSE] Maze size invalido. Use 4, 8 ou 16.");
@@ -1915,6 +2160,7 @@ void configurarNovaTentativa(uint8_t novoMazeSize) {
     mazeSize = novoMazeSize;
 
     currentPos = {0, 0};
+    ultimaPosicaoAntesDaAtual = {-1, -1};
     currentDir = NORTH;
 
     modoAtual = MODO_MAPEAMENTO;
@@ -1929,6 +2175,8 @@ void configurarNovaTentativa(uint8_t novoMazeSize) {
     robotTravado = false;
     tentativasGiroAtual = 0;
     ultimoGiro90Preso = STOP_CMD;   // ========  nova alt (anti dois-90): zera ao iniciar tentativa  ========
+    girosSemAvancoNaMesmaCelula = 0;
+    posUltimoGiroSemAvanco = {-1, -1};
     comandoIniciarCorrida = false;
 
     numeroTentativa++;
@@ -1971,29 +2219,20 @@ void processarComandosSite() {
     }
 }
 
-// =============================================================================
-// SETUP
-// =============================================================================
 void setup() {
     Serial.begin(115200);
     delay(1000);
 
     randomSeed((uint32_t)millis());
 
-    initSensorParede(sensorEsq);
-    initSensorParede(sensorFrente);
-    initSensorParede(sensorDir);
+    Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
 
-    // ========
-    // nova alt: inicialização dos encoders esquerdo/direito
-    // ========
     initEncoders();
 
-    // ========
-    // nova alt (bateria): inicializa a INA226 (I2C). Se falhar, o robo
-    // segue funcionando normalmente e a bateria fica nos valores padrao.
-    // ========
     initBateriaINA226();
+
+
+    iniciarSensoresDistancia();
 
 #if USE_RGB
     pinMode(SENSOR_RGB_PIN, INPUT);
@@ -2017,13 +2256,6 @@ void setup() {
 
     Serial.println("Configurando Access Point...");
 
-    // ========
-    // nova alt: define o modo WiFi explicitamente como AP antes de criar
-    // o Access Point. Sem isso, dependendo do estado anterior do chip
-    // (ex: se em algum momento já tentou WiFi.begin() como estação), o
-    // rádio pode ficar num modo ambíguo e o AP não aparece de verdade
-    // pros dispositivos ao redor, mesmo sem erro visível no código.
-    // ========
     WiFi.mode(WIFI_AP);
     delay(100);
 
@@ -2059,9 +2291,6 @@ void setup() {
     Serial.println("[MICROMOUSE] Pronto. Aguardando START do site...");
 }
 
-// =============================================================================
-// LOOP PRINCIPAL
-// =============================================================================
 void loop() {
     if (estadoAtual == FINALIZADO) {
         webSocket.loop();
@@ -2083,12 +2312,7 @@ void loop() {
         return;
     }
 
-    // ========
-    // nova alt: mapeamento terminou e o robô está PARADO DE VEZ, esperando
-    // o comando "INICIAR_CORRIDA" do site via WebSocket. Continua mandando
-    // telemetria normalmente (o site precisa ver que ele tá parado e
-    // pronto). Só sai desse estado quando comandoIniciarCorrida vira true.
-    // ========
+
     if (estadoAtual == MAPEAMENTO_CONCLUIDO) {
         webSocket.loop();
         motors.stop();
@@ -2110,10 +2334,6 @@ void loop() {
         return;
     }
 
-    // ========
-    // nova alt: se o robô foi marcado como travado, para e avisa
-    // repetidamente em vez de continuar tentando se mover
-    // ========
     if (robotTravado) {
         webSocket.loop();
         motors.stop();
@@ -2122,18 +2342,6 @@ void loop() {
         return;
     }
 
-    // ========
-    // nova alt: CICLO DE PULSO REESTRUTURADO, exatamente como pedido:
-    // 1) fica PARADO analisando os arredores com calma (analisarArredores,
-    //    1 segundo no modo mapeamento) — único lugar do código que lê os
-    //    sensores de verdade
-    // 2) decide o que fazer com base NESSA leitura (reto ou curva)
-    // 3) executa o movimento (anda 1 célula OU vira) sem processar sensor
-    //    durante o trajeto (ver andarUmaCelula/virar*)
-    // 4) volta pro passo 1 na próxima volta do loop
-    // Isso concentra toda decisão em um momento só, com o robô sempre
-    // 100% parado, reduzindo bastante a chance de erro de curva.
-    // ========
     webSocket.loop();
     analisarArredores();
     imprimirStatus();
@@ -2142,27 +2350,13 @@ void loop() {
 
     updateWalls();
 
-    // ========
-    // nova alt: o alvo do flood fill agora depende do objetivo atual —
-    // CENTRO (mapeamento e corrida final) ou INICIO (corrida de volta,
-    // depois que o centro já foi mapeado pela primeira vez).
-    // ========
-    if (objetivoAtual == OBJETIVO_CENTRO) {
-        floodFill.computeMulti(centroGoals, 4);
-    } else {
-        floodFill.computeMulti(startGoal, 1);
-    }
+    recomputarFloodFillObjetivo();
 
     bool chegouCentro = atCenter() || corRGB == FINISH_COLOR;
     bool chegouInicio = atStart();
 
     if (objetivoAtual == OBJETIVO_CENTRO && chegouCentro) {
         if (modoAtual == MODO_MAPEAMENTO) {
-            // ========
-            // nova alt: terminou o mapeamento até o centro. PARA DE VEZ e
-            // fica esperando o comando "INICIAR_CORRIDA" do site via
-            // WebSocket — não troca mais de modo sozinho.
-            // ========
             Serial.println("[MICROMOUSE] Mapeamento concluido! Parado, aguardando comando do site...");
             estadoAtual = MAPEAMENTO_CONCLUIDO;
             motors.stop();
@@ -2176,209 +2370,111 @@ void loop() {
             Serial.println("[MICROMOUSE] CORRIDA FINAL CONCLUIDA! Encerrando...");
         }
     } else if (objetivoAtual == OBJETIVO_INICIO && chegouInicio) {
-        // ========
-        // nova alt: voltou ao início em modo corrida. Agora faz a corrida
-        // final de volta ao centro, já rápida, usando o mapa conhecido.
-        // ========
         Serial.println("[MICROMOUSE] De volta ao inicio! Iniciando corrida final ate o centro...");
         objetivoAtual = OBJETIVO_CENTRO;
     }
 
     if (estadoAtual == MOVIMENTO_FRENTE && !robotTravado) {
-        MoveCommand cmd = navigator.decide(currentPos, currentDir);
+        recomputarFloodFillObjetivo();
+        MoveCommand cmdFlood = navigator.decide(currentPos, currentDir);
 
-        // ========
-        // nova alt (revisao travamento #3): FRENTE LIVRE = VAI RETO.
-        // Se o sensor da frente esta livre AGORA, o rato anda em frente,
-        // independente do que o flood fill preferiu. Isso resolve o caso
-        // em que ha espaco pra avancar mas o mapa mandava virar, e esse
-        // giro "eletivo" era contado como travamento e disparava re/45 a
-        // toa. Regra simples e robusta: se da pra ir reto, va reto — so
-        // depois disso se pensa em virar ou desempacar.
-        // (So sobrescreve pra frente; a decisao de curva do flood fill
-        // continua valendo quando a frente estiver bloqueada.)
-        // ========
-        if (!sensorFrente.wallDetected) {
-            cmd = MOVE_FORWARD;
-        } else {
-            // ========
-            // nova alt: parede na frente AGORA. Escolhe o giro pelo lado
-            // livre (mesma regra de quina de antes).
-            //   1 lado livre  -> 90 pro lado livre
-            //   os 2 laterais bloqueados -> 180
-            // ========
-            if (!sensorDir.wallDetected) {
-                cmd = TURN_RIGHT_CMD;
-            } else if (!sensorEsq.wallDetected) {
-                cmd = TURN_LEFT_CMD;
+        // Quando a frente esta bloqueada, para e rele os VL53L0X antes de escolher lado.
+        // Isso reduz leituras erradas causadas por o rato estar torto na entrada da celula.
+        if (sensorFrente.paredeDetectada || sensorFrente.muitoProxima) {
+            revalidarSensoresParaCurva();
+            updateWalls();
+            recomputarFloodFillObjetivo();
+            cmdFlood = navigator.decide(currentPos, currentDir);
+        }
+
+        MoveCommand cmd = corrigirComandoPorSensores(cmdFlood);
+
+        if (cmd != cmdFlood) {
+            Serial.print("[MICROMOUSE] Comando corrigido pelos sensores: ");
+            Serial.print(nomeComando(cmdFlood));
+            Serial.print(" -> ");
+            Serial.println(nomeComando(cmd));
+        }
+
+        bool comandoEhGiro = (cmd == TURN_LEFT_CMD || cmd == TURN_RIGHT_CMD || cmd == TURN_BACK_CMD);
+
+        Position posicaoAnterior = currentPos;
+        bool avancou = false;
+
+        if (cmd == MOVE_FORWARD) {
+            avancou = motors.execute(MOVE_FORWARD);
+            updatePosition(MOVE_FORWARD, avancou);
+        } else if (comandoEhGiro) {
+            // V3: giro nao pode ser uma acao final. Depois de girar, o rato deve tentar sair da celula.
+            // Isso elimina o loop "gira, para, redecide, gira de novo" na mesma posicao logica.
+            motors.pulsoReAntesDeCurva();
+            motors.execute(cmd);
+            updatePosition(cmd, false);  // atualiza somente a direcao
+
+            revalidarSensoresAposGiro();
+            updateWalls();
+            recomputarFloodFillObjetivo();
+
+            bool frenteLivreDepoisDoGiro = !sensorFrente.paredeDetectada &&
+                                           !sensorFrente.muitoProxima &&
+                                           !mapaBloqueiaComando(MOVE_FORWARD);
+
+            if (frenteLivreDepoisDoGiro) {
+                Serial.println("[MICROMOUSE] Curva concluida; frente livre. Avancando na mesma decisao.");
+                posicaoAnterior = currentPos;
+                avancou = motors.execute(MOVE_FORWARD);
+                updatePosition(MOVE_FORWARD, avancou);
             } else {
-                cmd = TURN_BACK_CMD;
+                Serial.println("[MICROMOUSE] Curva terminou sem frente livre. Marcando parede e reavaliando sem girar em loop.");
+                updateWalls();
+                registrarGiroSemAvanco();
             }
         }
 
-        // ========
-        // nova alt (revisao travamento #2 e #4): O QUE CONTA COMO "PRESO".
-        // Antes, QUALQUER giro consecutivo incrementava o contador de
-        // travamento — mas girar e uma decisao normal (corredor que dobra),
-        // nao sinal de estar preso. Isso inflava o contador em situacoes
-        // saudaveis e disparava desempaque/45/re onde nao devia (inclusive
-        // logo depois de ajuste manual).
-        //
-        // Agora o contador SO conta quando o rato esta REALMENTE preso:
-        // - o comando e um giro E
-        // - a frente esta bloqueada (nao ha pra onde ir reto).
-        // Qualquer avanco (ou frente livre) ZERA o contador. Assim, se voce
-        // ajusta o rato na mao e a frente fica livre, ele anda e o contador
-        // reseta — nao fica repetindo micro-re (resolve o #4).
-        // ========
-        bool comandoEhGiro = (cmd == TURN_LEFT_CMD || cmd == TURN_RIGHT_CMD || cmd == TURN_BACK_CMD);
-        bool estaRealmentePreso = comandoEhGiro && sensorFrente.wallDetected;
-        bool jaFezReDestravar = false;
-
-        // ========
-        // nova alt (anti dois-90-na-quina): detecta se ESTE comando e um 90
-        // pro MESMO lado do 90 anterior feito enquanto preso. Se for, NAO
-        // deixa completar o segundo 90 (que fecharia 180 na direcao logica e
-        // pareceria "voltou o caminho"). Em vez disso, forca o caminho de
-        // desempaque (re + 45) mais abaixo. So vale quando estaRealmentePreso
-        // e o comando e um 90 (o 180 explicito TURN_BACK_CMD nao entra aqui —
-        // esse sim pode voltar o caminho, como voce pediu).
-        // ========
-        bool seriaSegundo90MesmoLado =
-            estaRealmentePreso &&
-            (cmd == TURN_LEFT_CMD || cmd == TURN_RIGHT_CMD) &&
-            (cmd == ultimoGiro90Preso);
-
-        if (seriaSegundo90MesmoLado) {
-            Serial.println("[MICROMOUSE] Bloqueado 2o 90 na quina (evita 'voltar'). Forcando desempaque 45.");
-        }
-
-        // ========
-        // nova alt: se NAO esta realmente preso (ex: frente livre, ou vai
-        // andar), zera o contador de travamento imediatamente. E a rede de
-        // seguranca que impede o desempaque de disparar fora de contexto.
-        // ========
-        if (!estaRealmentePreso) {
+        if (avancou) {
+            ultimaPosicaoAntesDaAtual = posicaoAnterior;
+            registrarPassagemLivreEntre(posicaoAnterior, currentPos);
+            atualizarMapaMovimento(posicaoAnterior, currentPos);
             tentativasGiroAtual = 0;
-            ultimoGiro90Preso = STOP_CMD;   // ========  nova alt: fora de quina, esquece o ultimo 90  ========
-        }
-
-        if (estaRealmentePreso) {
+            ultimoGiro90Preso = STOP_CMD;
+            limparControleGiroSemAvanco();
+        } else {
+            // Nao atualiza posicao se nao completou a celula. Marca paredes de novo e tenta redecidir no proximo loop.
+            updateWalls();
             tentativasGiroAtual++;
 
-            Serial.print("[MICROMOUSE] Preso (frente bloqueada), tentativa: ");
-            Serial.println(tentativasGiroAtual);
+            if (girosSemAvancoNaMesmaCelula >= MAX_GIROS_SEM_AVANCO_MESMA_CELULA) {
+                Serial.println("[MICROMOUSE] Anti-loop: muitos giros sem sair da mesma celula. Tentando re curta e nova leitura.");
+                motors.pulsoReDestravarProgressivo(MICRO_RE_TICKS_BASE);
+                revalidarSensoresParaCurva();
+                updateWalls();
 
-            if (tentativasGiroAtual >= TENTATIVAS_PARA_RE_DESTRAVAR) {
-                // ========
-                // nova alt (revisao travamento #1): RE PROGRESSIVA. A cada
-                // tentativa de desempaque no mesmo travamento, a re cresce
-                // (base + step * numero de tentativas de desempaque), ate um
-                // teto. Ataca o caso em que a re curta nao vence o atrito
-                // pra permitir a curva.
-                // ========
-                uint8_t tentDesempaque = tentativasGiroAtual - TENTATIVAS_PARA_RE_DESTRAVAR;
-                long ticksRe = MICRO_RE_TICKS_BASE + (long)tentDesempaque * MICRO_RE_TICKS_STEP;
-                if (ticksRe > MICRO_RE_TICKS_MAX) {
-                    ticksRe = MICRO_RE_TICKS_MAX;
+                if (!sensorFrente.paredeDetectada && !sensorFrente.muitoProxima && !mapaBloqueiaComando(MOVE_FORWARD)) {
+                    Position posAntesRecuperacao = currentPos;
+                    bool avancouRecuperacao = motors.execute(MOVE_FORWARD);
+                    updatePosition(MOVE_FORWARD, avancouRecuperacao);
+
+                    if (avancouRecuperacao) {
+                        ultimaPosicaoAntesDaAtual = posAntesRecuperacao;
+                        registrarPassagemLivreEntre(posAntesRecuperacao, currentPos);
+                        atualizarMapaMovimento(posAntesRecuperacao, currentPos);
+                        tentativasGiroAtual = 0;
+                        ultimoGiro90Preso = STOP_CMD;
+                        limparControleGiroSemAvanco();
+                        avancou = true;
+                    }
                 }
-
-                Serial.print("[MICROMOUSE] Desempaque: re progressiva de ");
-                Serial.print(ticksRe);
-                Serial.println(" ticks...");
-
-                motors.pulsoReDestravarProgressivo(ticksRe);
-                jaFezReDestravar = true;
             }
 
-            if (tentativasGiroAtual >= MIN_TENTATIVAS_GIRO) {
+            if (!avancou && tentativasGiroAtual >= MIN_TENTATIVAS_GIRO) {
                 robotTravado = true;
                 motors.stop();
-                Serial.println("[MICROMOUSE] TRAVAMENTO DETECTADO - preso demais tempo no mesmo lugar.");
+                Serial.println("[MICROMOUSE] TRAVAMENTO DETECTADO - varias tentativas sem completar celula.");
             }
         }
 
-        if (!robotTravado) {
-            // ========
-            // nova alt (curva 45, revisao): so faz 45 graus quando esta em
-            // travamento REAL (jaFezReDestravar so liga em estaRealmentePreso
-            // agora) E o giro e um 90 (esq/dir). Como o gatilho de "preso"
-            // ficou mais rigoroso, o 45 nao aparece mais no meio de curvas
-            // normais (resolve o #2). O 180 continua 180 normal.
-            // ========
-            if (jaFezReDestravar && (cmd == TURN_RIGHT_CMD || cmd == TURN_LEFT_CMD)) {
-                // Curva reduzida de 45 graus logo apos a re de desempaque.
-                // (A re progressiva ja aconteceu; nao faz a re normal aqui.)
-                if (cmd == TURN_RIGHT_CMD) {
-                    motors.virarDireita45();
-                } else {
-                    motors.virarEsquerda45();
-                }
-
-                // ========
-                // nova alt (curva 45): o giro de 45 NAO completa uma virada
-                // de 90, entao a orientacao logica (currentDir) NAO muda de
-                // quadrante — por isso NAO chamamos updatePosition aqui. Na
-                // proxima volta o rato reavalia ja realinhado.
-                // ========
-            } else if (seriaSegundo90MesmoLado && (cmd == TURN_RIGHT_CMD || cmd == TURN_LEFT_CMD)) {
-                // ========
-                // nova alt (anti dois-90-na-quina): este seria o SEGUNDO 90 pro
-                // mesmo lado (fecharia 180 e pareceria "voltar"). Bloqueamos o
-                // 90 e fazemos re + 45 no lugar. NAO completa o 90, entao
-                // currentDir NAO fecha 180 por acumulo e a telemetria nao
-                // registra reversao de caminho. NAO atualiza ultimoGiro90Preso
-                // (nao houve 90 completo).
-                // ========
-                motors.pulsoReAntesDeCurva();
-                if (cmd == TURN_RIGHT_CMD) {
-                    motors.virarDireita45();
-                } else {
-                    motors.virarEsquerda45();
-                }
-            } else {
-                // ========
-                // Fluxo normal de movimento: se for um giro (e nao houve
-                // desempaque nesta tentativa), da a re normal antes da curva;
-                // depois executa (andar 1 celula OU virar 90/180).
-                // ========
-                if (comandoEhGiro && !jaFezReDestravar) {
-                    motors.pulsoReAntesDeCurva();
-                }
-
-                Position posicaoAnterior = currentPos;
-                bool avancou = motors.execute(cmd);
-
-                updatePosition(cmd, avancou);
-
-                // ========
-                // nova alt (anti dois-90): se ESTE comando foi um 90 completo
-                // (esq/dir) feito enquanto preso, registra o lado. Assim, se na
-                // proxima tentativa a decisao for o MESMO 90 e ele continuar
-                // preso, o bloco de cima bloqueia o segundo 90 e faz 45. Um 90
-                // pro lado oposto reconfigura naturalmente (oposto !=
-                // ultimoGiro90Preso, entao passa e vira normal).
-                // ========
-                if (estaRealmentePreso && (cmd == TURN_LEFT_CMD || cmd == TURN_RIGHT_CMD)) {
-                    ultimoGiro90Preso = cmd;
-                }
-
-                if (avancou) {
-                    atualizarMapaMovimento(posicaoAnterior, currentPos);
-
-                    // ========
-                    // nova alt: avancou de celula -> zera o contador de
-                    // travamento e o rastreador de 90 (celula nova, historia
-                    // de quina reiniciada).
-                    // ========
-                    tentativasGiroAtual = 0;
-                    ultimoGiro90Preso = STOP_CMD;
-                }
-
-                if (maze.valid(currentPos.r, currentPos.c)) {
-                    maze.get(currentPos.r, currentPos.c).visited = 1;
-                }
-            }
+        if (maze.valid(currentPos.r, currentPos.c)) {
+            maze.get(currentPos.r, currentPos.c).visited = 1;
         }
     }
 
