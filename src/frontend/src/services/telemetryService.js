@@ -150,11 +150,143 @@ export function getMazeMockData(mazeSize, startCorner = DEFAULT_START_CORNER) {
   };
 }
 
+function normalizePathPoint(point) {
+  if (!Array.isArray(point) || point.length < 2) {
+    return null;
+  }
+
+  const row = Number(point[0]);
+  const col = Number(point[1]);
+
+  if (!Number.isFinite(row) || !Number.isFinite(col)) {
+    return null;
+  }
+
+  return [row, col];
+}
+
+export function resolvePositionFromPath(visitedPath, fallbackStart = null) {
+  if (Array.isArray(visitedPath) && visitedPath.length > 0) {
+    return visitedPath.at(-1);
+  }
+
+  return fallbackStart ?? null;
+}
+
+export function resolveVisitedPath(raw, fallbackPosition = null) {
+  const rawPath = raw?.visitedPath;
+
+  if (Array.isArray(rawPath) && rawPath.length > 0) {
+    const normalized = [];
+
+    for (const point of rawPath) {
+      const pathPoint = normalizePathPoint(point);
+      if (!pathPoint) {
+        continue;
+      }
+
+      const last = normalized.at(-1);
+      if (last && last[0] === pathPoint[0] && last[1] === pathPoint[1]) {
+        continue;
+      }
+
+      normalized.push(pathPoint);
+    }
+
+    if (normalized.length > 0) {
+      return normalized;
+    }
+  }
+
+  const fallback = normalizePathPoint(fallbackPosition);
+  return fallback ? [fallback] : [];
+}
+
+function isAdjacentPathPoint(previous, current) {
+  return Math.abs(previous[0] - current[0]) + Math.abs(previous[1] - current[1]) === 1;
+}
+
+function isPointInsideGrid(row, col, grid) {
+  return row >= 0 && row < grid.length && col >= 0 && col < grid[0].length;
+}
+
+export function sanitizeVisitedPath(path = [], grid = null) {
+  if (!Array.isArray(path) || path.length === 0) {
+    return [];
+  }
+
+  const sanitized = [];
+
+  for (const point of path) {
+    const pathPoint = normalizePathPoint(point);
+    if (!pathPoint) {
+      break;
+    }
+
+    const [row, col] = pathPoint;
+
+    if (grid) {
+      if (!isPointInsideGrid(row, col, grid)) {
+        break;
+      }
+
+      if (grid[row][col] === 1) {
+        break;
+      }
+    }
+
+    const previous = sanitized.at(-1);
+    if (previous && !isAdjacentPathPoint(previous, pathPoint)) {
+      break;
+    }
+
+    sanitized.push(pathPoint);
+  }
+
+  return sanitized;
+}
+
+export function applyStuckFreeze(telemetry, frozenPathRef) {
+  const isStuck = telemetry.status === 'stuck' || telemetry.stuckFlag;
+
+  if (isStuck) {
+    if (!frozenPathRef.current) {
+      frozenPathRef.current = telemetry.visitedPath;
+    }
+  } else if (telemetry.status === 'waiting' || telemetry.status === 'idle') {
+    frozenPathRef.current = null;
+  }
+
+  const visitedPath = frozenPathRef.current ?? telemetry.visitedPath;
+
+  return {
+    ...telemetry,
+    visitedPath,
+    position: resolvePositionFromPath(visitedPath, telemetry.start),
+  };
+}
+
+function inferFallbackPosition(raw) {
+  const fromPosition = normalizePathPoint(raw?.position);
+  if (fromPosition) {
+    return fromPosition;
+  }
+
+  if (
+    Number.isFinite(Number(raw?.posVRecente))
+    && Number.isFinite(Number(raw?.posHRecente))
+  ) {
+    return [Number(raw.posVRecente), Number(raw.posHRecente)];
+  }
+
+  return null;
+}
+
 export function getMockTelemetrySnapshot(stepIndex, mazeSize = 8, startCorner = DEFAULT_START_CORNER) {
   const maze = getMazeMockData(mazeSize, startCorner);
   const step = Math.min(stepIndex, maze.path.length - 1);
-  const position = maze.path[step];
   const visitedPath = maze.path.slice(0, step + 1);
+  const position = resolvePositionFromPath(visitedPath, maze.start);
   const isFinished = step === maze.path.length - 1;
 
   return {
@@ -205,20 +337,20 @@ function mapRobotStatus(rawStatus) {
 
 export function normalizeTelemetry(raw) {
   const grid = raw.mapa ?? raw.grid ?? null;
-  const position =
-    raw.position ??
-    (Number.isFinite(Number(raw.posVRecente)) && Number.isFinite(Number(raw.posHRecente))
-      ? [Number(raw.posVRecente), Number(raw.posHRecente)]
-      : null);
+  const fallbackPosition = inferFallbackPosition(raw);
+  const rawPath = resolveVisitedPath(raw, fallbackPosition);
+  const visitedPath = sanitizeVisitedPath(rawPath, grid);
+  const position = resolvePositionFromPath(visitedPath, raw.start ?? fallbackPosition);
+  const mappedStatus = mapRobotStatus(raw.status);
 
   return {
     mazeSize: raw.mazeSize ?? inferMazeSizeFromGrid(grid),
     position,
-    visitedPath: raw.visitedPath ?? (position ? [position] : []),
+    visitedPath,
     goal: raw.goal ?? null,
     start: raw.start ?? null,
     grid,
-    status: mapRobotStatus(raw.status),
+    status: raw.travado ? 'stuck' : mappedStatus,
     elapsedSeconds: raw.elapsedSeconds ?? 0,
     batteryPercent: raw.batteryPercent ?? raw.bateriaAtual ?? null,
     speedMps: raw.speedMps ?? raw.velocidadeAtual ?? null,
@@ -294,14 +426,17 @@ export function sendStopCommand(socket) {
 }
 
 export function analysisToMazeViewProps(analysis, pathKey = 'outboundPath') {
-  const visitedPath = analysis?.[pathKey] ?? [];
+  const visitedPath = resolveVisitedPath(
+    { visitedPath: analysis?.[pathKey] ?? [] },
+    analysis?.start ?? null,
+  );
 
   return {
     grid: analysis.grid,
     visitedPath,
     start: analysis.start,
     goal: analysis.goal,
-    position: visitedPath[visitedPath.length - 1] ?? analysis.start,
+    position: resolvePositionFromPath(visitedPath, analysis.start),
     status: pathKey === 'optimalPath' ? 'success' : 'running',
   };
 }

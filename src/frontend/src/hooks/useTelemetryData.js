@@ -5,10 +5,12 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  applyStuckFreeze,
   connectTelemetrySocket,
   getEmptyTelemetry,
   getMazeMockData,
   getMockTelemetrySnapshot,
+  resolvePositionFromPath,
   sendStartMappingCommand,
   sendStartRaceCommand,
   sendStopCommand,
@@ -35,6 +37,7 @@ function useLiveTelemetry(mazeSize, startCorner) {
   // é enviado só uma vez por montagem do Dashboard — não a cada reconexão do
   // broker/ESP32, pra não reiniciar o mapeamento/corrida do robô à toa.
   const mappingStartedRef = useRef(false);
+  const frozenPathRef = useRef(null);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -56,7 +59,7 @@ function useLiveTelemetry(mazeSize, startCorner) {
         },
         onTelemetry: (telemetry) => {
           if (mountedRef.current) {
-            setData(telemetry);
+            setData(applyStuckFreeze(telemetry, frozenPathRef));
           }
         },
       });
@@ -124,6 +127,7 @@ function useLiveTelemetry(mazeSize, startCorner) {
   }, []);
 
   const reset = useCallback(() => {
+    frozenPathRef.current = null;
     setData(getEmptyTelemetry());
   }, []);
 
@@ -154,10 +158,11 @@ function useMockTelemetry(mazeSize, startCorner) {
 
   const totalSteps = getMazeMockData(mazeSize, startCorner).path.length;
   const snapshot = getMockTelemetrySnapshot(step, mazeSize, startCorner);
+  const visitedPath = status === 'waiting' ? [snapshot.start] : snapshot.visitedPath;
   const data = {
     ...snapshot,
-    position: status === 'waiting' ? snapshot.start : snapshot.position,
-    visitedPath: status === 'waiting' ? [snapshot.start] : snapshot.visitedPath,
+    visitedPath,
+    position: resolvePositionFromPath(visitedPath, snapshot.start),
     status,
     elapsedSeconds: status === 'waiting' ? 0 : snapshot.elapsedSeconds,
     batteryPercent: status === 'waiting' ? 100 : snapshot.batteryPercent,

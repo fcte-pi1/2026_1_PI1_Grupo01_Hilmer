@@ -50,6 +50,11 @@
   z-index: 1;
 }
 
+.mouseStuck {
+  background: #dc2626;
+  box-shadow: 0 0 10px #dc2626;
+}
+
 .goal {
   background: var(--color-goal);
   border-radius: 50%;

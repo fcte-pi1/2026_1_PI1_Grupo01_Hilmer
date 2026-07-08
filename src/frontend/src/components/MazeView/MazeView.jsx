@@ -13,9 +13,10 @@ function cellType(row, col, grid, position, goal, start, visitedPath) {
   return 'path';
 }
 
-export function MazeView({ grid, position, goal, start, visitedPath, status }) {
+export function MazeView({ grid, position, goal, start, visitedPath = [], status }) {
   if (!grid) return null;
 
+  const mousePosition = position ?? visitedPath.at(-1) ?? null;
   const rows = grid.length;
   const cols = grid[0].length;
 
@@ -27,12 +28,13 @@ export function MazeView({ grid, position, goal, start, visitedPath, status }) {
       >
         {grid.map((row, r) =>
           row.map((_, c) => {
-            const type = cellType(r, c, grid, position, goal, start, visitedPath);
+            const type = cellType(r, c, grid, mousePosition, goal, start, visitedPath);
             const isGoalSuccess = type === 'goal' && status === 'success';
+            const isMouseStuck = type === 'mouse' && status === 'stuck';
             return (
               <div
                 key={`${r}-${c}`}
-                className={`${styles.cell} ${styles[type]} ${isGoalSuccess ? styles.goalSuccess : ''}`}
+                className={`${styles.cell} ${styles[type]} ${isGoalSuccess ? styles.goalSuccess : ''} ${isMouseStuck ? styles.mouseStuck : ''}`}
                 title={type === 'mouse' ? `Mouse (${r},${c})` : type === 'goal' ? 'Objetivo' : ''}
               />
             );
