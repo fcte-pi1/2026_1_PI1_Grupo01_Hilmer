@@ -177,6 +177,10 @@ function mapRobotStatus(rawStatus) {
     return 'waiting';
   }
 
+  if (rawStatus === 'stopped') {
+    return 'stopped';
+  }
+
   return rawStatus ?? 'running';
 }
 

@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { MazeView } from '../components/MazeView/MazeView';
 import { Sidebar } from '../components/Sidebar/Sidebar';
 import { useTelemetryData } from '../hooks/useTelemetryData';
-import { criarHistorico, criarPassoTrajeto } from '../services/apiService';
+import { criarHistorico, criarPassoTrajeto, listarTrajeto } from '../services/apiService';
 import { mazeSizeToTipoLabirinto } from '../utils/helpers';
 import styles from './Dashboard.module.css';
 
@@ -110,15 +110,27 @@ export function Dashboard() {
           visitedPath: data.visitedPath,
         });
 
-        if (!historicoResponse?.alreadyPersisted) {
-          const numTentativa = historicoResponse?.data?.numtentativa;
-          const trajectoryPayload = buildTrajectoryPayload(
-            numTentativa,
-            data.visitedPath,
-            data.mazeSize ?? mazeSize,
-          );
+        const numTentativa = historicoResponse?.data?.numtentativa;
+        const trajectoryPayload = buildTrajectoryPayload(
+          numTentativa,
+          data.visitedPath,
+          data.mazeSize ?? mazeSize,
+        );
 
-          if (numTentativa && trajectoryPayload.length > 0) {
+        if (numTentativa && trajectoryPayload.length > 0) {
+          let shouldUploadTrajeto = !historicoResponse?.alreadyPersisted;
+
+          if (historicoResponse?.alreadyPersisted) {
+            try {
+              const trajetoResponse = await listarTrajeto(numTentativa);
+              const existingSteps = trajetoResponse?.data ?? [];
+              shouldUploadTrajeto = existingSteps.length === 0;
+            } catch {
+              shouldUploadTrajeto = true;
+            }
+          }
+
+          if (shouldUploadTrajeto) {
             await Promise.all(trajectoryPayload.map((step) => criarPassoTrajeto(step)));
           }
         }

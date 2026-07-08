@@ -28,6 +28,7 @@ export function statusLabel(status) {
     success: 'SUCESSO',
     failure: 'FALHA',
     stuck: 'TRAVADO',
+    stopped: 'INTERROMPIDO',
     waiting: 'AGUARDANDO INÍCIO',
     idle: 'AGUARDANDO',
   };

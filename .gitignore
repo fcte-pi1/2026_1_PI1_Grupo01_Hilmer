@@ -12,6 +12,8 @@ build/
 # Playwright / Vitest artifacts
 src/frontend/playwright-report/
 src/frontend/test-results/
+src/frontend/coverage/
+coverage/
 # Playwright
 test-results/
 playwright-report/
