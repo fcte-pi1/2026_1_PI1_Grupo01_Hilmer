@@ -18,6 +18,12 @@ const persistedByEspAttempt = new Map();
 /** @type {Map<number|string, Promise<{ alreadyPersisted: boolean, record: object }>>} */
 const inflightByEspAttempt = new Map();
 
+const TERMINAL_STATUSES = new Set(['success', 'waiting_run', 'stuck', 'stopped']);
+
+function isTerminalStatus(status) {
+  return TERMINAL_STATUSES.has(status);
+}
+
 function shouldResetRun(status) {
   return status === 'waiting' || status === 'waiting_start';
 }
@@ -47,12 +53,33 @@ function resolveMazeSize(payload) {
 }
 
 function buildTrajetoSteps(payload) {
-  const bufferedSteps = liveTrajetoBuffer.listar();
-  if (bufferedSteps.length > 0) {
-    return bufferedSteps;
+  const fromVisitedPath = visitedPathToCellSteps(
+    payload?.visitedPath ?? [],
+    resolveMazeSize(payload),
+  );
+
+  if (fromVisitedPath.length > 0) {
+    return fromVisitedPath;
   }
 
-  return visitedPathToCellSteps(payload?.visitedPath ?? [], resolveMazeSize(payload));
+  return liveTrajetoBuffer.listar();
+}
+
+function resolveDesafioCumprido(payload) {
+  const status = payload?.status;
+  if (status === 'success' || status === 'waiting_run') {
+    return 'SIM';
+  }
+  if (status === 'stuck' || status === 'stopped') {
+    return 'NAO';
+  }
+
+  const historico = payload?.historico ?? {};
+  if (historico.desafioCumprido === 'NAO' || payload.desafioCumprido === 'NAO') {
+    return 'NAO';
+  }
+
+  return 'SIM';
 }
 
 function buildHistoricoPayload(payload) {
@@ -70,10 +97,7 @@ function buildHistoricoPayload(payload) {
       historico.tempoConclusao
       || payload.tempoConclusao
       || new Date().toISOString(),
-    desafioCumprido:
-      historico.desafioCumprido === 'NAO' || payload.desafioCumprido === 'NAO'
-        ? 'NAO'
-        : 'SIM',
+    desafioCumprido: resolveDesafioCumprido(payload),
     correnteEletrica: toFiniteNumber(
       historico.correnteEletrica ?? payload.correnteEletrica ?? payload.correnteRecente,
       0,
@@ -103,6 +127,37 @@ function clearRunBuffers() {
   liveTrajetoBuffer.limpar();
 }
 
+function prepareNewRun(payload) {
+  const espKey = resolveEspAttemptKey(payload);
+
+  if (espKey !== null && inflightByEspAttempt.has(espKey)) {
+    return;
+  }
+
+  if (espKey !== null) {
+    persistedByEspAttempt.delete(espKey);
+  }
+
+  clearRunBuffers();
+}
+
+function isNewRunStart(payload) {
+  const status = payload?.status;
+
+  if (shouldResetRun(status)) {
+    return true;
+  }
+
+  if (status === 'running') {
+    const passo = Number(payload?.trajetoAtual?.passo);
+    if (Number.isFinite(passo) && passo === 1) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 async function handleLiveTelemetry(payload) {
   if (!payload || typeof payload !== 'object') {
     return null;
@@ -110,9 +165,11 @@ async function handleLiveTelemetry(payload) {
 
   const status = payload.status;
 
-  if (shouldResetRun(status)) {
-    clearRunBuffers();
-    return null;
+  if (isNewRunStart(payload)) {
+    prepareNewRun(payload);
+    if (shouldResetRun(status)) {
+      return null;
+    }
   }
 
   if (payload.tempoColeta) {
@@ -121,7 +178,7 @@ async function handleLiveTelemetry(payload) {
 
   liveTrajetoBuffer.registrar(payload.trajetoAtual);
 
-  if (status === 'success') {
+  if (isTerminalStatus(status)) {
     return persistSuccessfulAttempt(payload);
   }
 
@@ -132,9 +189,14 @@ async function persistSuccessfulAttempt(payload = {}, options = {}) {
   const espKey = resolveEspAttemptKey(payload, options.espNumTentativa);
 
   if (espKey !== null && persistedByEspAttempt.has(espKey)) {
+    const existing = persistedByEspAttempt.get(espKey);
+    console.warn(
+      `[attemptService] Tentativa espKey=${espKey} já persistida como numTentativa=${existing?.numtentativa}. `
+      + 'Nova corrida deve resetar idempotência via prepareNewRun ou START.',
+    );
     return {
       alreadyPersisted: true,
-      record: persistedByEspAttempt.get(espKey),
+      record: existing,
     };
   }
 
@@ -191,9 +253,13 @@ async function persistFromHttpRequest(body) {
   const espKey = body.espNumTentativa ?? body.numTentativaEsp ?? null;
 
   if (espKey !== null && espKey !== undefined && persistedByEspAttempt.has(espKey)) {
+    const existing = persistedByEspAttempt.get(espKey);
+    console.warn(
+      `[attemptService] POST /api/historico: espKey=${espKey} já persistida como numTentativa=${existing?.numtentativa}.`,
+    );
     return {
       alreadyPersisted: true,
-      record: persistedByEspAttempt.get(espKey),
+      record: existing,
     };
   }
 

@@ -59,8 +59,19 @@ wssReact.on('connection', (ws) => {
   // ESP32 conectada. Sem isso, o botão "Iniciar corrida" do dashboard não
   // tem nenhum efeito no robô.
   ws.on('message', (data) => {
+    const raw = data.toString();
+
+    try {
+      const command = JSON.parse(raw);
+      if (command?.type === 'START' || command?.type === 'START_RUN') {
+        attemptService.resetAttemptState();
+      }
+    } catch {
+      // Comando não-JSON: repassa à ESP32 sem alterar estado.
+    }
+
     if (esp32Socket && esp32Socket.readyState === WebSocket.OPEN) {
-      esp32Socket.send(data.toString());
+      esp32Socket.send(raw);
     } else {
       console.warn('[backend] Comando do site descartado: ESP32 não está conectada.');
     }
