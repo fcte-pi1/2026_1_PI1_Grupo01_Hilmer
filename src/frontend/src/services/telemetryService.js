@@ -2,6 +2,13 @@
 // e normaliza o payload retransmitido da ESP32 para o formato usado pelos
 // componentes do dashboard (MazeView/Sidebar).
 
+import {
+  DEFAULT_START_CORNER,
+  mirrorGridForCorner,
+  mirrorPointForCorner,
+  normalizeStartCorner,
+} from '../utils/startCorner';
+
 const DEFAULT_WS_URL = 'ws://localhost:3001';
 
 const MOCK_MAZES = {
@@ -125,15 +132,26 @@ export function getEmptyTelemetry() {
     attemptNumber: null,
     awaitingRun: false,
     stuckFlag: false,
+    startCorner: DEFAULT_START_CORNER,
   };
 }
 
-export function getMazeMockData(mazeSize) {
-  return MOCK_MAZES[mazeSize] ?? MOCK_MAZES[8];
+export function getMazeMockData(mazeSize, startCorner = DEFAULT_START_CORNER) {
+  const maze = MOCK_MAZES[mazeSize] ?? MOCK_MAZES[8];
+  const normalizedStartCorner = normalizeStartCorner(startCorner);
+
+  return {
+    ...maze,
+    startCorner: normalizedStartCorner,
+    grid: mirrorGridForCorner(maze.grid, normalizedStartCorner),
+    start: mirrorPointForCorner(maze.start, maze.size, normalizedStartCorner),
+    goal: mirrorPointForCorner(maze.goal, maze.size, normalizedStartCorner),
+    path: maze.path.map((point) => mirrorPointForCorner(point, maze.size, normalizedStartCorner)),
+  };
 }
 
-export function getMockTelemetrySnapshot(stepIndex, mazeSize = 8) {
-  const maze = getMazeMockData(mazeSize);
+export function getMockTelemetrySnapshot(stepIndex, mazeSize = 8, startCorner = DEFAULT_START_CORNER) {
+  const maze = getMazeMockData(mazeSize, startCorner);
   const step = Math.min(stepIndex, maze.path.length - 1);
   const position = maze.path[step];
   const visitedPath = maze.path.slice(0, step + 1);
@@ -152,6 +170,7 @@ export function getMockTelemetrySnapshot(stepIndex, mazeSize = 8) {
     speedMps: Number((0.45 + (step % 3) * 0.05).toFixed(2)),
     correnteEletrica: 1.2,
     tensaoEletrica: 7.4,
+    startCorner: maze.startCorner,
   };
 }
 
@@ -209,6 +228,7 @@ export function normalizeTelemetry(raw) {
     attemptNumber: raw.numTentativa ?? null,
     awaitingRun: raw.aguardandoCorrida ?? false,
     stuckFlag: raw.travado ?? false,
+    startCorner: normalizeStartCorner(raw.startCorner),
   };
 }
 
@@ -257,8 +277,12 @@ function sendCommand(socket, payload) {
   return false;
 }
 
-export function sendStartMappingCommand(socket, mazeSize) {
-  return sendCommand(socket, { type: 'START', mazeSize });
+export function sendStartMappingCommand(socket, mazeSize, startCorner = DEFAULT_START_CORNER) {
+  return sendCommand(socket, {
+    type: 'START',
+    mazeSize,
+    startCorner: normalizeStartCorner(startCorner),
+  });
 }
 
 export function sendStartRaceCommand(socket) {

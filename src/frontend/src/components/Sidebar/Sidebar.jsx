@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../Button/Button';
 import { StatusBadge } from '../StatusBadge/StatusBadge';
 import { formatBattery, formatMazeDimension, formatSpeed, formatTime } from '../../utils/helpers';
+import { formatStartCorner } from '../../utils/startCorner';
 import styles from './Sidebar.module.css';
 
 function InfoRow({ label, value }) {
@@ -22,7 +23,16 @@ function ConnectionBadge({ connected, onlineLabel = 'CONECTADO' }) {
   );
 }
 
-export function Sidebar({ data, connected, esp32Connected, onStart, onStop, onReset, onReconnectEsp32 }) {
+export function Sidebar({
+  data,
+  connected,
+  esp32Connected,
+  onStart,
+  onStop,
+  onReset,
+  onReconnectEsp32,
+  selectedStartCorner,
+}) {
   const navigate = useNavigate();
   const [reconnecting, setReconnecting] = useState(false);
 
@@ -46,6 +56,7 @@ export function Sidebar({ data, connected, esp32Connected, onStart, onStop, onRe
         <h3 className={styles.sectionTitle}>Telemetria</h3>
         <InfoRow label="ESP32" value={<ConnectionBadge connected={esp32Connected} onlineLabel="CONECTADA" />} />
         <InfoRow label="Dimensão" value={data.mazeSize ? formatMazeDimension(data.mazeSize) : '---'} />
+        <InfoRow label="Canto inicial" value={formatStartCorner(data.startCorner ?? selectedStartCorner)} />
         <InfoRow label="Tentativa nº" value={data.attemptNumber ?? '---'} />
         <InfoRow label="Bateria" value={data.batteryPercent != null ? formatBattery(data.batteryPercent) : '---'} />
         <InfoRow label="Velocidade" value={data.speedMps != null ? formatSpeed(data.speedMps) : '---'} />

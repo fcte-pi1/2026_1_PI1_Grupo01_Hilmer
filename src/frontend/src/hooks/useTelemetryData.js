@@ -14,13 +14,14 @@ import {
   sendStopCommand,
 } from '../services/telemetryService';
 import { getStatusEsp32, reconectarEsp32 } from '../services/apiService';
+import { DEFAULT_START_CORNER } from '../utils/startCorner';
 
 const RECONNECT_DELAY_MS = 2000;
 const TICK_MS = 800;
 const ESP32_STATUS_POLL_MS = 4000;
 const TELEMETRY_MODE = import.meta.env.VITE_TELEMETRY_MODE || 'mock';
 
-function useLiveTelemetry(mazeSize) {
+function useLiveTelemetry(mazeSize, startCorner) {
   const [data, setData] = useState(getEmptyTelemetry());
   const [connected, setConnected] = useState(false);
   // `connected` só diz se o navegador está falando com o backend (broker).
@@ -71,6 +72,11 @@ function useLiveTelemetry(mazeSize) {
   }, []);
 
   useEffect(() => {
+    mappingStartedRef.current = false;
+    setData(getEmptyTelemetry());
+  }, [mazeSize, startCorner]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function pollEsp32Status() {
@@ -103,11 +109,11 @@ function useLiveTelemetry(mazeSize) {
       return;
     }
 
-    const sent = sendStartMappingCommand(socketRef.current, mazeSize);
+    const sent = sendStartMappingCommand(socketRef.current, mazeSize, startCorner);
     if (sent) {
       mappingStartedRef.current = true;
     }
-  }, [connected, esp32Connected, mazeSize]);
+  }, [connected, esp32Connected, mazeSize, startCorner]);
 
   const start = useCallback(() => {
     sendStartRaceCommand(socketRef.current);
@@ -135,7 +141,7 @@ function useLiveTelemetry(mazeSize) {
   return { data, connected, esp32Connected, start, stop, reset, reconnectEsp32, mode: 'live' };
 }
 
-function useMockTelemetry(mazeSize) {
+function useMockTelemetry(mazeSize, startCorner) {
   const [step, setStep] = useState(0);
   const [status, setStatus] = useState('waiting');
   const intervalRef = useRef(null);
@@ -144,10 +150,10 @@ function useMockTelemetry(mazeSize) {
     clearInterval(intervalRef.current);
     setStep(0);
     setStatus('waiting');
-  }, [mazeSize]);
+  }, [mazeSize, startCorner]);
 
-  const totalSteps = getMazeMockData(mazeSize).path.length;
-  const snapshot = getMockTelemetrySnapshot(step, mazeSize);
+  const totalSteps = getMazeMockData(mazeSize, startCorner).path.length;
+  const snapshot = getMockTelemetrySnapshot(step, mazeSize, startCorner);
   const data = {
     ...snapshot,
     position: status === 'waiting' ? snapshot.start : snapshot.position,
@@ -211,10 +217,12 @@ function useMockTelemetry(mazeSize) {
   return { data, connected: true, esp32Connected: true, start, stop, reset, reconnectEsp32, mode: 'mock' };
 }
 
-export function useTelemetryData(mazeSize = 8) {
+export function useTelemetryData(mazeSize = 8, startCorner = DEFAULT_START_CORNER) {
+  const normalizedStartCorner = startCorner ?? DEFAULT_START_CORNER;
+
   if (TELEMETRY_MODE === 'live') {
-    return useLiveTelemetry(mazeSize);
+    return useLiveTelemetry(mazeSize, normalizedStartCorner);
   }
 
-  return useMockTelemetry(mazeSize);
+  return useMockTelemetry(mazeSize, normalizedStartCorner);
 }

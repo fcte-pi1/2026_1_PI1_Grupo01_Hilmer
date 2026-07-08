@@ -20,8 +20,14 @@ const wss = new WebSocketServer({ port: PORTA });
 
 console.log(`[simulador] ESP32 simulada rodando em ws://127.0.0.1:${PORTA}`);
 
+const START_CORNERS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
+
 function mazeSizeValido(value) {
   return value === 4 || value === 8 || value === 16;
+}
+
+function normalizeStartCorner(value) {
+  return START_CORNERS.includes(value) ? value : 'top-left';
 }
 
 // nova alt: 1 célula real = 1 posição na matriz + borda fixa de 1 célula
@@ -30,7 +36,23 @@ function celulaParaMapa(r, c) {
   return [r + 1, c + 1];
 }
 
-function gerarCaminho(mazeSize) {
+function transformarPonto(point, mazeSize, startCorner) {
+  const [r, c] = point;
+  const last = mazeSize - 1;
+
+  switch (normalizeStartCorner(startCorner)) {
+    case 'top-right':
+      return [r, last - c];
+    case 'bottom-left':
+      return [last - r, c];
+    case 'bottom-right':
+      return [last - r, last - c];
+    default:
+      return [r, c];
+  }
+}
+
+function gerarCaminho(mazeSize, startCorner = 'top-left') {
   const center = Math.floor(mazeSize / 2) - 1;
   const path = [];
   let r = 0;
@@ -46,15 +68,29 @@ function gerarCaminho(mazeSize) {
     path.push([r, c]);
   }
 
-  return path;
+  return path.map((point) => transformarPonto(point, mazeSize, startCorner));
+}
+
+function inferirDirecao(previous, current, next) {
+  const origin = previous ?? current;
+  const destination = next ?? current;
+  const rowDelta = destination[0] - origin[0];
+  const colDelta = destination[1] - origin[1];
+
+  if (rowDelta < 0) return 'NORTE';
+  if (rowDelta > 0) return 'SUL';
+  if (colDelta > 0) return 'LESTE';
+  if (colDelta < 0) return 'OESTE';
+  return 'NORTE';
 }
 
 wss.on('connection', (ws) => {
   console.log('[simulador] Backend conectado.');
 
   let mazeSize = 16;
+  let startCorner = 'top-left';
   let mapSize = mazeSize + 2;
-  let caminhoIda = gerarCaminho(mazeSize);
+  let caminhoIda = gerarCaminho(mazeSize, startCorner);
   let mapa = criarMapaVazio(mapSize);
   let numTentativa = Math.floor(Math.random() * 9000) + 1000;
   let tempoInicial = Date.now();
@@ -78,17 +114,19 @@ wss.on('connection', (ws) => {
     mapa[mr][mc] = 0;
   }
 
-  function reiniciarTentativa(novoMazeSize) {
+  function reiniciarTentativa(novoMazeSize, novoStartCorner) {
     mazeSize = novoMazeSize;
+    startCorner = normalizeStartCorner(novoStartCorner);
     mapSize = mazeSize + 2;
-    caminhoIda = gerarCaminho(mazeSize);
+    caminhoIda = gerarCaminho(mazeSize, startCorner);
     mapa = criarMapaVazio(mapSize);
     numTentativa += 1;
     tempoInicial = Date.now();
     passo = 0;
     velocidadeAtualMps = 0;
     fase = 'MAPEANDO';
-    marcarVisitado(0, 0);
+    const [startRow, startCol] = caminhoIda[0];
+    marcarVisitado(startRow, startCol);
   }
 
   function caminhoAtual() {
@@ -142,8 +180,9 @@ wss.on('connection', (ws) => {
       elapsedSeconds,
       batteryPercent: null,
       speedMps: velocidadeAtualMps,
+      startCorner,
       position: celulaParaMapa(atual[0], atual[1]),
-      start: celulaParaMapa(0, 0),
+      start: celulaParaMapa(caminhoIda[0][0], caminhoIda[0][1]),
       goal: celulaParaMapa(...caminhoIda[caminhoIda.length - 1]),
       visitedPath,
       trajetoAtual: {
@@ -151,7 +190,11 @@ wss.on('connection', (ws) => {
         passo: passo + 1,
         pos_h: atual[1],
         pos_v: atual[0],
-        direcao: 'NORTE',
+        direcao: inferirDirecao(
+          caminho[Math.max(passo - 1, 0)] ?? null,
+          atual,
+          caminho[passo + 1] ?? null,
+        ),
       },
       mapa,
       historico: {
@@ -224,13 +267,14 @@ wss.on('connection', (ws) => {
 
     if (type === 'START') {
       const novoMazeSize = Number(comando.mazeSize);
+      const novoStartCorner = normalizeStartCorner(comando.startCorner);
       if (!mazeSizeValido(novoMazeSize)) {
         ws.send(JSON.stringify({ type: 'ERROR', message: 'mazeSize invalido. Use 4, 8 ou 16.', receivedMazeSize: novoMazeSize }));
         return;
       }
-      reiniciarTentativa(novoMazeSize);
-      responderComando('START', { mazeSize: novoMazeSize });
-      console.log(`[simulador] START recebido. mazeSize=${novoMazeSize}`);
+      reiniciarTentativa(novoMazeSize, novoStartCorner);
+      responderComando('START', { mazeSize: novoMazeSize, startCorner: novoStartCorner });
+      console.log(`[simulador] START recebido. mazeSize=${novoMazeSize}, startCorner=${novoStartCorner}`);
       return;
     }
 

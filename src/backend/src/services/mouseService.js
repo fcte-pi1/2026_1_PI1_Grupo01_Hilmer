@@ -52,8 +52,13 @@ function getCenterCells(mazeSize) {
   ];
 }
 
-function getStartCell() {
-  return { row: 0, col: 0 };
+function getStartCell(path = []) {
+  const firstStep = path[0];
+  if (!firstStep) {
+    return { row: 0, col: 0 };
+  }
+
+  return { row: firstStep.row, col: firstStep.col };
 }
 
 function isCenterCell(row, col, mazeSize) {
@@ -203,7 +208,7 @@ function splitTrajetoPhases(trajeto, mazeSize) {
   let centerIdx = path.findIndex(({ row, col }) => isCenterCell(row, col, mazeSize));
   if (centerIdx < 0) centerIdx = path.length - 1;
 
-  const start = getStartCell();
+  const start = getStartCell(path);
   let returnEndIdx = path.findIndex(
     ({ row, col }, index) =>
       index > centerIdx && row === start.row && col === start.col,
@@ -230,7 +235,7 @@ function analyzeAttempt(trajeto, telemetria, tipoLabirinto) {
   const grid = buildCellGrid(matchedSteps, mazeSize);
   const { outbound, returnPath } = splitTrajetoPhases(trajeto, mazeSize);
   const optimalPath = selectShorterPath(outbound, returnPath);
-  const start = getStartCell();
+  const start = getStartCell(trajetoToPath(trajeto, mazeSize));
   const mid = Math.floor(mazeSize / 2);
 
   return {

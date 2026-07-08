@@ -5,6 +5,7 @@ import { Sidebar } from '../components/Sidebar/Sidebar';
 import { useTelemetryData } from '../hooks/useTelemetryData';
 import { criarHistorico, criarPassoTrajeto, listarTrajeto } from '../services/apiService';
 import { mazeSizeToTipoLabirinto } from '../utils/helpers';
+import { DEFAULT_START_CORNER } from '../utils/startCorner';
 import styles from './Dashboard.module.css';
 
 function inferDirection(previousPosition, currentPosition, nextPosition) {
@@ -85,7 +86,11 @@ export function buildTrajectoryPayload(numTentativa, visitedPath = [], mazeSize 
 export function Dashboard() {
   const location = useLocation();
   const mazeSize = location.state?.mazeSize ?? 8;
-  const { data, connected, esp32Connected, start, stop, reset, reconnectEsp32 } = useTelemetryData(mazeSize);
+  const startCorner = location.state?.startCorner ?? DEFAULT_START_CORNER;
+  const { data, connected, esp32Connected, start, stop, reset, reconnectEsp32 } = useTelemetryData(
+    mazeSize,
+    startCorner,
+  );
   const [saveError, setSaveError] = useState(null);
   const hasSavedRef = useRef(false);
 
@@ -167,6 +172,7 @@ export function Dashboard() {
         data={data}
         connected={connected}
         esp32Connected={esp32Connected}
+        selectedStartCorner={startCorner}
         onStart={handleStart}
         onStop={handleStop}
         onReset={handleReset}

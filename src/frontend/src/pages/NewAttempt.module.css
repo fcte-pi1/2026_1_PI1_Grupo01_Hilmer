@@ -111,6 +111,10 @@
   gap: 0.5rem;
 }
 
+.cornerGrid {
+  grid-template-columns: repeat(2, 1fr);
+}
+
 .presetBtn {
   background: transparent;
   border: 1px solid var(--color-sidebar-border, #2a2d3a);
@@ -150,7 +154,7 @@
   border-radius: 3px;
   cursor: pointer;
   transition: background 0.2s, transform 0.15s;
-  align-self: flex-end;
+  align-self: stretch;
 }
 
 .activateBtn:hover:not(:disabled) {
@@ -166,4 +170,23 @@
   background: var(--color-surface, #1e2130);
   color: #555e7a;
   cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+  .container {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    width: 100%;
+    min-width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--color-sidebar-border, #2a2d3a);
+  }
+
+  .main {
+    padding: 1.5rem;
+  }
 }

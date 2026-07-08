@@ -58,4 +58,19 @@ describe('mouseService.analyzeAttempt', () => {
   it('selectShorterPath retorna o menor caminho', () => {
     expect(mouseService.selectShorterPath([[0, 0], [0, 1], [0, 2]], [[0, 0]])).toEqual([[0, 0]]);
   });
+
+  it('infere o canto inicial a partir do primeiro passo do trajeto', () => {
+    const trajeto = [
+      { passo: 1, pos_h: 3, pos_v: 0, direcao: 'SUL' },
+      { passo: 2, pos_h: 2, pos_v: 0, direcao: 'OESTE' },
+      { passo: 3, pos_h: 1, pos_v: 1, direcao: 'SUL' },
+      { passo: 4, pos_h: 2, pos_v: 0, direcao: 'LESTE' },
+      { passo: 5, pos_h: 3, pos_v: 0, direcao: 'LESTE' },
+    ];
+
+    const analysis = mouseService.analyzeAttempt(trajeto, [], '4x4');
+
+    expect(analysis.start).toEqual([0, 3]);
+    expect(analysis.returnPath.at(-1)).toEqual([0, 3]);
+  });
 });

@@ -226,6 +226,13 @@ enum Direction : uint8_t {
     WEST  = 3
 };
 
+enum StartCorner : uint8_t {
+    START_TOP_LEFT = 0,
+    START_TOP_RIGHT = 1,
+    START_BOTTOM_LEFT = 2,
+    START_BOTTOM_RIGHT = 3
+};
+
 enum MoveCommand : uint8_t {
     MOVE_FORWARD,
     TURN_LEFT_CMD,
@@ -547,6 +554,69 @@ extern Direction currentDir;
 extern RobotState estadoAtual;
 extern ModoOperacao modoAtual;
 extern bool robotTravado; // ========  nova alt: flag de travamento usada na telemetria  ========
+extern Position startGoal[1];
+extern StartCorner startCornerAtual;
+
+const char *startCornerParaTexto(StartCorner corner) {
+    switch (corner) {
+        case START_TOP_RIGHT:
+            return "top-right";
+        case START_BOTTOM_LEFT:
+            return "bottom-left";
+        case START_BOTTOM_RIGHT:
+            return "bottom-right";
+        case START_TOP_LEFT:
+        default:
+            return "top-left";
+    }
+}
+
+bool textoParaStartCorner(const String &texto, StartCorner &corner) {
+    if (texto == "TOP-LEFT" || texto == "TOP_LEFT") {
+        corner = START_TOP_LEFT;
+        return true;
+    }
+    if (texto == "TOP-RIGHT" || texto == "TOP_RIGHT") {
+        corner = START_TOP_RIGHT;
+        return true;
+    }
+    if (texto == "BOTTOM-LEFT" || texto == "BOTTOM_LEFT") {
+        corner = START_BOTTOM_LEFT;
+        return true;
+    }
+    if (texto == "BOTTOM-RIGHT" || texto == "BOTTOM_RIGHT") {
+        corner = START_BOTTOM_RIGHT;
+        return true;
+    }
+
+    return false;
+}
+
+Position posicaoInicialParaCanto(StartCorner corner) {
+    switch (corner) {
+        case START_TOP_RIGHT:
+            return {0, (int8_t)(mazeSize - 1)};
+        case START_BOTTOM_LEFT:
+            return {(int8_t)(mazeSize - 1), 0};
+        case START_BOTTOM_RIGHT:
+            return {(int8_t)(mazeSize - 1), (int8_t)(mazeSize - 1)};
+        case START_TOP_LEFT:
+        default:
+            return {0, 0};
+    }
+}
+
+Direction direcaoInicialParaCanto(StartCorner corner) {
+    switch (corner) {
+        case START_BOTTOM_LEFT:
+        case START_BOTTOM_RIGHT:
+            return SOUTH;
+        case START_TOP_LEFT:
+        case START_TOP_RIGHT:
+        default:
+            return NORTH;
+    }
+}
 
 void preencherPayloadWeb(JsonDocument &doc) {
     uint8_t posMapaLinha = 0;
@@ -557,7 +627,7 @@ void preencherPayloadWeb(JsonDocument &doc) {
     uint8_t goalMapaColuna = 0;
 
     celulaParaMapa(currentPos.r, currentPos.c, posMapaLinha, posMapaColuna);
-    celulaParaMapa(0, 0, startMapaLinha, startMapaColuna);
+    celulaParaMapa(startGoal[0].r, startGoal[0].c, startMapaLinha, startMapaColuna);
     celulaParaMapa((int8_t)(mazeSize / 2 - 1), (int8_t)(mazeSize / 2 - 1), goalMapaLinha, goalMapaColuna);
 
     float correnteA = batCorrenteAtual / 1000.0;
@@ -587,6 +657,7 @@ void preencherPayloadWeb(JsonDocument &doc) {
     doc["tipoLabirinto"] = tipoLabirinto;
     doc["estadoRobo"] = estadoAtual;
     doc["modoOperacao"] = modoAtual == MODO_MAPEAMENTO ? "MAPEAMENTO" : "CORRIDA";
+    doc["startCorner"] = startCornerParaTexto(startCornerAtual);
     doc["aguardandoInicio"] = estadoAtual == AGUARDANDO_INICIO;
     doc["aguardandoCorrida"] = estadoAtual == MAPEAMENTO_CONCLUIDO;
     doc["travado"] = robotTravado;
@@ -662,6 +733,7 @@ bool comandoIniciarCorrida = false;
 bool comandoIniciarMapeamento = false;
 bool comandoPararRato = false;
 uint8_t comandoMazeSize = 16;
+StartCorner comandoStartCorner = START_TOP_LEFT;
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
     switch(type) {
@@ -685,6 +757,9 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
 
                 if (type == "START") {
                     uint8_t novoMazeSize = cmdDoc["mazeSize"] | mazeSize;
+                    StartCorner novoStartCorner = startCornerAtual;
+                    String startCornerTexto = cmdDoc["startCorner"] | "";
+                    startCornerTexto.toUpperCase();
 
                     JsonDocument resposta;
                     resposta["type"] = "ACK";
@@ -694,10 +769,16 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
                         resposta["type"] = "ERROR";
                         resposta["message"] = "mazeSize invalido. Use 4, 8 ou 16.";
                         resposta["receivedMazeSize"] = novoMazeSize;
+                    } else if (startCornerTexto.length() > 0 && !textoParaStartCorner(startCornerTexto, novoStartCorner)) {
+                        resposta["type"] = "ERROR";
+                        resposta["message"] = "startCorner invalido. Use top-left, top-right, bottom-left ou bottom-right.";
+                        resposta["receivedStartCorner"] = startCornerTexto;
                     } else {
                         comandoMazeSize = novoMazeSize;
+                        comandoStartCorner = novoStartCorner;
                         comandoIniciarMapeamento = true;
                         resposta["mazeSize"] = novoMazeSize;
+                        resposta["startCorner"] = startCornerParaTexto(novoStartCorner);
                         resposta["status"] = "queued";
                     }
 
@@ -1483,9 +1564,10 @@ int pwmBaseDir = PWM_RIGHT_MAPEAMENTO;
 enum ObjetivoAtual : uint8_t { OBJETIVO_CENTRO, OBJETIVO_INICIO };
 ObjetivoAtual objetivoAtual = OBJETIVO_CENTRO;
 Position startGoal[1] = { {0, 0} };
+StartCorner startCornerAtual = START_TOP_LEFT;
 
 bool atStart() {
-    return currentPos.r == 0 && currentPos.c == 0;
+    return currentPos.r == startGoal[0].r && currentPos.c == startGoal[0].c;
 }
 
 uint8_t tentativasGiroAtual = 0;
@@ -1504,6 +1586,10 @@ void atualizarCentroGoals() {
     centroGoals[1] = {(int8_t)(mid - 1), (int8_t)mid};
     centroGoals[2] = {(int8_t)mid,       (int8_t)(mid - 1)};
     centroGoals[3] = {(int8_t)mid,       (int8_t)mid};
+}
+
+void atualizarStartGoal() {
+    startGoal[0] = posicaoInicialParaCanto(startCornerAtual);
 }
 
 void imprimirStatus() {
@@ -2153,7 +2239,7 @@ bool atCenter() {
 }
 
 // COMANDOS RECEBIDOS DO SITE
-void configurarNovaTentativa(uint8_t novoMazeSize) {
+void configurarNovaTentativa(uint8_t novoMazeSize, StartCorner novoStartCorner) {
     if (!mazeSizeValido(novoMazeSize)) {
         Serial.println("[MICROMOUSE] Maze size invalido. Use 4, 8 ou 16.");
         return;
@@ -2162,9 +2248,10 @@ void configurarNovaTentativa(uint8_t novoMazeSize) {
     motors.stop();
 
     mazeSize = novoMazeSize;
+    startCornerAtual = novoStartCorner;
+    atualizarStartGoal();
 
     currentPos = {0, 0};
-    ultimaPosicaoAntesDaAtual = {-1, -1};
     currentDir = NORTH;
 
     modoAtual = MODO_MAPEAMENTO;
@@ -2204,7 +2291,8 @@ void configurarNovaTentativa(uint8_t novoMazeSize) {
 
     Serial.print("[MICROMOUSE] Nova tentativa iniciada. Maze size: ");
     Serial.print(mazeSize);
-    Serial.println("x");
+    Serial.print("x | startCorner=");
+    Serial.println(startCornerParaTexto(startCornerAtual));
 }
 
 void iniciarRunCorrida() {
@@ -2237,7 +2325,7 @@ void processarComandosSite() {
 
     if (comandoIniciarMapeamento) {
         comandoIniciarMapeamento = false;
-        configurarNovaTentativa(comandoMazeSize);
+        configurarNovaTentativa(comandoMazeSize, comandoStartCorner);
     }
 }
 
@@ -2525,5 +2613,4 @@ void loop() {
     publicarTelemetria();
     delay(20);
 }
-
 
