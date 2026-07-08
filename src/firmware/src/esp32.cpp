@@ -28,6 +28,7 @@ float tensaoAtual = 7.4f;
 float correnteRecente = 1.1f;
 float velocidadeAtual = 0.55f;
 bool desafioCumprido = false;
+bool aguardandoInicio = true;
 unsigned long inicioCorrida = 0;
 String tempoConclusaoISO;
 
@@ -187,6 +188,38 @@ void preencherMatriz(JsonDocument &doc, const char *chave) {
     }
 }
 
+void iniciarNovaTentativa() {
+    numeroTentativa = random(1000, 9999);
+    linhaAtual = 0;
+    colunaAtual = 0;
+    direcaoAtual = 1;
+    passoAtual = 1;
+    caminhoTamanho = 0;
+    desafioCumprido = false;
+    aguardandoInicio = false;
+    tempoConclusaoISO = "";
+    bateriaAtual = 100.0f;
+    inicioCorrida = millis();
+
+    inicializarMapa();
+    marcarCelulaVisitada(linhaAtual, colunaAtual);
+    registrarCaminho(linhaAtual, colunaAtual);
+}
+
+void processarComandoWebSocket(const char *payload, size_t length) {
+    JsonDocument doc;
+    DeserializationError err = deserializeJson(doc, payload, length);
+    if (err) {
+        return;
+    }
+
+    const char *type = doc["type"] | "";
+    if (strcmp(type, "START") == 0 || strcmp(type, "START_RUN") == 0) {
+        iniciarNovaTentativa();
+        Serial.printf("[ESP32] Nova tentativa iniciada: %u\n", numeroTentativa);
+    }
+}
+
 void preencherPayload(JsonDocument &doc) {
     const String tempoColeta = timestampISO(millis());
     uint8_t posicaoMapaLinha = 0;
@@ -215,7 +248,9 @@ void preencherPayload(JsonDocument &doc) {
     doc["sensorFrontal"] = 0;
     doc["tipoLabirinto"] = "16x16";
     doc["desafioCumprido"] = desafioCumprido ? "SIM" : "NAO";
-    doc["status"] = desafioCumprido ? "success" : "running";
+    doc["status"] = aguardandoInicio
+        ? "waiting_start"
+        : (desafioCumprido ? "success" : "running");
     doc["elapsedSeconds"] = millis() / 1000.0;
     doc["batteryPercent"] = bateriaAtual;
     doc["speedMps"] = velocidadeAtual;
@@ -273,6 +308,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         }
         case WStype_TEXT:
             Serial.printf("[%d] Comando recebido: %s\n", num, payload);
+            processarComandoWebSocket((const char *)payload, length);
             break;
         default:
             break;
@@ -286,15 +322,8 @@ void setup() {
     randomSeed((uint32_t)millis());
 
     inicializarMapa();
-
-    numeroTentativa = random(1000, 9999);
-    linhaAtual = 0;
-    colunaAtual = 0;
-    direcaoAtual = 1;
-    inicioCorrida = millis();
-
-    marcarCelulaVisitada(linhaAtual, colunaAtual);
-    registrarCaminho(linhaAtual, colunaAtual);
+    iniciarNovaTentativa();
+    aguardandoInicio = true;
 
     Serial.println("Configurando Access Point...");
     WiFi.softAP(ssid, password);
@@ -313,6 +342,15 @@ void loop() {
     }
 
     lastMillis = millis();
+
+    if (aguardandoInicio) {
+        JsonDocument doc;
+        preencherPayload(doc);
+        String jsonPayload;
+        serializeJson(doc, jsonPayload);
+        webSocket.broadcastTXT(jsonPayload);
+        return;
+    }
 
     simularPasso();
 

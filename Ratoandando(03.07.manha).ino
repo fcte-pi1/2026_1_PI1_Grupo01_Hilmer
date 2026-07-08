@@ -267,6 +267,8 @@ uint32_t numeroTentativa = 0;
 unsigned long inicioCorrida = 0;
 bool desafioCumprido = false;
 String tempoConclusaoISO;
+bool runInterrompida = false;
+uint8_t framesStoppedRestantes = 0;
 
 const int8_t deltaLinha[4] = {1, 0, -1, 0};
 const int8_t deltaColuna[4] = {0, 1, 0, -1};
@@ -589,7 +591,9 @@ void preencherPayloadWeb(JsonDocument &doc) {
     doc["aguardandoCorrida"] = estadoAtual == MAPEAMENTO_CONCLUIDO;
     doc["travado"] = robotTravado;
     doc["desafioCumprido"] = desafioCumprido ? "SIM" : "NAO";
-    if (desafioCumprido) {
+    if (runInterrompida) {
+        doc["status"] = "stopped";
+    } else if (desafioCumprido) {
         doc["status"] = "success";
     } else if (robotTravado) {
         doc["status"] = "stuck";
@@ -2172,6 +2176,8 @@ void configurarNovaTentativa(uint8_t novoMazeSize) {
     caminhoPercorridoSize = 0;
     desafioCumprido = false;
     tempoConclusaoISO = "";
+    runInterrompida = false;
+    framesStoppedRestantes = 0;
     robotTravado = false;
     tentativasGiroAtual = 0;
     ultimoGiro90Preso = STOP_CMD;   // ========  nova alt (anti dois-90): zera ao iniciar tentativa  ========
@@ -2201,6 +2207,21 @@ void configurarNovaTentativa(uint8_t novoMazeSize) {
     Serial.println("x");
 }
 
+void iniciarRunCorrida() {
+    numeroTentativa++;
+    inicioCorrida = millis();
+    caminhoPercorridoSize = 0;
+    desafioCumprido = false;
+    tempoConclusaoISO = "";
+    runInterrompida = false;
+    framesStoppedRestantes = 0;
+
+    registrarCaminho(currentPos.r, currentPos.c);
+
+    Serial.print("[MICROMOUSE] Nova run de corrida. numTentativa=");
+    Serial.println(numeroTentativa);
+}
+
 void processarComandosSite() {
     if (comandoPararRato) {
         comandoPararRato = false;
@@ -2208,9 +2229,10 @@ void processarComandosSite() {
         comandoIniciarCorrida = false;
 
         motors.stop();
-        estadoAtual = AGUARDANDO_INICIO;
+        runInterrompida = true;
+        framesStoppedRestantes = 10;
 
-        Serial.println("[MICROMOUSE] STOP recebido do site. Rato parado, aguardando novo START.");
+        Serial.println("[MICROMOUSE] STOP recebido do site. Run interrompida, publicando status stopped.");
     }
 
     if (comandoIniciarMapeamento) {
@@ -2292,6 +2314,24 @@ void setup() {
 }
 
 void loop() {
+    if (runInterrompida) {
+        webSocket.loop();
+        processarComandosSite();
+        atualizarBateria();
+        publicarTelemetria();
+
+        if (framesStoppedRestantes > 0) {
+            framesStoppedRestantes--;
+        } else {
+            runInterrompida = false;
+            estadoAtual = AGUARDANDO_INICIO;
+            Serial.println("[MICROMOUSE] Run interrompida persistida. Aguardando novo START.");
+        }
+
+        delay(200);
+        return;
+    }
+
     if (estadoAtual == FINALIZADO) {
         webSocket.loop();
         processarComandosSite();
@@ -2321,6 +2361,8 @@ void loop() {
             comandoIniciarCorrida = false;
 
             Serial.println("[MICROMOUSE] Comando recebido! Iniciando modo CORRIDA, voltando ao inicio...");
+
+            iniciarRunCorrida();
 
             modoAtual = MODO_CORRIDA;
             pwmBaseEsq = PWM_LEFT_CORRIDA;
@@ -2371,6 +2413,8 @@ void loop() {
         }
     } else if (objetivoAtual == OBJETIVO_INICIO && chegouInicio) {
         Serial.println("[MICROMOUSE] De volta ao inicio! Iniciando corrida final ate o centro...");
+        caminhoPercorridoSize = 0;
+        registrarCaminho(currentPos.r, currentPos.c);
         objetivoAtual = OBJETIVO_CENTRO;
     }
 

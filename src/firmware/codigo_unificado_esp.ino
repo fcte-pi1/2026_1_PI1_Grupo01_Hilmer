@@ -14,6 +14,8 @@
 #include <WebSocketsServer.h>
 #include <stdint.h>
 
+void iniciarNovaTentativa();
+
 // =============================================================================
 // PINOS
 // =============================================================================
@@ -146,6 +148,7 @@ uint16_t caminhoPercorridoSize = 0;
 uint32_t numeroTentativa = 0;
 unsigned long inicioCorrida = 0;
 bool desafioCumprido = false;
+bool aguardandoComando = false;
 String tempoConclusaoISO;
 
 const int8_t deltaLinha[4] = {1, 0, -1, 0};
@@ -333,7 +336,9 @@ void preencherPayloadWeb(JsonDocument &doc) {
     doc["sensorFrontal"] = sensorFrente.wallDetected ? 1 : 0;
     doc["tipoLabirinto"] = "16x16";
     doc["desafioCumprido"] = desafioCumprido ? "SIM" : "NAO";
-    doc["status"] = desafioCumprido ? "success" : "running";
+    doc["status"] = aguardandoComando
+        ? "waiting_start"
+        : (desafioCumprido ? "success" : "running");
     doc["elapsedSeconds"] = millis() / 1000.0;
     doc["batteryPercent"] = 100.0;
     doc["speedMps"] = 0.55;
@@ -394,9 +399,19 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
             Serial.printf("[%d] Conectado de %d.%d.%d.%d\n", num, ip[0], ip[1], ip[2], ip[3]);
             break;
         }
-        case WStype_TEXT:
+        case WStype_TEXT: {
             Serial.printf("[%d] Comando recebido: %s\n", num, payload);
+            JsonDocument cmdDoc;
+            DeserializationError err = deserializeJson(cmdDoc, payload, length);
+            if (!err) {
+                const char *type = cmdDoc["type"] | "";
+                if (strcmp(type, "START") == 0 || strcmp(type, "START_RUN") == 0) {
+                    iniciarNovaTentativa();
+                    limparFiltrosSensores();
+                }
+            }
             break;
+        }
         default:
             break;
     }
@@ -1040,6 +1055,30 @@ bool atCenter() {
            (currentPos.c == MID - 1 || currentPos.c == MID);
 }
 
+void iniciarNovaTentativa() {
+    numeroTentativa = random(1000, 9999);
+    inicioCorrida = millis();
+    caminhoPercorridoSize = 0;
+    desafioCumprido = false;
+    tempoConclusaoISO = "";
+    aguardandoComando = false;
+
+    currentPos = {0, 0};
+    currentDir = NORTH;
+
+    inicializarMapaWeb();
+    registrarCaminho(currentPos.r, currentPos.c);
+    marcarCelulaVisitada(currentPos.r, currentPos.c);
+
+    maze.begin();
+    floodFill.computeMulti(centroGoals, 4);
+
+    estadoAtual = MOVIMENTO_FRENTE;
+    motors.stop();
+
+    Serial.printf("[MICROMOUSE] Nova tentativa #%u iniciada\n", numeroTentativa);
+}
+
 // =============================================================================
 // SETUP
 // =============================================================================
@@ -1064,6 +1103,7 @@ void setup() {
     maze.begin();
     inicializarMapaWeb();
 
+    aguardandoComando = true;
     numeroTentativa = random(1000, 9999);
     inicioCorrida = millis();
     caminhoPercorridoSize = 0;
@@ -1090,6 +1130,7 @@ void setup() {
 
     delay(1000);
 
+    aguardandoComando = false;
     estadoAtual = MOVIMENTO_FRENTE;
 
     Serial.println("[MICROMOUSE] Iniciando exploração...");
